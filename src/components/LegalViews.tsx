@@ -10,10 +10,15 @@ export const LegalView: React.FC<LegalViewProps> = ({ onBack, type }) => {
   const isPrivacy = type === 'privacy';
   const effectiveDate = 'August 18, 2026';
 
+  // Always reset scroll to top when legal view opens or changes type
+  React.useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+  }, [type]);
+
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 pb-20">
       {/* Top Header */}
-      <div className="bg-white border-b border-slate-200 sticky top-0 z-30 px-4 py-3.5 flex items-center justify-between shadow-2xs">
+      <div className="bg-white border-b border-slate-200 px-4 py-3.5 flex items-center justify-between shadow-2xs">
         <div className="flex items-center gap-3">
           <button
             onClick={onBack}

@@ -333,8 +333,8 @@ export const USER_CASHBACK_BALANCE_KEY = 'giriraj_user_cashback_balance';
 
 // User Profile & Phone Authentication helpers
 export function getSavedUserProfile(): UserProfile | null {
-  const phone = localStorage.getItem(USER_PHONE_KEY);
-  const name = localStorage.getItem(USER_NAME_KEY) || (auth.currentUser?.displayName || 'Kolkata Customer');
+  const phone = localStorage.getItem(USER_PHONE_KEY) || '';
+  const name = localStorage.getItem(USER_NAME_KEY) || (auth.currentUser?.displayName || '');
   const email = localStorage.getItem(USER_EMAIL_KEY) || auth.currentUser?.email || '';
   const photoURL = localStorage.getItem(USER_PHOTO_KEY) || auth.currentUser?.photoURL || '';
   const dob = localStorage.getItem(USER_DOB_KEY) || '';
@@ -343,7 +343,7 @@ export function getSavedUserProfile(): UserProfile | null {
   const cashbackBalance = Number(localStorage.getItem(USER_CASHBACK_BALANCE_KEY)) || 0;
   const walletBalance = refundBalance + cashbackBalance;
 
-  if (!phone && !email && !auth.currentUser) return null;
+  if (!phone && !email && !name && !auth.currentUser) return null;
   return {
     id: auth.currentUser?.uid,
     phone: phone || auth.currentUser?.phoneNumber || '',

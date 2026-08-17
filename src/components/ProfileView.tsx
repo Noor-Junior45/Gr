@@ -139,7 +139,12 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
   const totalWalletBalance = userProfile?.walletBalance ?? (refundBalance + cashbackBalance);
   const [walletNotice, setWalletNotice] = useState<string | null>(null);
 
-  // Close 3-dots menu on outside click or on window scroll
+  // Reset scroll to top whenever navigating to a subpage or returning to main profile
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+  }, [subPage]);
+
+  // Close 3-dots menu on outside click
   useEffect(() => {
     if (!isMenuOpen) return;
 
@@ -149,18 +154,12 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
       }
     };
 
-    const handleScroll = () => {
-      setIsMenuOpen(false);
-    };
-
     document.addEventListener('mousedown', handleOutsideClick);
     document.addEventListener('touchstart', handleOutsideClick);
-    window.addEventListener('scroll', handleScroll, { passive: true });
 
     return () => {
       document.removeEventListener('mousedown', handleOutsideClick);
       document.removeEventListener('touchstart', handleOutsideClick);
-      window.removeEventListener('scroll', handleScroll);
     };
   }, [isMenuOpen]);
 
@@ -174,7 +173,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
   }, [isOtpStep, otpTimer]);
 
   const handleOpenEdit = () => {
-    setEditName(userProfile?.name || 'Customer');
+    setEditName(userProfile?.name || '');
     setEditEmail(userProfile?.email || '');
     setEditPhone(userProfile?.phone || '');
     setEditDob(userProfile?.dob || '');
@@ -212,9 +211,9 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
     const updated: UserProfile = {
       ...userProfile,
       id: userProfile?.id,
-      name: editName.trim() || 'Customer',
+      name: editName.trim(),
       email: cleanEmail,
-      phone: editPhone.trim() || userProfile?.phone || '',
+      phone: editPhone.trim(),
       dob: editDob,
       photoURL: editPhotoURL.trim() || userProfile?.photoURL,
       refundBalance,
@@ -237,10 +236,10 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
     const updated: UserProfile = {
       ...userProfile,
       id: userProfile?.id,
-      name: editName.trim() || 'Customer',
+      name: editName.trim(),
       email: pendingEmail,
       emailVerified: true,
-      phone: editPhone.trim() || userProfile?.phone || '',
+      phone: editPhone.trim(),
       dob: editDob,
       photoURL: editPhotoURL.trim() || userProfile?.photoURL,
       refundBalance,
@@ -288,11 +287,22 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
   const walletTransactions: WalletTransaction[] = [];
   const filteredTransactions = walletTransactions;
 
-  const displayName = userProfile?.name || 'Customer';
-  const displayPhone = userProfile?.phone || '';
-  const displayEmail = userProfile?.email || '';
+  // Clean user fields (no demo name/number)
+  const rawName = userProfile?.name?.trim() || '';
+  const rawPhone = userProfile?.phone?.trim() || '';
+  const rawEmail = userProfile?.email?.trim() || '';
   const displayDob = userProfile?.dob;
   const userPhoto = userProfile?.photoURL;
+
+  // Flags for whether profile fields are missing (for first-time/incomplete logins)
+  const hasMissingName = !rawName;
+  const hasMissingPhone = !rawPhone;
+  const hasMissingEmail = !rawEmail;
+  const hasAnyMissingDetails = hasMissingName || hasMissingPhone || hasMissingEmail;
+
+  const displayName = rawName || 'Set Your Name';
+  const displayPhone = rawPhone;
+  const displayEmail = rawEmail;
 
   const getInitials = (name?: string, phone?: string) => {
     if (name && name.trim()) {
@@ -314,7 +324,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
   if (subPage === 'orders') {
     return (
       <div className="min-h-screen bg-slate-50 text-slate-900 pb-20">
-        <div className="bg-white border-b border-slate-200 sticky top-0 z-30 px-4 py-3.5 flex items-center justify-between shadow-2xs">
+        <div className="bg-white border-b border-slate-200 px-4 py-3.5 flex items-center justify-between shadow-2xs">
           <div className="flex items-center gap-3">
             <button
               onClick={() => setSubPage('main')}
@@ -489,7 +499,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
   if (subPage === 'addresses') {
     return (
       <div className="min-h-screen bg-slate-50 text-slate-900 pb-20">
-        <div className="bg-white border-b border-slate-200 sticky top-0 z-30 px-4 py-3.5 flex items-center justify-between shadow-2xs">
+        <div className="bg-white border-b border-slate-200 px-4 py-3.5 flex items-center justify-between shadow-2xs">
           <div className="flex items-center gap-3">
             <button
               onClick={() => setSubPage('main')}
@@ -620,7 +630,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
 
     return (
       <div className="min-h-screen bg-slate-50 text-slate-900 pb-20">
-        <div className="bg-white border-b border-slate-200 sticky top-0 z-30 px-4 py-3.5 flex items-center justify-between shadow-2xs">
+        <div className="bg-white border-b border-slate-200 px-4 py-3.5 flex items-center justify-between shadow-2xs">
           <div className="flex items-center gap-3">
             <button
               onClick={() => setSubPage('main')}
@@ -878,7 +888,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
   if (subPage === 'wallet') {
     return (
       <div className="min-h-screen bg-slate-50 text-slate-900 pb-20">
-        <div className="bg-white border-b border-slate-200 sticky top-0 z-30 px-4 py-3.5 flex items-center gap-3 shadow-2xs">
+        <div className="bg-white border-b border-slate-200 px-4 py-3.5 flex items-center gap-3 shadow-2xs">
           <button
             onClick={() => setSubPage('main')}
             className="p-1.5 rounded-full hover:bg-slate-100 text-slate-700 transition-colors cursor-pointer"
@@ -956,7 +966,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
   if (subPage === 'services') {
     return (
       <div className="min-h-screen bg-slate-50 text-slate-900 pb-20">
-        <div className="bg-white border-b border-slate-200 sticky top-0 z-30 px-4 py-3.5 flex items-center gap-3 shadow-2xs">
+        <div className="bg-white border-b border-slate-200 px-4 py-3.5 flex items-center gap-3 shadow-2xs">
           <button
             onClick={() => setSubPage('main')}
             className="p-1.5 rounded-full hover:bg-slate-100 text-slate-700 transition-colors cursor-pointer"
@@ -1034,7 +1044,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
   if (subPage === 'membership') {
     return (
       <div className="min-h-screen bg-slate-50 text-slate-900 pb-20">
-        <div className="bg-white border-b border-slate-200 sticky top-0 z-30 px-4 py-3.5 flex items-center gap-3 shadow-2xs">
+        <div className="bg-white border-b border-slate-200 px-4 py-3.5 flex items-center gap-3 shadow-2xs">
           <button
             onClick={() => setSubPage('main')}
             className="p-1.5 rounded-full hover:bg-slate-100 text-slate-700 transition-colors cursor-pointer"
@@ -1086,7 +1096,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
   if (subPage === 'help') {
     return (
       <div className="min-h-screen bg-slate-50 text-slate-900 pb-20">
-        <div className="bg-white border-b border-slate-200 sticky top-0 z-30 px-4 py-3.5 flex items-center gap-3 shadow-2xs">
+        <div className="bg-white border-b border-slate-200 px-4 py-3.5 flex items-center gap-3 shadow-2xs">
           <button
             onClick={() => setSubPage('main')}
             className="p-1.5 rounded-full hover:bg-slate-100 text-slate-700 transition-colors cursor-pointer"
@@ -1163,7 +1173,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
   if (subPage === 'notifications') {
     return (
       <div className="min-h-screen bg-slate-50 text-slate-900 pb-20">
-        <div className="bg-white border-b border-slate-200 sticky top-0 z-30 px-4 py-3.5 flex items-center gap-3 shadow-2xs">
+        <div className="bg-white border-b border-slate-200 px-4 py-3.5 flex items-center gap-3 shadow-2xs">
           <button
             onClick={() => setSubPage('main')}
             className="p-1.5 rounded-full hover:bg-slate-100 text-slate-700 transition-colors cursor-pointer"
@@ -1293,14 +1303,24 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
   // -------------------------------------------------------------
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 pb-24">
-      {/* 1. TOP HEADER BANNER (Crimson / Red Gradient matching Swiggy screenshot) */}
-      <div className="bg-gradient-to-b from-[#8B0000] via-[#A30000] to-[#B31B1B] text-white pt-4 pb-6 px-4 sm:px-6 relative shadow-md">
-        {/* Top Control Bar */}
-        <div className="max-w-3xl mx-auto flex items-center justify-end mb-4">
-          <div className="flex items-center gap-3 relative">
+      {/* 1. TOP HEADER BANNER (Full width touching top & both sides, bottom curves only) */}
+      <div className="bg-gradient-to-b from-[#8B0000] via-[#A30000] to-[#B31B1B] text-white pt-4 pb-7 px-4 sm:px-6 relative shadow-md rounded-b-[2rem] border-b border-red-950/30">
+        {/* Top Control Bar with Back Arrow & Actions */}
+        <div className="max-w-3xl mx-auto flex items-center justify-between mb-3">
+          {/* Arrow Back Button */}
+          <button
+            onClick={onBack}
+            className="p-2 -ml-1 rounded-full bg-white/10 hover:bg-white/20 active:bg-white/30 text-white transition-all cursor-pointer flex items-center gap-1.5"
+            aria-label="Go back"
+          >
+            <ArrowLeft className="w-5 h-5" />
+            <span className="text-xs font-bold sm:inline hidden">Back</span>
+          </button>
+
+          <div className="flex items-center gap-2.5 relative">
             <button
               onClick={() => setSubPage('help')}
-              className="text-xs font-black uppercase tracking-wider text-white hover:text-amber-200 transition-colors cursor-pointer"
+              className="text-xs font-black uppercase tracking-wider text-white hover:text-amber-200 transition-colors cursor-pointer px-2 py-1"
             >
               HELP
             </button>
@@ -1308,30 +1328,45 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
             {/* 3-Dots Menu Button */}
             <div className="relative" ref={menuRef}>
               <button
-                onClick={() => setIsMenuOpen(!isMenuOpen)}
-                className="p-2 rounded-full hover:bg-white/15 text-white transition-colors cursor-pointer"
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsMenuOpen((prev) => !prev);
+                }}
+                className="p-2 rounded-full hover:bg-white/20 active:bg-white/30 text-white transition-colors cursor-pointer relative"
                 aria-label="Profile options"
               >
                 <MoreVertical className="w-5 h-5" />
+                {hasAnyMissingDetails && (
+                  <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 bg-red-400 border-2 border-red-900 rounded-full animate-pulse" />
+                )}
               </button>
 
-              {/* 3-Dots Dropdown */}
+              {/* 3-Dots Dropdown Pop Up */}
               {isMenuOpen && (
                 <>
                   {/* Invisible Fullscreen Backdrop to dismiss on outside click */}
                   <div
-                    className="fixed inset-0 z-40"
+                    className="fixed inset-0 z-40 bg-black/10"
                     onClick={() => setIsMenuOpen(false)}
                     aria-hidden="true"
                   />
 
-                  <div className="absolute right-0 top-10 w-52 bg-white rounded-2xl shadow-2xl border border-slate-200 py-1.5 z-50 text-slate-900 animate-in fade-in zoom-in-95 duration-150">
+                  <div className="absolute right-0 top-11 w-56 bg-white rounded-2xl shadow-2xl border border-slate-200/90 py-2 z-50 text-slate-900 animate-in fade-in zoom-in-95 duration-150">
                     <button
-                      onClick={handleOpenEdit}
-                      className="w-full px-4 py-2.5 text-left text-xs font-bold text-slate-800 hover:bg-slate-100 flex items-center gap-2.5 cursor-pointer"
+                      onClick={() => {
+                        setIsMenuOpen(false);
+                        handleOpenEdit();
+                      }}
+                      className="w-full px-4 py-2.5 text-left text-xs font-bold text-slate-800 hover:bg-slate-100 flex items-center justify-between cursor-pointer"
                     >
-                      <Edit3 className="w-4 h-4 text-slate-600" />
-                      <span>Edit Profile Details</span>
+                      <div className="flex items-center gap-2.5">
+                        <Edit3 className="w-4 h-4 text-slate-600 shrink-0" />
+                        <span>Edit Profile Details</span>
+                      </div>
+                      {hasAnyMissingDetails && (
+                        <span className="w-2 h-2 rounded-full bg-red-500 shrink-0" />
+                      )}
                     </button>
                     <button
                       onClick={() => {
@@ -1340,7 +1375,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                       }}
                       className="w-full px-4 py-2.5 text-left text-xs font-bold text-slate-800 hover:bg-slate-100 flex items-center gap-2.5 cursor-pointer"
                     >
-                      <MapPin className="w-4 h-4 text-slate-600" />
+                      <MapPin className="w-4 h-4 text-slate-600 shrink-0" />
                       <span>Manage Addresses</span>
                     </button>
                     <button
@@ -1350,7 +1385,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                       }}
                       className="w-full px-4 py-2.5 text-left text-xs font-bold text-slate-800 hover:bg-slate-100 flex items-center gap-2.5 cursor-pointer"
                     >
-                      <Wallet className="w-4 h-4 text-slate-600" />
+                      <Wallet className="w-4 h-4 text-slate-600 shrink-0" />
                       <span>Refund &amp; Cashback Wallet</span>
                     </button>
                     <button
@@ -1360,7 +1395,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                       }}
                       className="w-full px-4 py-2.5 text-left text-xs font-bold text-slate-800 hover:bg-slate-100 flex items-center gap-2.5 cursor-pointer"
                     >
-                      <Lock className="w-4 h-4 text-slate-600" />
+                      <Lock className="w-4 h-4 text-slate-600 shrink-0" />
                       <span>Privacy Policy</span>
                     </button>
                     <button
@@ -1370,7 +1405,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                       }}
                       className="w-full px-4 py-2.5 text-left text-xs font-bold text-slate-800 hover:bg-slate-100 flex items-center gap-2.5 cursor-pointer"
                     >
-                      <FileText className="w-4 h-4 text-slate-600" />
+                      <FileText className="w-4 h-4 text-slate-600 shrink-0" />
                       <span>Terms of Service</span>
                     </button>
                     <div className="h-px bg-slate-100 my-1" />
@@ -1382,7 +1417,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                       }}
                       className="w-full px-4 py-2.5 text-left text-xs font-bold text-red-600 hover:bg-red-50 flex items-center gap-2.5 cursor-pointer"
                     >
-                      <LogOut className="w-4 h-4" />
+                      <LogOut className="w-4 h-4 shrink-0" />
                       <span>Sign Out</span>
                     </button>
                   </div>
@@ -1394,7 +1429,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
 
         {/* User Identity Details with Photo Circle (Swiggy Style) */}
         <div className="max-w-3xl mx-auto flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3.5">
+          <div className="flex items-center gap-3.5 sm:gap-4">
             {/* Front Circle Box: User Email Photo or Monogram */}
             <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full border-2 border-white/60 bg-amber-400 text-slate-950 flex items-center justify-center shrink-0 shadow-md overflow-hidden relative">
               {userPhoto && !avatarError ? (
@@ -1407,7 +1442,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                 />
               ) : (
                 <span className="text-base sm:text-lg font-black tracking-tight">
-                  {getInitials(displayName, displayPhone)}
+                  {getInitials(rawName, rawPhone)}
                 </span>
               )}
             </div>
@@ -1417,28 +1452,59 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                 <h1 className="text-xl sm:text-2xl font-black tracking-tight text-white capitalize">
                   {displayName}
                 </h1>
-                <button
-                  onClick={handleOpenEdit}
-                  className="p-1 rounded-full text-white/70 hover:text-white hover:bg-white/20 transition-colors cursor-pointer"
-                  title="Edit Name"
-                >
-                  <Edit3 className="w-3.5 h-3.5" />
-                </button>
+                {hasMissingName && (
+                  <span
+                    onClick={handleOpenEdit}
+                    className="inline-flex items-center gap-1 text-[10px] font-black bg-red-500 hover:bg-red-600 text-white px-2 py-0.5 rounded-full cursor-pointer shadow-xs animate-pulse"
+                    title="Enter your full name"
+                  >
+                    <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping" />
+                    Add Name
+                  </span>
+                )}
               </div>
 
-              <div className="mt-0.5 space-y-0.5 text-xs text-white/90 font-medium">
-                <p className="flex items-center gap-1.5">
-                  {displayPhone && <span>{displayPhone}</span>}
-                  {displayPhone && displayEmail && <span className="opacity-60">•</span>}
-                  {displayEmail && <span>{displayEmail}</span>}
-                  {userProfile?.emailVerified && (
-                    <span className="inline-flex items-center gap-0.5 text-[10px] font-black bg-emerald-500/30 text-emerald-200 px-1.5 py-0.2 rounded border border-emerald-400/40">
-                      <Check className="w-2.5 h-2.5" /> Verified
+              {/* Stack-wise Phone Number and Email */}
+              <div className="mt-1 space-y-0.5 text-xs text-white/90 font-medium">
+                {displayPhone ? (
+                  <p className="flex items-center gap-1.5">
+                    <span className="font-semibold text-white tracking-wide">{displayPhone}</span>
+                  </p>
+                ) : (
+                  <button
+                    onClick={handleOpenEdit}
+                    className="flex items-center gap-1.5 text-left text-amber-200 hover:text-white transition-colors cursor-pointer group"
+                  >
+                    <span className="w-2 h-2 rounded-full bg-red-400 ring-2 ring-red-200/50 shrink-0 group-hover:scale-110 transition-transform" />
+                    <span className="underline decoration-dotted underline-offset-2 text-[11px] font-semibold">
+                      Add mobile number
                     </span>
-                  )}
-                </p>
+                  </button>
+                )}
+
+                {displayEmail ? (
+                  <p className="flex items-center gap-1.5 flex-wrap">
+                    <span className="text-white/85 text-[11px] sm:text-xs break-all">{displayEmail}</span>
+                    {userProfile?.emailVerified && (
+                      <span className="inline-flex items-center gap-0.5 text-[9px] font-black bg-emerald-500/30 text-emerald-200 px-1.5 py-0.2 rounded border border-emerald-400/40">
+                        <Check className="w-2.5 h-2.5" /> Verified
+                      </span>
+                    )}
+                  </p>
+                ) : (
+                  <button
+                    onClick={handleOpenEdit}
+                    className="flex items-center gap-1.5 text-left text-amber-200 hover:text-white transition-colors cursor-pointer group"
+                  >
+                    <span className="w-2 h-2 rounded-full bg-red-400 ring-2 ring-red-200/50 shrink-0 group-hover:scale-110 transition-transform" />
+                    <span className="underline decoration-dotted underline-offset-2 text-[11px] font-semibold">
+                      Add email address
+                    </span>
+                  </button>
+                )}
+
                 {displayDob && (
-                  <p className="text-[11px] text-amber-200 flex items-center gap-1 font-semibold">
+                  <p className="text-[11px] text-amber-200 flex items-center gap-1 font-semibold pt-0.5">
                     <Calendar className="w-3 h-3" />
                     <span>
                       DOB: {new Date(displayDob).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
@@ -1448,73 +1514,65 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
               </div>
             </div>
           </div>
-
-          <button
-            onClick={handleOpenEdit}
-            className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/15 hover:bg-white/25 text-white text-xs font-bold transition-colors cursor-pointer border border-white/20"
-          >
-            <Edit3 className="w-3.5 h-3.5" />
-            <span>Edit Profile</span>
-          </button>
         </div>
       </div>
 
-      <div className="max-w-3xl mx-auto px-4 sm:px-6 -mt-3 space-y-4">
-        {/* 3. 4 QUICK ACCESS ACTION TILES (All Open Sub-Pages with Back Arrows) */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+      <div className="max-w-3xl mx-auto px-3 sm:px-6 mt-4 sm:mt-5 space-y-4">
+        {/* 3. 4 QUICK ACCESS ACTION TILES (Properly spaced, visibly distinct and elevated) */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-3.5">
           {/* Tile 1: Orders */}
           <button
             onClick={() => setSubPage('orders')}
-            className="bg-white p-3.5 rounded-2xl border border-slate-200/80 hover:border-amber-400 hover:shadow-sm transition-all text-left flex flex-col justify-between min-h-[96px] cursor-pointer group"
+            className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md hover:border-amber-400 transition-all text-left flex flex-col justify-between min-h-[105px] cursor-pointer group"
           >
-            <div className="w-8 h-8 rounded-xl bg-amber-50 text-amber-700 flex items-center justify-center group-hover:scale-105 transition-transform">
+            <div className="w-9 h-9 rounded-xl bg-amber-50 border border-amber-200/60 text-amber-700 flex items-center justify-center group-hover:scale-105 transition-transform shadow-2xs">
               <ShoppingBag className="w-4 h-4" />
             </div>
-            <div>
-              <p className="text-xs font-black text-slate-900 leading-tight">Your Orders</p>
-              <p className="text-[10px] text-amber-700 font-bold">{sortedOrders.length} Completed</p>
+            <div className="mt-2">
+              <p className="text-xs sm:text-sm font-black text-slate-900 leading-tight">Your Orders</p>
+              <p className="text-[11px] text-amber-700 font-bold mt-0.5">{sortedOrders.length} Completed</p>
             </div>
           </button>
 
           {/* Tile 2: Saved Address */}
           <button
             onClick={() => setSubPage('addresses')}
-            className="bg-white p-3.5 rounded-2xl border border-slate-200/80 hover:border-amber-400 hover:shadow-sm transition-all text-left flex flex-col justify-between min-h-[96px] cursor-pointer group"
+            className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md hover:border-pink-400 transition-all text-left flex flex-col justify-between min-h-[105px] cursor-pointer group"
           >
-            <div className="w-8 h-8 rounded-xl bg-pink-50 text-pink-600 flex items-center justify-center group-hover:scale-105 transition-transform">
+            <div className="w-9 h-9 rounded-xl bg-pink-50 border border-pink-200/60 text-pink-600 flex items-center justify-center group-hover:scale-105 transition-transform shadow-2xs">
               <MapPin className="w-4 h-4" />
             </div>
-            <div>
-              <p className="text-xs font-black text-slate-900 leading-tight">Saved Address</p>
-              <p className="text-[10px] text-slate-500 font-semibold">{savedAddresses.length} Addresses</p>
+            <div className="mt-2">
+              <p className="text-xs sm:text-sm font-black text-slate-900 leading-tight">Saved Address</p>
+              <p className="text-[11px] text-slate-500 font-semibold mt-0.5">{savedAddresses.length} Addresses</p>
             </div>
           </button>
 
           {/* Tile 3: Payment Modes */}
           <button
             onClick={() => setSubPage('payments')}
-            className="bg-white p-3.5 rounded-2xl border border-slate-200/80 hover:border-amber-400 hover:shadow-sm transition-all text-left flex flex-col justify-between min-h-[96px] cursor-pointer group"
+            className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md hover:border-indigo-400 transition-all text-left flex flex-col justify-between min-h-[105px] cursor-pointer group"
           >
-            <div className="w-8 h-8 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center group-hover:scale-105 transition-transform">
+            <div className="w-9 h-9 rounded-xl bg-indigo-50 border border-indigo-200/60 text-indigo-600 flex items-center justify-center group-hover:scale-105 transition-transform shadow-2xs">
               <CreditCard className="w-4 h-4" />
             </div>
-            <div>
-              <p className="text-xs font-black text-slate-900 leading-tight">Payment Modes</p>
-              <p className="text-[10px] text-slate-500 font-semibold">UPI &amp; Cards</p>
+            <div className="mt-2">
+              <p className="text-xs sm:text-sm font-black text-slate-900 leading-tight">Payment Modes</p>
+              <p className="text-[11px] text-slate-500 font-semibold mt-0.5">UPI &amp; Cards</p>
             </div>
           </button>
 
           {/* Tile 4: Wallet */}
           <button
             onClick={() => setSubPage('wallet')}
-            className="bg-white p-3.5 rounded-2xl border border-slate-200/80 hover:border-emerald-500 hover:shadow-sm transition-all text-left flex flex-col justify-between min-h-[96px] cursor-pointer group"
+            className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md hover:border-emerald-500 transition-all text-left flex flex-col justify-between min-h-[105px] cursor-pointer group"
           >
-            <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center group-hover:scale-105 transition-transform">
+            <div className="w-9 h-9 rounded-xl bg-emerald-50 border border-emerald-200/60 text-emerald-600 flex items-center justify-center group-hover:scale-105 transition-transform shadow-2xs">
               <Wallet className="w-4 h-4" />
             </div>
-            <div>
-              <p className="text-xs font-black text-slate-900 leading-tight">Wallet</p>
-              <p className="text-[10px] text-emerald-700 font-bold">₹{totalWalletBalance} Balance</p>
+            <div className="mt-2">
+              <p className="text-xs sm:text-sm font-black text-slate-900 leading-tight">Wallet</p>
+              <p className="text-[11px] text-emerald-700 font-bold mt-0.5">₹{totalWalletBalance} Balance</p>
             </div>
           </button>
         </div>
@@ -1692,20 +1750,31 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
 
                 <form onSubmit={handleProfileFormSubmit} className="space-y-3.5">
                   <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1">Full Name</label>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                        <span>Full Name</span>
+                        {hasMissingName && (
+                          <span className="w-2 h-2 rounded-full bg-red-500 inline-block animate-pulse" title="Name is required" />
+                        )}
+                      </label>
+                    </div>
                     <input
                       type="text"
-                      required
                       value={editName}
                       onChange={(e) => setEditName(e.target.value)}
-                      placeholder="e.g. Amit Sengupta"
+                      placeholder="Enter your full name"
                       className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs font-bold focus:outline-none focus:ring-2 focus:ring-amber-400 text-slate-900 bg-white"
                     />
                   </div>
 
                   <div>
                     <div className="flex items-center justify-between mb-1">
-                      <label className="text-xs font-bold text-slate-700">Gmail / Email Address</label>
+                      <label className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                        <span>Gmail / Email Address</span>
+                        {hasMissingEmail && (
+                          <span className="w-2 h-2 rounded-full bg-red-500 inline-block animate-pulse" title="Email is required" />
+                        )}
+                      </label>
                       <span className="text-[10px] font-bold text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded">
                         Requires OTP verification
                       </span>
@@ -1714,31 +1783,25 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                       type="email"
                       value={editEmail}
                       onChange={(e) => setEditEmail(e.target.value)}
-                      placeholder="your.email@gmail.com"
+                      placeholder="Enter your email (e.g. name@gmail.com)"
                       className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs font-bold focus:outline-none focus:ring-2 focus:ring-amber-400 text-slate-900 bg-white"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1">Mobile Number</label>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                        <span>Mobile Number</span>
+                        {hasMissingPhone && (
+                          <span className="w-2 h-2 rounded-full bg-red-500 inline-block animate-pulse" title="Mobile number is required" />
+                        )}
+                      </label>
+                    </div>
                     <input
                       type="tel"
                       value={editPhone}
                       onChange={(e) => setEditPhone(e.target.value)}
-                      placeholder="+91 98300 XXXXX"
-                      className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs font-bold focus:outline-none focus:ring-2 focus:ring-amber-400 text-slate-900 bg-white"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1">
-                      Profile Photo URL (Optional)
-                    </label>
-                    <input
-                      type="url"
-                      value={editPhotoURL}
-                      onChange={(e) => setEditPhotoURL(e.target.value)}
-                      placeholder="https://lh3.googleusercontent.com/..."
+                      placeholder="Enter 10-digit mobile number"
                       className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs font-bold focus:outline-none focus:ring-2 focus:ring-amber-400 text-slate-900 bg-white"
                     />
                   </div>

@@ -81,7 +81,7 @@ export default function App() {
   // User Profile
   const [userProfile, setUserProfile] = useState<UserProfile | null>(() => getSavedUserProfile());
   const [userPhone, setUserPhone] = useState<string | null>(() => getSavedUserProfile()?.phone || null);
-  const [userName, setUserName] = useState<string>(() => getSavedUserProfile()?.name || 'Kolkata Customer');
+  const [userName, setUserName] = useState<string>(() => getSavedUserProfile()?.name || '');
 
   // Initialize stored user profile, auth listener, live orders & saved addresses
   useEffect(() => {
@@ -89,13 +89,13 @@ export default function App() {
     if (saved) {
       setUserProfile(saved);
       setUserPhone(saved.phone || null);
-      setUserName(saved.name || 'Kolkata Customer');
+      setUserName(saved.name || '');
     }
 
     const unsubAuth = onAuthStateChanged(auth, (fbUser) => {
       if (fbUser) {
         const phone = fbUser.phoneNumber || localStorage.getItem('giriraj_user_phone') || '';
-        const name = fbUser.displayName || localStorage.getItem('giriraj_user_name') || 'Customer';
+        const name = fbUser.displayName || localStorage.getItem('giriraj_user_name') || '';
         const email = fbUser.email || localStorage.getItem('giriraj_user_email') || '';
         const photoURL = fbUser.photoURL || localStorage.getItem('giriraj_user_photo') || undefined;
         const dob = localStorage.getItem('giriraj_user_dob') || '';
@@ -127,6 +127,11 @@ export default function App() {
       unsubscribeAddresses();
     };
   }, []);
+
+  // Global Scroll Reset: Whenever activeTab or activeCategory changes, reset window scroll to top
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+  }, [activeTab, activeCategory]);
 
   // Cart Helpers
   const cartCount = cartItems.reduce((acc, item) => acc + item.quantity, 0);

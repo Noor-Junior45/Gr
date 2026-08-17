@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
-import { Search, User, ChevronDown, Home, Briefcase, Building2, MapPin } from 'lucide-react';
+import { ShoppingBag, User, ChevronDown, Home, Briefcase, Building2, MapPin } from 'lucide-react';
 import { KolkataArea, SavedAddress } from '../types';
 
 interface HeaderProps {
   currentArea: KolkataArea;
   activeAddress?: SavedAddress | null;
   onOpenLocationModal: () => void;
-  searchQuery: string;
-  onSearchChange: (query: string) => void;
+  searchQuery?: string;
+  onSearchChange?: (query: string) => void;
   cartCount?: number;
   cartTotal?: number;
   onOpenCart?: () => void;
@@ -51,15 +51,16 @@ export const Header: React.FC<HeaderProps> = ({
   currentArea,
   activeAddress,
   onOpenLocationModal,
-  searchQuery,
-  onSearchChange,
+  cartCount = 0,
+  cartTotal = 0,
+  onOpenCart,
   userPhone,
   userName,
   userPhoto,
   onOpenAuth,
+  activeTab,
   onTabChange
 }) => {
-  const [searchFocused, setSearchFocused] = useState(false);
   const [imgError, setImgError] = useState(false);
   const locationInfo = getHeaderDisplayLocation(currentArea, activeAddress);
 
@@ -77,8 +78,16 @@ export const Header: React.FC<HeaderProps> = ({
     return 'GP';
   };
 
+  const handleCartClick = () => {
+    if (onOpenCart) {
+      onOpenCart();
+    } else {
+      onTabChange('cart');
+    }
+  };
+
   return (
-    <header className="sticky top-0 z-40 bg-white/90 backdrop-blur-md border-b border-slate-200/80 transition-all shadow-2xs">
+    <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200/80 transition-all shadow-2xs">
       {/* Main Brand & Action Bar */}
       <div className="max-w-7xl mx-auto px-3 sm:px-6 py-2 sm:py-2.5">
         <div className="flex items-center justify-between gap-2 sm:gap-4">
@@ -110,7 +119,7 @@ export const Header: React.FC<HeaderProps> = ({
               {/* Saved Address House Name Only / Location Selector */}
               <button
                 onClick={onOpenLocationModal}
-                className="flex items-center gap-1.5 text-xs font-bold text-slate-800 hover:text-black transition-colors text-left cursor-pointer group leading-none mt-1 focus:outline-none max-w-[190px] sm:max-w-[260px] truncate"
+                className="flex items-center gap-1.5 text-xs font-bold text-slate-800 hover:text-black transition-colors text-left cursor-pointer group leading-none mt-1 focus:outline-none max-w-[200px] sm:max-w-[320px] truncate"
                 title="View full address or change location"
               >
                 {activeAddress?.tag === 'home' && (
@@ -133,34 +142,34 @@ export const Header: React.FC<HeaderProps> = ({
             </div>
           </div>
 
-          {/* Search Bar */}
-          <div className="flex-1 max-w-lg relative hidden md:block mx-2">
-            <div className={`relative flex items-center rounded-xl transition-all border ${
-              searchFocused ? 'border-amber-400 ring-2 ring-amber-400/20 bg-white' : 'border-slate-300 bg-slate-50'
-            }`}>
-              <Search className="w-4 h-4 text-slate-400 ml-3.5 shrink-0" />
-              <input
-                type="text"
-                placeholder="Search wires, switches, cement, TMT, services..."
-                value={searchQuery}
-                onChange={(e) => onSearchChange(e.target.value)}
-                onFocus={() => setSearchFocused(true)}
-                onBlur={() => setSearchFocused(false)}
-                className="w-full px-3 py-2 text-xs sm:text-sm bg-transparent border-none focus:outline-none text-slate-900 placeholder:text-slate-400 font-medium"
-              />
-              {searchQuery && (
-                <button
-                  onClick={() => onSearchChange('')}
-                  className="mr-3 text-xs text-slate-400 hover:text-slate-700 cursor-pointer"
-                >
-                  Clear
-                </button>
-              )}
-            </div>
-          </div>
+          {/* Right Action Icons: Cart Button beside Profile Button */}
+          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+            {/* Cart Button */}
+            <button
+              id="top-navbar-cart-btn"
+              onClick={handleCartClick}
+              className={`relative px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-full flex items-center gap-2 transition-all cursor-pointer border ${
+                activeTab === 'cart'
+                  ? 'bg-amber-400 text-slate-950 border-amber-500 shadow-xs'
+                  : 'bg-slate-100 hover:bg-slate-200/90 text-slate-800 border-slate-200/80 active:scale-95'
+              }`}
+              title="View Cart"
+              aria-label="Shopping Cart"
+            >
+              <div className="relative">
+                <ShoppingBag className="w-4 h-4 sm:w-4.5 sm:h-4.5" />
+                {cartCount > 0 && (
+                  <span className="absolute -top-1.5 -right-2 bg-red-600 text-white text-[10px] font-black w-4 h-4 rounded-full flex items-center justify-center border-2 border-white animate-pulse">
+                    {cartCount > 99 ? '99+' : cartCount}
+                  </span>
+                )}
+              </div>
+              <span className="text-xs sm:text-sm font-bold sm:inline hidden">
+                {cartCount > 0 ? `₹${cartTotal.toLocaleString('en-IN')}` : 'Cart'}
+              </span>
+            </button>
 
-          {/* User Profile / Login Button (Gmail style circular avatar) */}
-          <div className="flex items-center shrink-0">
+            {/* User Profile / Login Button (Gmail style circular avatar) */}
             <button
               id="user-profile-avatar-btn"
               onClick={() => {
@@ -192,28 +201,6 @@ export const Header: React.FC<HeaderProps> = ({
                 <User className="w-5 h-5 text-slate-600" />
               )}
             </button>
-          </div>
-        </div>
-
-        {/* Mobile Search Bar */}
-        <div className="mt-2 block md:hidden">
-          <div className="relative flex items-center rounded-xl border border-slate-300 bg-slate-50">
-            <Search className="w-4 h-4 text-slate-400 ml-3 shrink-0" />
-            <input
-              type="text"
-              placeholder="Search wires, switches, cement, TMT, services..."
-              value={searchQuery}
-              onChange={(e) => onSearchChange(e.target.value)}
-              className="w-full px-2.5 py-2 text-xs bg-transparent border-none focus:outline-none text-slate-900 placeholder:text-slate-400 font-medium"
-            />
-            {searchQuery && (
-              <button
-                onClick={() => onSearchChange('')}
-                className="mr-3 text-xs text-slate-400 hover:text-slate-700"
-              >
-                Clear
-              </button>
-            )}
           </div>
         </div>
       </div>
