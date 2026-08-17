@@ -1,0 +1,6 @@
+{
+  "name": "Giriraj Power",
+  "description": "Kolkata's ultra-fast electrical, construction, hardware & real estate wiring delivery platform with 60-minute express service.",
+  "requestFramePermissions": ["geolocation"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

@@ -1,0 +1,145 @@
+export interface Product {
+  id: string;
+  name: string;
+  brand: string;
+  category: 'electrical' | 'services' | 'construction' | 'emergency';
+  subCategory: string;
+  price: number;
+  originalPrice: number;
+  discountPercentage: number;
+  unit: string;
+  rating: number;
+  reviewsCount: number;
+  deliveryMinutes: number;
+  image: string;
+  inStock: boolean;
+  stockCount: number;
+  isEmergency: boolean;
+  isBestSeller?: boolean;
+  specs: { [key: string]: string };
+  description: string;
+  tags: string[];
+}
+
+export interface CartItem {
+  product: Product;
+  quantity: number;
+}
+
+export interface WiringServiceBooking {
+  id: string;
+  serviceTitle: string;
+  serviceCategory: string;
+  projectType: '1BHK' | '2BHK' | '3BHK' | '4BHK / Villa' | 'Commercial Office' | 'Real Estate Complex' | 'Custom Industrial';
+  approxAreaSqFt: number;
+  preferredDate: string;
+  preferredTimeSlot: string;
+  siteAddress: string;
+  area: string;
+  pincode: string;
+  contactName: string;
+  contactPhone: string;
+  estimatedPrice: number;
+  wireGrade: string;
+  notes?: string;
+  status: 'requested' | 'confirmed' | 'technician_assigned' | 'completed';
+  createdAt: string;
+}
+
+export type OrderStatus = 'pending' | 'accepted' | 'packing' | 'out_for_delivery' | 'delivered' | 'cancelled';
+
+export interface Order {
+  id: string;
+  customerName: string;
+  phone: string;
+  address: string;
+  area: string;
+  pincode: string;
+  landmark?: string;
+  items: CartItem[];
+  services?: WiringServiceBooking[];
+  itemTotal: number;
+  deliveryFee: number;
+  handlingFee: number;
+  discount: number;
+  totalAmount: number;
+  paymentMethod: 'cod' | 'upi' | 'card';
+  paymentStatus: 'paid' | 'pending';
+  status: OrderStatus;
+  createdAt: string;
+  estimatedDeliveryTimestamp: number;
+  deliveryPartner?: {
+    name: string;
+    phone: string;
+    vehicleNumber: string;
+    currentHub: string;
+  };
+  notes?: string;
+}
+
+export interface KolkataArea {
+  name: string;
+  pincode: string;
+  zone: 'Central' | 'North' | 'South' | 'East' | 'West';
+  hub: string;
+  deliveryMinutes: number;
+  serviceable: boolean;
+  lat?: number;
+  lng?: number;
+  exactStreet?: string;
+}
+
+export interface SavedAddress {
+  id: string;
+  tag: 'home' | 'work' | 'hotel' | 'other';
+  tagLabel?: string;
+  houseName: string; // e.g. "Greenfield Heights", "Shanti Niwas", "Godrej Genesis"
+  houseFlat: string; // e.g. "Flat 4B, 3rd Floor"
+  buildingRoad: string; // e.g. "EP Block, Street No. 12"
+  landmark?: string;
+  area: KolkataArea;
+  lat?: number;
+  lng?: number;
+  formattedExactAddress?: string;
+  receiverName?: string;
+  receiverPhone?: string;
+  createdAt?: string;
+}
+
+export interface UserReview {
+  id: string;
+  userName: string;
+  userArea: string;
+  rating: number;
+  date: string;
+  comment: string;
+  productOrService: string;
+  verifiedPurchase: boolean;
+}
+
+export interface WalletTransaction {
+  id: string;
+  type: 'refund' | 'cashback' | 'redemption' | 'deposit';
+  title: string;
+  description: string;
+  amount: number;
+  date: string;
+  orderId?: string;
+  status: 'credited' | 'debited' | 'pending';
+}
+
+export interface UserProfile {
+  id?: string;
+  name: string;
+  phone: string;
+  email?: string;
+  emailVerified?: boolean;
+  photoURL?: string;
+  dob?: string;
+  walletBalance?: number;
+  refundBalance?: number;
+  cashbackBalance?: number;
+  transactions?: WalletTransaction[];
+  createdAt?: string;
+  updatedAt?: string;
+}
