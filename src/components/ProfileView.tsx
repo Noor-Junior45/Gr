@@ -31,10 +31,22 @@ import {
   Info,
   Clock,
   Wrench,
-  KeyRound
+  KeyRound,
+  Smartphone,
+  Loader2,
+  FileText,
+  Lock
 } from 'lucide-react';
 import { Order, SavedAddress, UserProfile, CartItem, WalletTransaction } from '../types';
-import { saveUserProfile, signOutUser, deleteAddressFromFirestore } from '../services/firebaseConfig';
+import { LegalView } from './LegalViews';
+import {
+  saveUserProfile,
+  signOutUser,
+  deleteAddressFromFirestore,
+  subscribeToUpiIds,
+  saveUpiToFirestore,
+  deleteUpiFromFirestore
+} from '../services/firebaseConfig';
 import { WIRING_SERVICES } from '../data/services';
 
 interface ProfileViewProps {
@@ -64,9 +76,9 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
   onProfileUpdated,
   onLogout
 }) => {
-  // Current active sub-page view: 'main' | 'orders' | 'addresses' | 'payments' | 'wallet' | 'services' | 'membership' | 'help' | 'notifications'
+  // Current active sub-page view: 'main' | 'orders' | 'addresses' | 'payments' | 'wallet' | 'services' | 'membership' | 'help' | 'notifications' | 'privacy' | 'terms'
   const [subPage, setSubPage] = useState<
-    'main' | 'orders' | 'addresses' | 'payments' | 'wallet' | 'services' | 'membership' | 'help' | 'notifications'
+    'main' | 'orders' | 'addresses' | 'payments' | 'wallet' | 'services' | 'membership' | 'help' | 'notifications' | 'privacy' | 'terms'
   >('main');
 
   // Edit Profile Modal
@@ -98,16 +110,33 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
   const [visibleOrdersCount, setVisibleOrdersCount] = useState(4);
   const [ratingsState, setRatingsState] = useState<{ [orderId: string]: { userRating?: number; deliveryRating?: number } }>({});
 
-  // Payment mock state
-  const [savedUpi, setSavedUpi] = useState<string[]>(['9830099887@okaxis', 'kolkata.electric@icici']);
+  // Payment state (Stored on server & Firestore)
+  const [savedUpi, setSavedUpi] = useState<string[]>([]);
   const [newUpiId, setNewUpiId] = useState('');
   const [showAddUpi, setShowAddUpi] = useState(false);
+  const [isSavingUpi, setIsSavingUpi] = useState(false);
+  const [upiError, setUpiError] = useState<string | null>(null);
+  const [upiSuccessNotice, setUpiSuccessNotice] = useState<string | null>(null);
 
-  // Wallet State (Total Refund & Cashback)
-  const refundBalance = userProfile?.refundBalance ?? 150;
-  const cashbackBalance = userProfile?.cashbackBalance ?? 75;
-  const totalWalletBalance = refundBalance + cashbackBalance;
-  const [walletFilter, setWalletFilter] = useState<'all' | 'refund' | 'cashback'>('all');
+  // Preferences & Alerts toggle state
+  const [whatsappAlerts, setWhatsappAlerts] = useState(true);
+  const [smsAlerts, setSmsAlerts] = useState(true);
+  const [emailAlerts, setEmailAlerts] = useState(true);
+
+  // Subscribe to real-time saved UPI IDs from Firestore
+  useEffect(() => {
+    const unsubscribe = subscribeToUpiIds((upis) => {
+      setSavedUpi(upis);
+    });
+    return () => {
+      unsubscribe();
+    };
+  }, []);
+
+  // Wallet State
+  const refundBalance = userProfile?.refundBalance ?? 0;
+  const cashbackBalance = userProfile?.cashbackBalance ?? 0;
+  const totalWalletBalance = userProfile?.walletBalance ?? (refundBalance + cashbackBalance);
   const [walletNotice, setWalletNotice] = useState<string | null>(null);
 
   // Close 3-dots menu on outside click or on window scroll
@@ -255,33 +284,9 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
   // Calculate real savings from completed orders
   const totalSavings = orders.reduce((acc, ord) => acc + (ord.discount || 40), 120);
 
-  // Dynamic wallet transactions
-  const walletTransactions: WalletTransaction[] = [
-    {
-      id: 'tx-101',
-      type: 'refund',
-      title: 'Order Modification Refund',
-      description: 'Refund credited for unsupplied Havells 16A socket (Order #GP-1092)',
-      amount: 150,
-      date: 'Aug 14, 2026',
-      status: 'credited'
-    },
-    {
-      id: 'tx-102',
-      type: 'cashback',
-      title: '5% Express Quick-Commerce Cashback',
-      description: 'Earned on Polycab 2.5 sq mm wire purchase',
-      amount: 75,
-      date: 'Aug 11, 2026',
-      status: 'credited'
-    }
-  ];
-
-  const filteredTransactions = walletTransactions.filter((tx) => {
-    if (walletFilter === 'refund') return tx.type === 'refund';
-    if (walletFilter === 'cashback') return tx.type === 'cashback';
-    return true;
-  });
+  // Wallet transactions from user profile or empty
+  const walletTransactions: WalletTransaction[] = [];
+  const filteredTransactions = walletTransactions;
 
   const displayName = userProfile?.name || 'Customer';
   const displayPhone = userProfile?.phone || '';
@@ -319,55 +324,13 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
               <ArrowLeft className="w-5 h-5" />
             </button>
             <div>
-              <h1 className="text-lg font-black text-slate-900">Your Orders &amp; Bookings</h1>
+              <h1 className="text-lg font-black text-slate-900">Orders History</h1>
               <p className="text-[11px] text-slate-500 font-semibold">{filteredOrders.length} Completed</p>
             </div>
           </div>
-
-          <button
-            onClick={onOpenShop}
-            className="flex items-center gap-1 text-xs font-black text-amber-700 bg-amber-100 hover:bg-amber-200 px-3 py-1.5 rounded-full transition-colors cursor-pointer"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            <span>New Order</span>
-          </button>
         </div>
 
         <div className="max-w-2xl mx-auto p-4 sm:p-6 space-y-4">
-          {/* Filter Pills */}
-          <div className="flex gap-2">
-            <button
-              onClick={() => setOrderCategoryFilter('all')}
-              className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer ${
-                orderCategoryFilter === 'all'
-                  ? 'bg-slate-900 text-white shadow-xs'
-                  : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
-              }`}
-            >
-              All Orders ({orders.length})
-            </button>
-            <button
-              onClick={() => setOrderCategoryFilter('materials')}
-              className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer ${
-                orderCategoryFilter === 'materials'
-                  ? 'bg-slate-900 text-white shadow-xs'
-                  : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
-              }`}
-            >
-              Materials &amp; Supplies
-            </button>
-            <button
-              onClick={() => setOrderCategoryFilter('services')}
-              className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer ${
-                orderCategoryFilter === 'services'
-                  ? 'bg-slate-900 text-white shadow-xs'
-                  : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
-              }`}
-            >
-              Wiring Bookings
-            </button>
-          </div>
-
           {/* Order Cards List */}
           {filteredOrders.length === 0 ? (
             <div className="bg-white rounded-2xl p-8 text-center border border-slate-200 shadow-2xs">
@@ -620,6 +583,41 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
   // SUB-PAGE 2: SAVED PAYMENT MODES
   // -------------------------------------------------------------
   if (subPage === 'payments') {
+    const handleSaveUpi = async () => {
+      const clean = newUpiId.trim().toLowerCase();
+      if (!clean) {
+        setUpiError('Please enter a valid UPI ID (e.g. name@okhdfcbank or 98300xxxxx@upi)');
+        return;
+      }
+      if (!clean.includes('@') || clean.length < 4) {
+        setUpiError('Invalid UPI ID format. It must include "@" symbol.');
+        return;
+      }
+      setUpiError(null);
+      setIsSavingUpi(true);
+      try {
+        await saveUpiToFirestore(clean);
+        setNewUpiId('');
+        setShowAddUpi(false);
+        setUpiSuccessNotice(`UPI ID ${clean} saved securely on server`);
+        setTimeout(() => setUpiSuccessNotice(null), 4000);
+      } catch {
+        setUpiError('Could not save UPI ID to server. Please try again.');
+      } finally {
+        setIsSavingUpi(false);
+      }
+    };
+
+    const handleDeleteUpi = async (upiToDelete: string) => {
+      try {
+        await deleteUpiFromFirestore(upiToDelete);
+        setUpiSuccessNotice(`UPI ID ${upiToDelete} removed.`);
+        setTimeout(() => setUpiSuccessNotice(null), 3000);
+      } catch {
+        setUpiError('Failed to remove UPI ID. Please try again.');
+      }
+    };
+
     return (
       <div className="min-h-screen bg-slate-50 text-slate-900 pb-20">
         <div className="bg-white border-b border-slate-200 sticky top-0 z-30 px-4 py-3.5 flex items-center justify-between shadow-2xs">
@@ -631,82 +629,240 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
             >
               <ArrowLeft className="w-5 h-5" />
             </button>
-            <h1 className="text-lg font-black text-slate-900">Payment Modes &amp; UPI</h1>
+            <h1 className="text-lg font-black text-slate-900">Saved Payment Modes</h1>
           </div>
-          <button
-            onClick={() => setShowAddUpi(!showAddUpi)}
-            className="flex items-center gap-1.5 text-xs font-black text-indigo-700 bg-indigo-50 hover:bg-indigo-100 px-3 py-1.5 rounded-full transition-colors cursor-pointer"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Add UPI ID</span>
-          </button>
+          {savedUpi.length > 0 && !showAddUpi && (
+            <button
+              onClick={() => {
+                setShowAddUpi(true);
+                setUpiError(null);
+              }}
+              className="flex items-center gap-1.5 text-xs font-black text-indigo-700 bg-indigo-50 hover:bg-indigo-100 px-3 py-1.5 rounded-full transition-colors cursor-pointer"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Add UPI ID</span>
+            </button>
+          )}
         </div>
 
-        <div className="max-w-2xl mx-auto p-4 sm:p-6 space-y-4">
-          {showAddUpi && (
-            <div className="bg-white rounded-2xl p-4 border border-indigo-200 shadow-2xs space-y-3">
-              <h3 className="text-xs font-extrabold text-indigo-950">Add New UPI ID / VPA</h3>
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  placeholder="e.g. yourname@okhdfcbank"
-                  value={newUpiId}
-                  onChange={(e) => setNewUpiId(e.target.value)}
-                  className="flex-1 px-3.5 py-2 rounded-xl border border-slate-300 text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-400"
-                />
-                <button
-                  onClick={() => {
-                    if (newUpiId.trim() && newUpiId.includes('@')) {
-                      setSavedUpi([...savedUpi, newUpiId.trim()]);
-                      setNewUpiId('');
-                      setShowAddUpi(false);
-                    }
-                  }}
-                  className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs cursor-pointer"
-                >
-                  Verify &amp; Save
-                </button>
+        <div className="max-w-2xl mx-auto p-4 sm:p-6 space-y-6">
+          {/* Notification / Success / Error Toasts */}
+          {upiSuccessNotice && (
+            <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-xs font-bold text-emerald-800 flex items-center justify-between shadow-2xs">
+              <div className="flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                <span>{upiSuccessNotice}</span>
               </div>
+              <button onClick={() => setUpiSuccessNotice(null)} className="text-emerald-600 font-bold hover:text-emerald-800 cursor-pointer">
+                ✕
+              </button>
             </div>
           )}
 
-          <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-2xs space-y-3">
-            <h3 className="text-xs font-black uppercase tracking-wider text-slate-400">Saved UPI Handles</h3>
-            {savedUpi.map((upi, idx) => (
-              <div key={idx} className="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-100">
+          {/* Add UPI Form (Expandable) */}
+          {showAddUpi && (
+            <div className="bg-white rounded-2xl p-5 border border-indigo-200 shadow-sm space-y-3">
+              <div className="flex items-center justify-between">
+                <h3 className="text-xs font-black uppercase tracking-wider text-indigo-950">Add New UPI Handle (VPA)</h3>
+                <button
+                  onClick={() => {
+                    setShowAddUpi(false);
+                    setUpiError(null);
+                  }}
+                  className="text-slate-400 hover:text-slate-600 text-xs font-bold cursor-pointer"
+                >
+                  Cancel
+                </button>
+              </div>
+              <p className="text-[11px] text-slate-500">
+                Enter your Google Pay, PhonePe, Paytm or bank UPI ID to save for instant checkout.
+              </p>
+              <div className="flex flex-col sm:flex-row gap-2">
+                <input
+                  type="text"
+                  placeholder="e.g. yourname@okhdfcbank or 98300xxxxx@ybl"
+                  value={newUpiId}
+                  onChange={(e) => {
+                    setNewUpiId(e.target.value);
+                    if (upiError) setUpiError(null);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') handleSaveUpi();
+                  }}
+                  className="flex-1 px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-400 bg-slate-50 focus:bg-white"
+                  disabled={isSavingUpi}
+                  autoFocus
+                />
+                <button
+                  onClick={handleSaveUpi}
+                  disabled={isSavingUpi}
+                  className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-bold text-xs cursor-pointer flex items-center justify-center gap-1.5 transition-colors shrink-0 shadow-xs"
+                >
+                  {isSavingUpi ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>Saving...</span>
+                    </>
+                  ) : (
+                    <span>Save UPI ID</span>
+                  )}
+                </button>
+              </div>
+              {upiError && <p className="text-[11px] font-bold text-red-600 mt-1">{upiError}</p>}
+            </div>
+          )}
+
+          {/* SAVED UPI HANDLES SECTION */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <h2 className="text-xs font-black uppercase tracking-wider text-slate-500">
+                Saved UPI Handles
+              </h2>
+              {savedUpi.length > 0 && (
+                <span className="text-[11px] font-bold text-slate-400">
+                  {savedUpi.length} saved
+                </span>
+              )}
+            </div>
+
+            {savedUpi.length === 0 ? (
+              /* Redesigned Empty State with Button to Add UPI ID */
+              <div className="bg-white rounded-2xl p-7 border border-slate-200 text-center shadow-2xs">
+                <div className="w-12 h-12 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center mx-auto mb-3">
+                  <Smartphone className="w-6 h-6" />
+                </div>
+                <h3 className="text-sm font-black text-slate-900">No Saved UPI Handles</h3>
+                <p className="text-xs text-slate-500 max-w-sm mx-auto mt-1 mb-4 leading-relaxed">
+                  You haven't saved any UPI IDs yet. Add your Google Pay, PhonePe, Paytm, or bank UPI ID for 1-click express checkout.
+                </p>
+                {!showAddUpi && (
+                  <button
+                    onClick={() => {
+                      setShowAddUpi(true);
+                      setUpiError(null);
+                    }}
+                    className="inline-flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl transition-all cursor-pointer shadow-xs active:scale-98"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span>Add UPI ID</span>
+                  </button>
+                )}
+              </div>
+            ) : (
+              <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-2xs space-y-2.5">
+                {savedUpi.map((upi, idx) => (
+                  <div
+                    key={idx}
+                    className="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-100 hover:border-slate-200 transition-colors"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-lg bg-indigo-100 text-indigo-700 flex items-center justify-center font-black text-xs">
+                        UPI
+                      </div>
+                      <div>
+                        <p className="text-xs font-black text-slate-900">{upi}</p>
+                        <p className="text-[10px] text-emerald-600 font-bold flex items-center gap-1">
+                          <ShieldCheck className="w-3 h-3" />
+                          <span>Saved on Server for Express Checkout</span>
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => handleDeleteUpi(upi)}
+                      className="text-slate-400 hover:text-red-500 p-1.5 rounded-lg hover:bg-red-50 transition-colors cursor-pointer"
+                      title="Remove UPI handle"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                ))}
+
+                {!showAddUpi && (
+                  <div className="pt-2 text-center">
+                    <button
+                      onClick={() => {
+                        setShowAddUpi(true);
+                        setUpiError(null);
+                      }}
+                      className="text-xs font-bold text-indigo-600 hover:text-indigo-800 inline-flex items-center gap-1 cursor-pointer"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>Add Another UPI ID</span>
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* AVAILABLE CHECKOUT OPTIONS (Redesigned without heavy boxes) */}
+          <div className="pt-2 space-y-3">
+            <h2 className="text-xs font-black uppercase tracking-wider text-slate-500">
+              Available Checkout Options
+            </h2>
+            
+            <div className="divide-y divide-slate-200">
+              {/* UPI */}
+              <div className="py-3 flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-lg bg-indigo-100 text-indigo-700 flex items-center justify-center font-black text-xs">
+                  <div className="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-700 flex items-center justify-center font-black text-xs">
                     UPI
                   </div>
                   <div>
-                    <p className="text-xs font-black text-slate-900">{upi}</p>
-                    <p className="text-[10px] text-emerald-600 font-bold flex items-center gap-1">
-                      <ShieldCheck className="w-3 h-3" />
-                      <span>Verified for Express Checkout</span>
-                    </p>
+                    <p className="text-xs font-black text-slate-900">UPI</p>
+                    <p className="text-[11px] text-slate-500">Google Pay, PhonePe, Paytm, BHIM &amp; CRED</p>
                   </div>
                 </div>
-                <button
-                  onClick={() => setSavedUpi(savedUpi.filter((_, i) => i !== idx))}
-                  className="text-slate-400 hover:text-red-500 p-1 cursor-pointer"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
+                <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full">
+                  Available
+                </span>
               </div>
-            ))}
-          </div>
 
-          <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-2xs space-y-3">
-            <h3 className="text-xs font-black uppercase tracking-wider text-slate-400">Available Checkout Options</h3>
-            <div className="space-y-2 text-xs">
-              <div className="p-3 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-between">
-                <span className="font-bold text-slate-800">Cash on Delivery (COD) / Pay on Site</span>
-                <span className="text-[10px] font-black text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded">Enabled</span>
+              {/* Debit Card */}
+              <div className="py-3 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-slate-100 text-slate-700 flex items-center justify-center">
+                    <CreditCard className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-black text-slate-900">Debit Card</p>
+                    <p className="text-[11px] text-slate-500">Visa, MasterCard, RuPay &amp; Maestro</p>
+                  </div>
+                </div>
+                <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full">
+                  Available
+                </span>
               </div>
-              <div className="p-3 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-between">
-                <span className="font-bold text-slate-800">Giriraj Refund &amp; Cashback Wallet</span>
-                <span className="text-[10px] font-black text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded">
-                  ₹{totalWalletBalance} Available
+
+              {/* Credit Card */}
+              <div className="py-3 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-slate-100 text-slate-700 flex items-center justify-center">
+                    <CreditCard className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-black text-slate-900">Credit Card</p>
+                    <p className="text-[11px] text-slate-500">All Major Banks &amp; No-Cost EMI</p>
+                  </div>
+                </div>
+                <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full">
+                  Available
+                </span>
+              </div>
+
+              {/* Cash on Delivery */}
+              <div className="py-3 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-amber-50 text-amber-700 flex items-center justify-center font-black text-xs">
+                    ₹
+                  </div>
+                  <div>
+                    <p className="text-xs font-black text-slate-900">Cash on Delivery (COD)</p>
+                    <p className="text-[11px] text-slate-500">Pay cash or scan QR upon delivery / site service</p>
+                  </div>
+                </div>
+                <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full">
+                  Available
                 </span>
               </div>
             </div>
@@ -717,7 +873,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
   }
 
   // -------------------------------------------------------------
-  // SUB-PAGE 3: TOTAL REFUND & CASHBACK WALLET
+  // SUB-PAGE 3: WALLET
   // -------------------------------------------------------------
   if (subPage === 'wallet') {
     return (
@@ -730,7 +886,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
           >
             <ArrowLeft className="w-5 h-5" />
           </button>
-          <h1 className="text-lg font-black text-slate-900">Giriraj Refund &amp; Cashback Wallet</h1>
+          <h1 className="text-lg font-black text-slate-900">Wallet</h1>
         </div>
 
         <div className="max-w-2xl mx-auto p-4 sm:p-6 space-y-4">
@@ -740,140 +896,54 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
               <div className="flex items-center justify-between mb-2">
                 <span className="text-xs font-black uppercase tracking-wider text-emerald-200 flex items-center gap-1.5">
                   <Wallet className="w-4 h-4" />
-                  <span>Total Usable Wallet Balance</span>
-                </span>
-                <span className="text-[10px] font-black bg-emerald-700/80 px-2.5 py-1 rounded-full text-emerald-100 border border-emerald-600">
-                  Instant Checkout Active
+                  <span>Wallet Balance</span>
                 </span>
               </div>
 
-              <div className="text-3xl sm:text-4xl font-black tracking-tight mb-4">
+              <div className="text-3xl sm:text-4xl font-black tracking-tight">
                 ₹{totalWalletBalance.toLocaleString('en-IN')}.00
               </div>
-
-              <div className="grid grid-cols-2 gap-3 pt-3 border-t border-emerald-700/60">
-                <div className="bg-white/10 rounded-2xl p-3 backdrop-blur-xs">
-                  <p className="text-[11px] text-emerald-200 font-semibold flex items-center gap-1">
-                    <RefreshCw className="w-3.5 h-3.5" />
-                    <span>Total Refunds Credited</span>
-                  </p>
-                  <p className="text-base font-black text-white mt-0.5">₹{refundBalance}.00</p>
-                  <p className="text-[10px] text-emerald-300 mt-0.5">Instant returns &amp; order adjustments</p>
-                </div>
-
-                <div className="bg-white/10 rounded-2xl p-3 backdrop-blur-xs">
-                  <p className="text-[11px] text-amber-200 font-semibold flex items-center gap-1">
-                    <Gift className="w-3.5 h-3.5" />
-                    <span>Cashback &amp; Rewards</span>
-                  </p>
-                  <p className="text-base font-black text-white mt-0.5">₹{cashbackBalance}.00</p>
-                  <p className="text-[10px] text-amber-200 mt-0.5">5% Quick-Commerce Reward</p>
-                </div>
-              </div>
             </div>
-          </div>
-
-          {/* Quick Notice / Action */}
-          {walletNotice && (
-            <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-xs font-bold text-emerald-800 flex items-center justify-between">
-              <span>{walletNotice}</span>
-              <button onClick={() => setWalletNotice(null)} className="text-emerald-600 font-black cursor-pointer">
-                ✕
-              </button>
-            </div>
-          )}
-
-          {/* Wallet Actions */}
-          <div className="grid grid-cols-2 gap-3">
-            <button
-              onClick={() => {
-                setWalletNotice('Wallet balance will be automatically deducted from your cart at checkout!');
-              }}
-              className="p-3 rounded-2xl bg-white border border-slate-200 hover:border-emerald-500 shadow-2xs flex items-center gap-2.5 text-left cursor-pointer transition-all"
-            >
-              <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center shrink-0">
-                <ArrowDownLeft className="w-4 h-4" />
-              </div>
-              <div>
-                <p className="text-xs font-black text-slate-900">Auto-Apply</p>
-                <p className="text-[10px] text-slate-500">Deduct at checkout</p>
-              </div>
-            </button>
-
-            <button
-              onClick={() => {
-                setWalletNotice('Refund amount is transferable to original payment method or UPI on request.');
-              }}
-              className="p-3 rounded-2xl bg-white border border-slate-200 hover:border-indigo-500 shadow-2xs flex items-center gap-2.5 text-left cursor-pointer transition-all"
-            >
-              <div className="w-8 h-8 rounded-xl bg-indigo-50 text-indigo-700 flex items-center justify-center shrink-0">
-                <ArrowUpRight className="w-4 h-4" />
-              </div>
-              <div>
-                <p className="text-xs font-black text-slate-900">Transfer Refund</p>
-                <p className="text-[10px] text-slate-500">To bank or UPI</p>
-              </div>
-            </button>
           </div>
 
           {/* Transaction Statement */}
           <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-2xs space-y-3">
-            <div className="flex items-center justify-between">
-              <h3 className="text-xs font-black uppercase tracking-wider text-slate-900">
-                Refunds &amp; Cashback History
-              </h3>
-              <div className="flex gap-1.5">
-                <button
-                  onClick={() => setWalletFilter('all')}
-                  className={`px-2.5 py-1 rounded-full text-[11px] font-bold cursor-pointer transition-colors ${
-                    walletFilter === 'all' ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600'
-                  }`}
-                >
-                  All
-                </button>
-                <button
-                  onClick={() => setWalletFilter('refund')}
-                  className={`px-2.5 py-1 rounded-full text-[11px] font-bold cursor-pointer transition-colors ${
-                    walletFilter === 'refund' ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600'
-                  }`}
-                >
-                  Refunds
-                </button>
-                <button
-                  onClick={() => setWalletFilter('cashback')}
-                  className={`px-2.5 py-1 rounded-full text-[11px] font-bold cursor-pointer transition-colors ${
-                    walletFilter === 'cashback' ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600'
-                  }`}
-                >
-                  Cashback
-                </button>
-              </div>
-            </div>
+            <h3 className="text-xs font-black uppercase tracking-wider text-slate-900">
+              Transaction History
+            </h3>
 
-            <div className="space-y-2.5 pt-1">
-              {filteredTransactions.map((tx) => (
-                <div
-                  key={tx.id}
-                  className="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-100"
-                >
-                  <div className="flex items-start gap-3">
-                    <div
-                      className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${
-                        tx.type === 'refund' ? 'bg-teal-100 text-teal-800' : 'bg-amber-100 text-amber-800'
-                      }`}
-                    >
-                      {tx.type === 'refund' ? <RefreshCw className="w-4 h-4" /> : <Gift className="w-4 h-4" />}
+            {filteredTransactions.length === 0 ? (
+              <div className="py-8 text-center text-slate-400">
+                <Wallet className="w-8 h-8 mx-auto mb-2 text-slate-300" />
+                <p className="text-xs font-bold text-slate-600">No Recent Transactions</p>
+                <p className="text-[11px] text-slate-400 mt-0.5">Refunds and wallet credits will appear here.</p>
+              </div>
+            ) : (
+              <div className="space-y-2.5 pt-1">
+                {filteredTransactions.map((tx) => (
+                  <div
+                    key={tx.id}
+                    className="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-100"
+                  >
+                    <div className="flex items-start gap-3">
+                      <div
+                        className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${
+                          tx.type === 'refund' ? 'bg-teal-100 text-teal-800' : 'bg-amber-100 text-amber-800'
+                        }`}
+                      >
+                        {tx.type === 'refund' ? <RefreshCw className="w-4 h-4" /> : <Gift className="w-4 h-4" />}
+                      </div>
+                      <div>
+                        <p className="text-xs font-black text-slate-900">{tx.title}</p>
+                        <p className="text-[11px] text-slate-500">{tx.description}</p>
+                        <p className="text-[10px] text-slate-400 mt-0.5">{tx.date}</p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-xs font-black text-slate-900">{tx.title}</p>
-                      <p className="text-[11px] text-slate-500">{tx.description}</p>
-                      <p className="text-[10px] text-slate-400 mt-0.5">{tx.date}</p>
-                    </div>
+                    <span className="text-xs font-black text-emerald-600 shrink-0">+ ₹{tx.amount}.00</span>
                   </div>
-                  <span className="text-xs font-black text-emerald-600 shrink-0">+ ₹{tx.amount}.00</span>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -898,17 +968,25 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
         </div>
 
         <div className="max-w-4xl mx-auto p-4 sm:p-6 space-y-4">
-          <div className="bg-amber-500 text-slate-950 rounded-2xl p-5 shadow-xs flex items-center justify-between">
+          <div className="bg-amber-400/20 backdrop-blur-xs border border-amber-300/60 text-slate-900 rounded-2xl p-5 shadow-xs flex items-center justify-between">
             <div>
-              <span className="text-[10px] font-black uppercase tracking-wider bg-slate-900 text-amber-300 px-2 py-0.5 rounded">
-                Verified Kolkata Electricians
-              </span>
-              <h2 className="text-base font-black mt-1">Book Licensed Technicians in 60 Mins</h2>
-              <p className="text-xs font-medium text-slate-900/80">
-                Full residential wiring, MCB board repair, inverter setup, and load calculation.
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-[10px] font-black uppercase tracking-wider bg-slate-900 text-amber-300 px-2 py-0.5 rounded">
+                  Verified Kolkata Electricians
+                </span>
+                <span className="text-[10px] font-extrabold uppercase tracking-wider bg-amber-500/20 text-amber-900 border border-amber-400/50 px-2 py-0.5 rounded-full flex items-center gap-1">
+                  <Sparkles className="w-3 h-3 text-amber-600" />
+                  <span>Coming Soon</span>
+                </span>
+              </div>
+              <h2 className="text-base font-black mt-2 text-slate-900">Book Licensed Technicians in 60 Mins</h2>
+              <p className="text-xs font-medium text-slate-700 mt-0.5 leading-relaxed">
+                Full residential wiring, MCB board repair, inverter setup, and load calculation. On-demand technician booking is launching soon across Kolkata!
               </p>
             </div>
-            <Wrench className="w-10 h-10 text-slate-900/20 shrink-0" />
+            <div className="w-12 h-12 rounded-2xl bg-amber-400/25 border border-amber-300/60 flex items-center justify-center shrink-0 ml-3">
+              <Wrench className="w-6 h-6 text-amber-700" />
+            </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1003,7 +1081,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
   }
 
   // -------------------------------------------------------------
-  // SUB-PAGE 6: 24x7 HELP & SUPPORT
+  // SUB-PAGE 6: HELP CENTER & SUPPORT
   // -------------------------------------------------------------
   if (subPage === 'help') {
     return (
@@ -1016,7 +1094,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
           >
             <ArrowLeft className="w-5 h-5" />
           </button>
-          <h1 className="text-lg font-black text-slate-900">24x7 Customer Support</h1>
+          <h1 className="text-lg font-black text-slate-900">Help Center</h1>
         </div>
 
         <div className="max-w-2xl mx-auto p-4 sm:p-6 space-y-4">
@@ -1080,7 +1158,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
   }
 
   // -------------------------------------------------------------
-  // SUB-PAGE 7: NOTIFICATIONS & PREFERENCES
+  // SUB-PAGE 7: COMMUNICATION PREFERENCES
   // -------------------------------------------------------------
   if (subPage === 'notifications') {
     return (
@@ -1093,29 +1171,121 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
           >
             <ArrowLeft className="w-5 h-5" />
           </button>
-          <h1 className="text-lg font-black text-slate-900">Preferences &amp; Alerts</h1>
+          <h1 className="text-lg font-black text-slate-900">Communication Preferences</h1>
         </div>
 
         <div className="max-w-2xl mx-auto p-4 sm:p-6 space-y-4">
-          <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-2xs space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs font-extrabold text-slate-900">WhatsApp Dispatch Tracking</p>
-                <p className="text-[11px] text-slate-500">Receive live rider phone number and delivery OTP on WhatsApp</p>
+          <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-2xs space-y-5">
+            {/* WhatsApp Dispatch Tracking */}
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex-1 pr-2">
+                <p className="text-xs font-black text-slate-900">WhatsApp Dispatch Tracking</p>
+                <p className="text-[11px] text-slate-500 mt-0.5 leading-relaxed">
+                  Receive live rider phone number and delivery OTP on WhatsApp
+                </p>
               </div>
-              <input type="checkbox" defaultChecked className="w-4 h-4 accent-amber-500 rounded cursor-pointer" />
+
+              {/* Reference-Styled Toggle Button */}
+              <button
+                id="toggle-whatsapp-tracking"
+                type="button"
+                role="switch"
+                aria-checked={whatsappAlerts}
+                aria-label="Toggle WhatsApp dispatch tracking"
+                onClick={() => setWhatsappAlerts(!whatsappAlerts)}
+                className={`relative inline-flex h-[32px] w-[58px] shrink-0 cursor-pointer rounded-full transition-colors duration-200 ease-in-out focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 ${
+                  whatsappAlerts
+                    ? 'bg-[#00B050] shadow-[inset_0_3px_4px_rgba(0,0,0,0.22)]'
+                    : 'bg-[#C8CCD0] shadow-[inset_0_3px_4px_rgba(0,0,0,0.2)]'
+                }`}
+              >
+                <span
+                  className={`pointer-events-none inline-block h-[26px] w-[26px] rounded-full bg-[#ECEEF0] shadow-[0_2px_4px_rgba(0,0,0,0.28)] ring-0 transition-transform duration-200 ease-in-out ${
+                    whatsappAlerts ? 'translate-x-[29px] translate-y-[3px]' : 'translate-x-[3px] translate-y-[3px]'
+                  }`}
+                />
+              </button>
             </div>
-            <div className="flex items-center justify-between pt-3 border-t border-slate-100">
-              <div>
-                <p className="text-xs font-extrabold text-slate-900">SMS Order Status Updates</p>
-                <p className="text-[11px] text-slate-500">Get packing and out-for-delivery SMS</p>
+
+            {/* SMS Order Status Updates */}
+            <div className="flex items-center justify-between gap-4 pt-4 border-t border-slate-100">
+              <div className="flex-1 pr-2">
+                <p className="text-xs font-black text-slate-900">SMS Order Status Updates</p>
+                <p className="text-[11px] text-slate-500 mt-0.5 leading-relaxed">
+                  Get packing and out-for-delivery SMS
+                </p>
               </div>
-              <input type="checkbox" defaultChecked className="w-4 h-4 accent-amber-500 rounded cursor-pointer" />
+
+              {/* Reference-Styled Toggle Button */}
+              <button
+                id="toggle-sms-updates"
+                type="button"
+                role="switch"
+                aria-checked={smsAlerts}
+                aria-label="Toggle SMS order status updates"
+                onClick={() => setSmsAlerts(!smsAlerts)}
+                className={`relative inline-flex h-[32px] w-[58px] shrink-0 cursor-pointer rounded-full transition-colors duration-200 ease-in-out focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 ${
+                  smsAlerts
+                    ? 'bg-[#00B050] shadow-[inset_0_3px_4px_rgba(0,0,0,0.22)]'
+                    : 'bg-[#C8CCD0] shadow-[inset_0_3px_4px_rgba(0,0,0,0.2)]'
+                }`}
+              >
+                <span
+                  className={`pointer-events-none inline-block h-[26px] w-[26px] rounded-full bg-[#ECEEF0] shadow-[0_2px_4px_rgba(0,0,0,0.28)] ring-0 transition-transform duration-200 ease-in-out ${
+                    smsAlerts ? 'translate-x-[29px] translate-y-[3px]' : 'translate-x-[3px] translate-y-[3px]'
+                  }`}
+                />
+              </button>
+            </div>
+
+            {/* Email Invoices & Order Summary Alerts */}
+            <div className="flex items-center justify-between gap-4 pt-4 border-t border-slate-100">
+              <div className="flex-1 pr-2">
+                <p className="text-xs font-black text-slate-900">Email Invoices &amp; Order Summaries</p>
+                <p className="text-[11px] text-slate-500 mt-0.5 leading-relaxed">
+                  Receive official GST invoices, order receipts, and delivery confirmations via email
+                </p>
+              </div>
+
+              {/* Reference-Styled Toggle Button */}
+              <button
+                id="toggle-email-updates"
+                type="button"
+                role="switch"
+                aria-checked={emailAlerts}
+                aria-label="Toggle Email invoices and order summaries"
+                onClick={() => setEmailAlerts(!emailAlerts)}
+                className={`relative inline-flex h-[32px] w-[58px] shrink-0 cursor-pointer rounded-full transition-colors duration-200 ease-in-out focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 ${
+                  emailAlerts
+                    ? 'bg-[#00B050] shadow-[inset_0_3px_4px_rgba(0,0,0,0.22)]'
+                    : 'bg-[#C8CCD0] shadow-[inset_0_3px_4px_rgba(0,0,0,0.2)]'
+                }`}
+              >
+                <span
+                  className={`pointer-events-none inline-block h-[26px] w-[26px] rounded-full bg-[#ECEEF0] shadow-[0_2px_4px_rgba(0,0,0,0.28)] ring-0 transition-transform duration-200 ease-in-out ${
+                    emailAlerts ? 'translate-x-[29px] translate-y-[3px]' : 'translate-x-[3px] translate-y-[3px]'
+                  }`}
+                />
+              </button>
             </div>
           </div>
         </div>
       </div>
     );
+  }
+
+  // -------------------------------------------------------------
+  // SUB-PAGE 8: PRIVACY POLICY (For Google OAuth Verification)
+  // -------------------------------------------------------------
+  if (subPage === 'privacy') {
+    return <LegalView onBack={() => setSubPage('main')} type="privacy" />;
+  }
+
+  // -------------------------------------------------------------
+  // SUB-PAGE 9: TERMS OF SERVICE (For Google OAuth Verification)
+  // -------------------------------------------------------------
+  if (subPage === 'terms') {
+    return <LegalView onBack={() => setSubPage('main')} type="terms" />;
   }
 
   // -------------------------------------------------------------
@@ -1126,15 +1296,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
       {/* 1. TOP HEADER BANNER (Crimson / Red Gradient matching Swiggy screenshot) */}
       <div className="bg-gradient-to-b from-[#8B0000] via-[#A30000] to-[#B31B1B] text-white pt-4 pb-6 px-4 sm:px-6 relative shadow-md">
         {/* Top Control Bar */}
-        <div className="max-w-3xl mx-auto flex items-center justify-between mb-4">
-          <button
-            onClick={onBack}
-            className="p-2 rounded-full hover:bg-white/15 text-white transition-colors cursor-pointer"
-            aria-label="Back to home"
-          >
-            <ArrowLeft className="w-6 h-6" />
-          </button>
-
+        <div className="max-w-3xl mx-auto flex items-center justify-end mb-4">
           <div className="flex items-center gap-3 relative">
             <button
               onClick={() => setSubPage('help')}
@@ -1190,6 +1352,26 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                     >
                       <Wallet className="w-4 h-4 text-slate-600" />
                       <span>Refund &amp; Cashback Wallet</span>
+                    </button>
+                    <button
+                      onClick={() => {
+                        setIsMenuOpen(false);
+                        setSubPage('privacy');
+                      }}
+                      className="w-full px-4 py-2.5 text-left text-xs font-bold text-slate-800 hover:bg-slate-100 flex items-center gap-2.5 cursor-pointer"
+                    >
+                      <Lock className="w-4 h-4 text-slate-600" />
+                      <span>Privacy Policy</span>
+                    </button>
+                    <button
+                      onClick={() => {
+                        setIsMenuOpen(false);
+                        setSubPage('terms');
+                      }}
+                      className="w-full px-4 py-2.5 text-left text-xs font-bold text-slate-800 hover:bg-slate-100 flex items-center gap-2.5 cursor-pointer"
+                    >
+                      <FileText className="w-4 h-4 text-slate-600" />
+                      <span>Terms of Service</span>
                     </button>
                     <div className="h-px bg-slate-100 my-1" />
                     <button
@@ -1278,35 +1460,6 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
       </div>
 
       <div className="max-w-3xl mx-auto px-4 sm:px-6 -mt-3 space-y-4">
-        {/* 2. MEMBERSHIP / SAVINGS BANNER CARD (Swiggy One style) */}
-        <div className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/80 shadow-xs flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-amber-400 text-slate-950 flex items-center justify-center font-black text-sm shrink-0 shadow-2xs">
-              ⚡
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-black tracking-wider uppercase text-amber-700 bg-amber-100 px-2 py-0.5 rounded-md">
-                  Giriraj Power Pro
-                </span>
-                <span className="text-[11px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md">
-                  Active
-                </span>
-              </div>
-              <p className="text-xs font-bold text-slate-800 mt-1">
-                ₹{totalSavings} saved with 60-min express deliveries
-              </p>
-            </div>
-          </div>
-          <button
-            onClick={() => setSubPage('membership')}
-            className="text-xs font-black text-amber-600 hover:text-amber-700 flex items-center gap-0.5 cursor-pointer shrink-0"
-          >
-            <span>Explore</span>
-            <ChevronRight className="w-4 h-4" />
-          </button>
-        </div>
-
         {/* 3. 4 QUICK ACCESS ACTION TILES (All Open Sub-Pages with Back Arrows) */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
           {/* Tile 1: Orders */}
@@ -1351,7 +1504,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
             </div>
           </button>
 
-          {/* Tile 4: Giriraj Money / Total Refund & Cashback Wallet */}
+          {/* Tile 4: Wallet */}
           <button
             onClick={() => setSubPage('wallet')}
             className="bg-white p-3.5 rounded-2xl border border-slate-200/80 hover:border-emerald-500 hover:shadow-sm transition-all text-left flex flex-col justify-between min-h-[96px] cursor-pointer group"
@@ -1360,7 +1513,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
               <Wallet className="w-4 h-4" />
             </div>
             <div>
-              <p className="text-xs font-black text-slate-900 leading-tight">Refund &amp; Wallet</p>
+              <p className="text-xs font-black text-slate-900 leading-tight">Wallet</p>
               <p className="text-[10px] text-emerald-700 font-bold">₹{totalWalletBalance} Balance</p>
             </div>
           </button>
@@ -1375,7 +1528,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
             <div className="flex items-center gap-3">
               <Clock className="w-5 h-5 text-amber-600" />
               <div>
-                <p className="text-xs font-black text-slate-900">Your Orders &amp; Booking History</p>
+                <p className="text-xs font-black text-slate-900">Orders History</p>
                 <p className="text-[11px] text-slate-500">{sortedOrders.length} orders placed • View summary &amp; invoices</p>
               </div>
             </div>
@@ -1394,7 +1547,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
             <div className="flex items-center gap-3">
               <Wallet className="w-5 h-5 text-emerald-600" />
               <div>
-                <p className="text-xs font-black text-slate-900">Total Refund &amp; Cashback Wallet</p>
+                <p className="text-xs font-black text-slate-900">Wallet</p>
                 <p className="text-[11px] text-slate-500">₹{totalWalletBalance} balance available for instant checkout</p>
               </div>
             </div>
@@ -1408,7 +1561,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
             <div className="flex items-center gap-3">
               <CreditCard className="w-5 h-5 text-slate-600" />
               <div>
-                <p className="text-xs font-black text-slate-900">Saved Payment Modes &amp; UPI</p>
+                <p className="text-xs font-black text-slate-900">Saved Payment Modes</p>
                 <p className="text-[11px] text-slate-500">Manage GooglePay, PhonePe &amp; Cards</p>
               </div>
             </div>
@@ -1450,8 +1603,8 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
             <div className="flex items-center gap-3">
               <HelpCircle className="w-5 h-5 text-slate-600" />
               <div>
-                <p className="text-xs font-black text-slate-900">24x7 Customer Support &amp; FAQs</p>
-                <p className="text-[11px] text-slate-500">Direct phone call and WhatsApp help</p>
+                <p className="text-xs font-black text-slate-900">Help Center</p>
+                <p className="text-[11px] text-slate-500">24x7 customer support, phone call &amp; WhatsApp help</p>
               </div>
             </div>
             <ChevronRight className="w-4 h-4 text-slate-400" />
@@ -1464,241 +1617,59 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
             <div className="flex items-center gap-3">
               <Bell className="w-5 h-5 text-slate-600" />
               <div>
-                <p className="text-xs font-black text-slate-900">Notification &amp; SMS Preferences</p>
-                <p className="text-[11px] text-slate-500">Order alerts and dispatch tracking</p>
+                <p className="text-xs font-black text-slate-900">Communication Preferences</p>
+                <p className="text-[11px] text-slate-500">WhatsApp, SMS &amp; Email alerts</p>
               </div>
             </div>
             <ChevronRight className="w-4 h-4 text-slate-400" />
           </button>
 
           <button
+            onClick={() => setSubPage('privacy')}
+            className="w-full p-4 flex items-center justify-between hover:bg-slate-50 transition-colors text-left cursor-pointer"
+          >
+            <div className="flex items-center gap-3">
+              <Lock className="w-5 h-5 text-slate-600" />
+              <div>
+                <p className="text-xs font-black text-slate-900">Privacy Policy</p>
+                <p className="text-[11px] text-slate-500">User data protection &amp; Google OAuth compliance</p>
+              </div>
+            </div>
+            <ChevronRight className="w-4 h-4 text-slate-400" />
+          </button>
+
+          <button
+            onClick={() => setSubPage('terms')}
+            className="w-full p-4 flex items-center justify-between hover:bg-slate-50 transition-colors text-left cursor-pointer"
+          >
+            <div className="flex items-center gap-3">
+              <FileText className="w-5 h-5 text-slate-600" />
+              <div>
+                <p className="text-xs font-black text-slate-900">Terms of Service</p>
+                <p className="text-[11px] text-slate-500">User agreements, orders, warranties &amp; refunds</p>
+              </div>
+            </div>
+            <ChevronRight className="w-4 h-4 text-slate-400" />
+          </button>
+        </div>
+
+        {/* Separate Pill-Shaped Sign Out Button */}
+        <div className="pt-2">
+          <button
+            id="btn-profile-signout"
             onClick={() => {
               signOutUser();
               onLogout();
             }}
-            className="w-full p-4 flex items-center justify-between hover:bg-red-50/60 transition-colors text-left text-red-600 cursor-pointer"
+            className="w-full py-3.5 px-6 rounded-full bg-red-500/10 hover:bg-red-500/20 text-red-600 border border-red-200/80 transition-all font-black text-xs sm:text-sm flex items-center justify-center gap-2 cursor-pointer shadow-2xs hover:shadow-xs active:scale-[0.99]"
           >
-            <div className="flex items-center gap-3">
-              <LogOut className="w-5 h-5" />
-              <div>
-                <p className="text-xs font-black">Sign Out from this Device</p>
-                <p className="text-[11px] text-red-500/80">Log out of your account</p>
-              </div>
-            </div>
-            <ChevronRight className="w-4 h-4 text-red-400" />
+            <LogOut className="w-4 h-4 text-red-600" />
+            <span>Sign Out</span>
           </button>
         </div>
 
-        {/* 5. PAST ORDERS SECTION (Exact layout from Swiggy screenshot) */}
-        <div className="pt-2">
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-sm font-black uppercase tracking-wider text-slate-900">
-              PAST ORDERS
-            </h2>
-            <span className="text-xs font-bold text-slate-500">
-              {filteredOrders.length} Completed
-            </span>
-          </div>
-
-          {/* Filter Pills */}
-          <div className="flex gap-2 mb-4">
-            <button
-              onClick={() => setOrderCategoryFilter('all')}
-              className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer ${
-                orderCategoryFilter === 'all'
-                  ? 'bg-slate-900 text-white shadow-xs'
-                  : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
-              }`}
-            >
-              All Orders
-            </button>
-            <button
-              onClick={() => setOrderCategoryFilter('materials')}
-              className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer ${
-                orderCategoryFilter === 'materials'
-                  ? 'bg-slate-900 text-white shadow-xs'
-                  : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
-              }`}
-            >
-              Materials &amp; Supplies
-            </button>
-            <button
-              onClick={() => setOrderCategoryFilter('services')}
-              className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer ${
-                orderCategoryFilter === 'services'
-                  ? 'bg-slate-900 text-white shadow-xs'
-                  : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
-              }`}
-            >
-              Wiring Bookings
-            </button>
-          </div>
-
-          {/* Order Cards List */}
-          {filteredOrders.length === 0 ? (
-            <div className="bg-white rounded-2xl p-8 text-center border border-slate-200">
-              <ShoppingBag className="w-10 h-10 text-slate-300 mx-auto mb-2" />
-              <p className="text-xs font-extrabold text-slate-800">No Past Orders Found</p>
-              <p className="text-[11px] text-slate-500 mt-0.5 mb-4">
-                Shop wires, switches, tools, or book wiring technicians in 60 minutes.
-              </p>
-              <button
-                onClick={onOpenShop}
-                className="px-4 py-2 bg-amber-400 hover:bg-yellow-400 text-slate-950 font-black rounded-xl text-xs cursor-pointer"
-              >
-                Shop Now
-              </button>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {filteredOrders.slice(0, visibleOrdersCount).map((order) => {
-                const orderRatings = ratingsState[order.id] || {};
-                const formattedDate = new Date(order.createdAt).toLocaleDateString('en-IN', {
-                  month: 'long',
-                  day: 'numeric',
-                  hour: '2-digit',
-                  minute: '2-digit'
-                });
-
-                return (
-                  <div
-                    key={order.id}
-                    className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/90 shadow-2xs space-y-3.5 transition-all hover:shadow-xs"
-                  >
-                    {/* Card Header: Store / Hub Name & Status */}
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex items-center gap-3">
-                        <div className="w-12 h-12 rounded-xl bg-amber-100 flex items-center justify-center font-black text-amber-900 text-sm shrink-0">
-                          ⚡
-                        </div>
-                        <div>
-                          <h3 className="text-sm font-black text-slate-900">
-                            Giriraj Central Ezra Street Hub
-                          </h3>
-                          <p className="text-xs text-slate-500 font-medium">
-                            {order.area} • Order #{order.id.slice(-6).toUpperCase()}
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-1 text-xs font-black text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full shrink-0">
-                        <span>Delivered</span>
-                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                      </div>
-                    </div>
-
-                    {/* Card Body: Items Summary */}
-                    <div className="bg-slate-50/80 rounded-xl p-3 space-y-1.5">
-                      {order.items && order.items.length > 0 ? (
-                        order.items.map((item, idx) => (
-                          <p key={idx} className="text-xs text-slate-800 font-semibold">
-                            <span className="font-black text-slate-950 mr-1.5">{item.quantity}X</span>
-                            <span>
-                              {item.product.name} ({item.product.brand})
-                            </span>
-                          </p>
-                        ))
-                      ) : order.services && order.services.length > 0 ? (
-                        order.services.map((srv, idx) => (
-                          <p key={idx} className="text-xs text-slate-800 font-semibold">
-                            <span className="font-black text-slate-950 mr-1.5">1X</span>
-                            <span>
-                              {srv.serviceTitle} ({srv.projectType})
-                            </span>
-                          </p>
-                        ))
-                      ) : (
-                        <p className="text-xs text-slate-700 font-semibold">
-                          Electrical &amp; Construction Supplies Order
-                        </p>
-                      )}
-                    </div>
-
-                    {/* Interactive Ratings Row (Product Quality + Delivery Rating) */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1 border-t border-slate-100 text-xs font-bold text-slate-700">
-                      <div className="flex items-center justify-between sm:justify-start gap-2 bg-slate-50 px-3 py-2 rounded-xl">
-                        <span className="text-[11px] text-slate-600">Product Quality:</span>
-                        <div className="flex items-center gap-1">
-                          {[1, 2, 3, 4, 5].map((star) => (
-                            <button
-                              key={star}
-                              type="button"
-                              onClick={() => handleRateOrder(order.id, 'user', star)}
-                              className="cursor-pointer"
-                            >
-                              <Star
-                                className={`w-3.5 h-3.5 ${
-                                  (orderRatings.userRating || 5) >= star
-                                    ? 'text-amber-400 fill-amber-400'
-                                    : 'text-slate-300'
-                                }`}
-                              />
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-
-                      <div className="flex items-center justify-between sm:justify-start gap-2 bg-slate-50 px-3 py-2 rounded-xl">
-                        <span className="text-[11px] text-slate-600">Rider Delivery:</span>
-                        <div className="flex items-center gap-1">
-                          {[1, 2, 3, 4, 5].map((star) => (
-                            <button
-                              key={star}
-                              type="button"
-                              onClick={() => handleRateOrder(order.id, 'delivery', star)}
-                              className="cursor-pointer"
-                            >
-                              <Star
-                                className={`w-3.5 h-3.5 ${
-                                  (orderRatings.deliveryRating || 5) >= star
-                                    ? 'text-amber-400 fill-amber-400'
-                                    : 'text-slate-300'
-                                }`}
-                              />
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Footer Row: Timestamp, Bill Total & Reorder Button */}
-                    <div className="pt-2 flex items-center justify-between gap-2">
-                      <div>
-                        <p className="text-[11px] text-slate-500 font-medium">Ordered on {formattedDate}</p>
-                        <p className="text-xs font-black text-slate-900">
-                          Bill Total: ₹{order.totalAmount.toLocaleString('en-IN')}
-                        </p>
-                      </div>
-
-                      {order.items && order.items.length > 0 && (
-                        <button
-                          onClick={() => onReorder(order.items)}
-                          className="px-4 py-2 bg-[#FFF0ED] hover:bg-[#FFE2DC] text-[#E23744] font-black rounded-xl text-xs flex items-center gap-1.5 transition-colors cursor-pointer border border-[#FFD2C9]"
-                        >
-                          <span>REORDER</span>
-                          <ChevronRight className="w-3.5 h-3.5" />
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-
-              {/* View More Orders Button */}
-              {filteredOrders.length > visibleOrdersCount && (
-                <button
-                  onClick={() => setVisibleOrdersCount((prev) => prev + 4)}
-                  className="w-full py-3 bg-white hover:bg-slate-100 text-slate-800 font-black rounded-xl text-xs border border-slate-200 shadow-2xs transition-colors cursor-pointer"
-                >
-                  VIEW MORE ORDERS ⌄
-                </button>
-              )}
-            </div>
-          )}
-        </div>
-
         {/* App Version Tag */}
-        <div className="text-center pt-8 pb-4">
+        <div className="text-center pt-6 pb-2">
           <p className="text-[11px] font-bold text-slate-400">Giriraj Power App Version 4.114.3</p>
           <p className="text-[10px] text-slate-400 mt-0.5">
             Serving Kolkata with 60-Minute Express Electrical Delivery

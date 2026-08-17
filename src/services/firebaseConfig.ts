@@ -438,8 +438,19 @@ export async function signInWithGoogle(): Promise<FirebaseUser | null> {
       return result.user;
     }
     return null;
-  } catch (error) {
-    console.error('Google Sign-in failed:', error);
+  } catch (error: unknown) {
+    const err = error as { code?: string; message?: string };
+    if (
+      err?.code === 'auth/popup-closed-by-user' ||
+      err?.code === 'auth/cancelled-popup-request' ||
+      err?.code === 'auth/user-cancelled' ||
+      err?.message?.includes('popup-closed-by-user') ||
+      err?.message?.includes('cancelled-popup-request')
+    ) {
+      // Normal user action (closed the Google popup without completing login) - silently return null
+      return null;
+    }
+    console.warn('Google Sign-in status:', err?.message || error);
     return null;
   }
 }
@@ -540,4 +551,114 @@ export async function deleteAddressFromFirestore(id: string): Promise<void> {
     handleFirestoreError(err, OperationType.DELETE, path);
   }
 }
+
+// -------------------------------------------------------------
+// USER SAVED UPI IDS (Persistent in Firestore + LocalStorage)
+// -------------------------------------------------------------
+export const SAVED_UPI_STORAGE_KEY = 'giriraj_user_saved_upi';
+type UpiListener = (upis: string[]) => void;
+const upiListeners = new Set<UpiListener>();
+
+export function getStoredUpiIds(): string[] {
+  try {
+    const raw = localStorage.getItem(SAVED_UPI_STORAGE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (e) {
+    return [];
+  }
+}
+
+export function subscribeToUpiIds(listener: UpiListener): () => void {
+  upiListeners.add(listener);
+  // Send immediate state
+  listener(getStoredUpiIds());
+
+  const upiPath = 'user_upi';
+  try {
+    const q = query(collection(db, upiPath), orderBy('createdAt', 'desc'), limit(15));
+    const unsubscribe = onSnapshot(
+      q,
+      (snapshot) => {
+        if (!snapshot.empty) {
+          const list = snapshot.docs.map((d) => (d.data() as { upiId: string }).upiId).filter(Boolean);
+          localStorage.setItem(SAVED_UPI_STORAGE_KEY, JSON.stringify(list));
+          listener(list);
+        } else {
+          // If Firestore is empty, check local or keep empty
+          const stored = getStoredUpiIds();
+          listener(stored);
+        }
+      },
+      (error) => {
+        handleFirestoreError(error, OperationType.GET, upiPath);
+      }
+    );
+
+    return () => {
+      upiListeners.delete(listener);
+      unsubscribe();
+    };
+  } catch (err) {
+    return () => {
+      upiListeners.delete(listener);
+    };
+  }
+}
+
+export async function saveUpiToFirestore(upiId: string): Promise<void> {
+  const cleanUpi = upiId.trim().toLowerCase();
+  if (!cleanUpi) return;
+  const current = getStoredUpiIds().filter((u) => u.toLowerCase() !== cleanUpi);
+  const updated = [cleanUpi, ...current];
+  localStorage.setItem(SAVED_UPI_STORAGE_KEY, JSON.stringify(updated));
+
+  upiListeners.forEach((l) => l(updated));
+
+  // Save to Firestore
+  const docId = cleanUpi.replace(/[^a-zA-Z0-9]/g, '_');
+  const path = `user_upi/${docId}`;
+  try {
+    await setDoc(doc(db, 'user_upi', docId), {
+      upiId: cleanUpi,
+      userId: auth.currentUser?.uid || 'guest',
+      createdAt: new Date().toISOString(),
+      createdAtTimestamp: serverTimestamp()
+    });
+
+    if (auth.currentUser) {
+      await updateDoc(doc(db, 'users', auth.currentUser.uid), {
+        savedUpiIds: updated,
+        updatedAt: new Date().toISOString()
+      }).catch(() => {});
+    }
+  } catch (err) {
+    handleFirestoreError(err, OperationType.CREATE, path);
+  }
+}
+
+export async function deleteUpiFromFirestore(upiId: string): Promise<void> {
+  const cleanUpi = upiId.trim().toLowerCase();
+  const current = getStoredUpiIds();
+  const updated = current.filter((u) => u.toLowerCase() !== cleanUpi);
+  localStorage.setItem(SAVED_UPI_STORAGE_KEY, JSON.stringify(updated));
+
+  upiListeners.forEach((l) => l(updated));
+
+  const docId = cleanUpi.replace(/[^a-zA-Z0-9]/g, '_');
+  const path = `user_upi/${docId}`;
+  try {
+    await deleteDoc(doc(db, 'user_upi', docId));
+    if (auth.currentUser) {
+      await updateDoc(doc(db, 'users', auth.currentUser.uid), {
+        savedUpiIds: updated,
+        updatedAt: new Date().toISOString()
+      }).catch(() => {});
+    }
+  } catch (err) {
+    handleFirestoreError(err, OperationType.DELETE, path);
+  }
+}
+
 

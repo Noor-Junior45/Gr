@@ -139,6 +139,7 @@ export interface UserProfile {
   walletBalance?: number;
   refundBalance?: number;
   cashbackBalance?: number;
+  savedUpiIds?: string[];
   transactions?: WalletTransaction[];
   createdAt?: string;
   updatedAt?: string;

@@ -36,6 +36,7 @@ import { AdminPortal } from './components/AdminPortal';
 import { MapsGroundingAssistant } from './components/MapsGroundingAssistant';
 import { OrderHistoryView } from './components/OrderHistoryView';
 import { Footer } from './components/Footer';
+import { LegalView } from './components/LegalViews';
 import {
   getSavedUserProfile,
   subscribeToOrders,
@@ -59,7 +60,7 @@ export default function App() {
     }
     return null;
   });
-  const [activeTab, setActiveTab] = useState<'home' | 'catalog' | 'services' | 'orders' | 'profile' | 'cart'>('home');
+  const [activeTab, setActiveTab] = useState<'home' | 'catalog' | 'services' | 'orders' | 'profile' | 'cart' | 'privacy' | 'terms'>('home');
   const [activeCategory, setActiveCategory] = useState<CategoryFilterType>('all');
   const [subCategoryFilter, setSubCategoryFilter] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -323,8 +324,14 @@ export default function App() {
               setActiveCategory('all');
             }}
           />
+        ) : activeTab === 'privacy' ? (
+          // VIEW 5: PRIVACY POLICY PAGE
+          <LegalView onBack={() => setActiveTab('home')} type="privacy" />
+        ) : activeTab === 'terms' ? (
+          // VIEW 6: TERMS OF SERVICE PAGE
+          <LegalView onBack={() => setActiveTab('home')} type="terms" />
         ) : (
-          // VIEW 5: HOME / QUICK-COMMERCE CATALOG
+          // VIEW 7: HOME / QUICK-COMMERCE CATALOG
           <div className="max-w-7xl mx-auto px-3 sm:px-6 py-6 space-y-6">
             {filteredProducts.length > 0 && (
               <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-5">
@@ -349,7 +356,12 @@ export default function App() {
       </main>
 
       {/* Small Clean Footer (Only rendered on the main landing homepage, not on catalog or category browsing) */}
-      {activeTab === 'home' && activeCategory === 'all' && !searchQuery && <Footer />}
+      {activeTab === 'home' && activeCategory === 'all' && !searchQuery && (
+        <Footer
+          onOpenPrivacy={() => setActiveTab('privacy')}
+          onOpenTerms={() => setActiveTab('terms')}
+        />
+      )}
 
       {/* Fixed Bottom Navigation Bar (Visible on all devices) */}
       <nav className="fixed bottom-0 inset-x-0 bg-white/95 backdrop-blur-md border-t border-slate-200 py-2 px-3 sm:px-6 z-40 shadow-xl">

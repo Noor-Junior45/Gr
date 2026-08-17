@@ -39,21 +39,45 @@ export const WiringServices: React.FC<WiringServicesProps> = ({
 
       {/* Services Content */}
       {WIRING_SERVICES.length === 0 ? (
-        <div className="bg-white rounded-3xl border border-slate-200 p-8 sm:p-12 text-center shadow-xs">
-          <div className="w-16 h-16 rounded-2xl bg-slate-50 border border-slate-200 text-slate-400 flex items-center justify-center mx-auto mb-4">
-            <Wrench className="w-8 h-8" />
+        <div className="space-y-5">
+          {/* Top Soft Transparent Yellow Banner */}
+          <div className="bg-amber-400/20 backdrop-blur-xs border border-amber-300/60 text-slate-900 rounded-2xl p-5 shadow-xs flex items-center justify-between">
+            <div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-[10px] font-black uppercase tracking-wider bg-slate-900 text-amber-300 px-2 py-0.5 rounded">
+                  Verified Kolkata Electricians
+                </span>
+                <span className="text-[10px] font-extrabold uppercase tracking-wider bg-amber-500/20 text-amber-900 border border-amber-400/50 px-2 py-0.5 rounded-full flex items-center gap-1">
+                  <Sparkles className="w-3 h-3 text-amber-600" />
+                  <span>Coming Soon</span>
+                </span>
+              </div>
+              <h2 className="text-base font-black mt-2 text-slate-900">Book Licensed Technicians in 60 Mins</h2>
+              <p className="text-xs font-medium text-slate-700 mt-0.5 leading-relaxed">
+                Full residential wiring, MCB board repair, inverter setup, and load calculation across {currentArea.name}.
+              </p>
+            </div>
+            <div className="w-12 h-12 rounded-2xl bg-amber-400/25 border border-amber-300/60 flex items-center justify-center shrink-0 ml-3">
+              <Wrench className="w-6 h-6 text-amber-700" />
+            </div>
           </div>
 
-          <h2 className="text-lg sm:text-xl font-bold text-slate-900 mb-1">
-            No wiring services listed
-          </h2>
-          <p className="text-xs sm:text-sm text-slate-500 max-w-md mx-auto mb-4 leading-relaxed">
-            All service packages have been cleared and are ready to be redesigned.
-          </p>
+          <div className="bg-white rounded-3xl border border-slate-200 p-8 sm:p-12 text-center shadow-xs">
+            <div className="w-16 h-16 rounded-2xl bg-amber-50 border border-amber-200/80 text-amber-600 flex items-center justify-center mx-auto mb-4">
+              <Wrench className="w-8 h-8" />
+            </div>
 
-          <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-50 border border-slate-200 text-slate-600 text-xs font-semibold">
-            <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-            <span>Ready for custom service configuration</span>
+            <h2 className="text-lg sm:text-xl font-bold text-slate-900 mb-1">
+              Technician Booking Service Coming Soon
+            </h2>
+            <p className="text-xs sm:text-sm text-slate-500 max-w-md mx-auto mb-4 leading-relaxed">
+              We are onboarding and certifying certified wiremen and licensed electricians across Salt Lake, New Town, Park Street, and Ezra Street.
+            </p>
+
+            <div className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-amber-50 border border-amber-200 text-amber-900 text-xs font-semibold">
+              <Sparkles className="w-3.5 h-3.5 text-amber-600" />
+              <span>Launching in Kolkata Soon • Instant 60-Min Dispatch</span>
+            </div>
           </div>
         </div>
       ) : (
