@@ -6,14 +6,17 @@ interface AuthModalProps {
   isOpen: boolean;
   onClose: () => void;
   onAuthSuccess: (phone: string, name: string, email?: string) => void;
+  onOpenTerms?: () => void;
+  onOpenPrivacy?: () => void;
 }
 
 export const AuthModal: React.FC<AuthModalProps> = ({
   isOpen,
   onClose,
   onAuthSuccess,
+  onOpenTerms,
+  onOpenPrivacy,
 }) => {
-  const [authMode, setAuthMode] = useState<'signin' | 'signup'>('signin');
   const [step, setStep] = useState<'phone' | 'otp'>('phone');
   const [phone, setPhone] = useState('');
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
@@ -54,7 +57,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       setStep('otp');
       setOtp(['', '', '', '', '', '']);
       setTimer(30);
-      setInfoMessage(`6-digit verification code sent to +91 ${cleaned}`);
+      setInfoMessage(`OTP sent to +91 ${cleaned}`);
     }, 400);
   };
 
@@ -108,7 +111,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       // Validate OTP (matches sent OTP or standard 6-digit verification)
       if (entered === generatedOtp || entered.length === 6) {
         const formattedPhone = `+91 ${phone.replace(/\D/g, '')}`;
-        const defaultName = authMode === 'signup' ? 'Giriraj Customer' : 'Kolkata Customer';
+        const defaultName = 'Giriraj Customer';
         saveUserProfile({ phone: formattedPhone, name: defaultName });
         onAuthSuccess(formattedPhone, defaultName);
         onClose();
@@ -154,20 +157,21 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         {/* Top Decorative Header Banner */}
         <div className="absolute top-0 left-0 right-0 h-2 bg-gradient-to-r from-amber-400 via-yellow-400 to-amber-500" />
 
-        {/* Top Header Row with Back Button and Close Button */}
+        {/* Top Header Row with Other Sign-In Options (merged Back button) and Close Button */}
         <div className="flex items-center justify-between mb-4 mt-1">
           {step === 'otp' ? (
             <button
+              type="button"
               onClick={() => {
                 setStep('phone');
                 setError(null);
                 setInfoMessage(null);
               }}
-              className="flex items-center gap-1.5 text-xs font-bold text-slate-700 hover:text-slate-950 p-1.5 -ml-1.5 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
-              title="Back to Sign In options"
+              className="flex items-center gap-1.5 text-xs font-bold text-slate-700 hover:text-slate-950 px-2 py-1 -ml-2 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
+              title="Other sign-in options"
             >
               <ArrowLeft className="w-4 h-4" />
-              <span>Back</span>
+              <span>Other sign-in options</span>
             </button>
           ) : (
             <div className="w-6" />
@@ -190,43 +194,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           </div>
           <div>
             <h3 className="text-xl font-black text-slate-900 tracking-tight leading-tight">
-              {step === 'phone'
-                ? authMode === 'signin' ? 'Sign In to Giriraj Power' : 'Create New Account'
-                : 'Enter Verification Code'}
+              {step === 'phone' ? 'Login In' : 'Enter Verification Code'}
             </h3>
-            <p className="text-xs text-slate-500 font-medium">
-              {step === 'phone' ? 'Express 60-Min Kolkata Electrical Supplies' : `Sent via SMS to +91 ${phone}`}
-            </p>
           </div>
         </div>
-
-        {/* Sign In vs Sign Up Tabs (Only shown on phone step) */}
-        {step === 'phone' && (
-          <div className="flex bg-slate-100 p-1 rounded-xl mb-5 border border-slate-200/80">
-            <button
-              type="button"
-              onClick={() => { setAuthMode('signin'); setError(null); }}
-              className={`flex-1 py-2 text-xs font-black rounded-lg transition-all cursor-pointer ${
-                authMode === 'signin'
-                  ? 'bg-white text-slate-900 shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              Sign In
-            </button>
-            <button
-              type="button"
-              onClick={() => { setAuthMode('signup'); setError(null); }}
-              className={`flex-1 py-2 text-xs font-black rounded-lg transition-all cursor-pointer ${
-                authMode === 'signup'
-                  ? 'bg-white text-slate-900 shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              Sign Up (New User)
-            </button>
-          </div>
-        )}
 
         {infoMessage && (
           <div className="mb-4 p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-semibold flex items-center gap-2">
@@ -289,10 +260,11 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
             {/* Google / Gmail Sign-In */}
             <button
+              id="btn-google-signin"
               type="button"
               onClick={handleGoogleSignIn}
               disabled={isLoading}
-              className="w-full py-3 px-4 rounded-xl border border-slate-300 hover:bg-slate-50 text-slate-800 font-bold text-xs transition-colors flex items-center justify-center gap-2.5 shadow-2xs hover:border-slate-400 cursor-pointer"
+              className="w-full py-3 px-4 rounded-xl border border-slate-300 hover:bg-slate-50 text-slate-800 font-semibold text-xs sm:text-sm transition-colors flex items-center justify-center gap-2.5 shadow-2xs hover:border-slate-400 cursor-pointer"
             >
               <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24">
                 <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
@@ -300,11 +272,32 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
                 <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
               </svg>
-              <span>Continue with Gmail / Google</span>
+              <span>Sign in with Google</span>
             </button>
 
-            <div className="pt-2 text-center text-[11px] text-slate-500 font-medium">
-              By proceeding, you agree to Giriraj Power’s <span className="underline text-slate-700">Terms of Service</span> &amp; <span className="underline text-slate-700">Privacy Policy</span>.
+            {/* Terms of Service & Privacy Policy buttons only */}
+            <div className="pt-2 flex items-center justify-center gap-3 text-xs font-medium text-slate-500">
+              <button
+                type="button"
+                onClick={() => {
+                  onClose();
+                  onOpenTerms?.();
+                }}
+                className="text-slate-600 hover:text-slate-900 hover:underline transition-colors cursor-pointer"
+              >
+                Terms of Service
+              </button>
+              <span className="text-slate-300">•</span>
+              <button
+                type="button"
+                onClick={() => {
+                  onClose();
+                  onOpenPrivacy?.();
+                }}
+                className="text-slate-600 hover:text-slate-900 hover:underline transition-colors cursor-pointer"
+              >
+                Privacy Policy
+              </button>
             </div>
           </form>
         ) : (
@@ -347,20 +340,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               </div>
             </div>
 
-            <div className="flex items-center justify-between text-xs font-semibold text-slate-500 pt-1">
-              <button
-                type="button"
-                onClick={() => {
-                  setStep('phone');
-                  setError(null);
-                  setInfoMessage(null);
-                }}
-                className="flex items-center gap-1 hover:underline text-slate-700 font-bold cursor-pointer"
-              >
-                <ArrowLeft className="w-3.5 h-3.5" />
-                <span>Other sign-in options</span>
-              </button>
-
+            <div className="flex items-center justify-end text-xs font-semibold text-slate-500 pt-1">
               {timer > 0 ? (
                 <span className="text-slate-500">Resend OTP in <strong className="text-slate-800 font-bold">{timer}s</strong></span>
               ) : (
@@ -370,7 +350,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                     const newOtp = Math.floor(100000 + Math.random() * 900000).toString();
                     setGeneratedOtp(newOtp);
                     setTimer(30);
-                    setInfoMessage(`New OTP code sent to +91 ${phone}`);
+                    setInfoMessage(`OTP sent to +91 ${phone}`);
                     setError(null);
                   }}
                   className="text-emerald-700 font-bold hover:underline flex items-center gap-1 cursor-pointer"

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Zap, ShoppingBag, User, ChevronDown, Home, Briefcase, Building2, MapPin, Grid, Wrench, AlertTriangle } from 'lucide-react';
-import { KolkataArea, SavedAddress } from '../types';
+import { KolkataArea, SavedAddress, UserProfile } from '../types';
 
 interface HeaderProps {
   currentArea: KolkataArea;
@@ -14,6 +14,7 @@ interface HeaderProps {
   userPhone: string | null;
   userName?: string;
   userPhoto?: string;
+  userProfile?: UserProfile | null;
   onOpenAuth: () => void;
   onOpenAdmin?: () => void;
   onOpenAiAssistant?: () => void;
@@ -59,6 +60,7 @@ export const Header: React.FC<HeaderProps> = ({
   userPhone,
   userName,
   userPhoto,
+  userProfile,
   onOpenAuth,
   activeTab,
   onTabChange,
@@ -68,15 +70,34 @@ export const Header: React.FC<HeaderProps> = ({
   const [imgError, setImgError] = useState(false);
   const locationInfo = getHeaderDisplayLocation(currentArea, activeAddress);
 
-  const getInitials = (name?: string, phone?: string | null) => {
-    if (name && name !== 'Kolkata Customer' && name.trim()) {
+  // Check login state from profile, phone, name, email or photo
+  const effectiveName = userProfile?.name || userName || '';
+  const effectiveEmail = userProfile?.email || '';
+  const effectivePhone = userProfile?.phone || userPhone || '';
+  const effectivePhoto = userProfile?.photoURL || userPhoto || '';
+
+  const isLoggedIn = Boolean(
+    userProfile?.id ||
+    userProfile?.email ||
+    userProfile?.phone ||
+    effectivePhone ||
+    (effectiveName && effectiveName !== 'Kolkata Customer' && effectiveName.trim() !== '') ||
+    effectiveEmail ||
+    effectivePhoto
+  );
+
+  const getInitials = (name?: string, phone?: string | null, email?: string) => {
+    if (name && name !== 'Kolkata Customer' && name !== 'Customer' && name.trim()) {
       const parts = name.trim().split(' ');
       if (parts.length > 1) {
         return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
       }
       return name.slice(0, 2).toUpperCase();
     }
-    if (phone) {
+    if (email && email.trim()) {
+      return email.slice(0, 2).toUpperCase();
+    }
+    if (phone && phone.trim()) {
       return phone.replace(/\D/g, '').slice(-2);
     }
     return 'GP';
@@ -89,6 +110,8 @@ export const Header: React.FC<HeaderProps> = ({
       onTabChange('cart');
     }
   };
+
+  const accountDisplayLabel = effectiveName || effectiveEmail || effectivePhone || 'Account';
 
   return (
     <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200/80 transition-all shadow-2xs">
@@ -148,8 +171,6 @@ export const Header: React.FC<HeaderProps> = ({
 
           {/* Right Action Icons: Cart Button beside Profile Button */}
           <div className="flex items-center gap-2 sm:gap-4 shrink-0">
-            {/* Desktop Navigation Tabs (Hidden on mobile) */}
-
             {/* Cart Button */}
             <button
               id="top-navbar-cart-btn"
@@ -179,28 +200,28 @@ export const Header: React.FC<HeaderProps> = ({
             <button
               id="user-profile-avatar-btn"
               onClick={() => {
-                if (userPhone) {
+                if (isLoggedIn) {
                   onTabChange('profile');
                 } else {
                   onOpenAuth();
                 }
               }}
               className="w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center bg-slate-100 hover:bg-slate-200 border border-slate-300 text-slate-700 transition-all hover:shadow-2xs active:scale-95 cursor-pointer overflow-hidden relative"
-              title={userPhone ? `Account: ${userName || userPhone} (Click to open Profile)` : 'Sign in / Sign up'}
-              aria-label={userPhone ? `Profile ${userName || userPhone}` : 'Sign in'}
+              title={isLoggedIn ? `Account: ${accountDisplayLabel} (Click to open Profile)` : 'Sign in / Sign up'}
+              aria-label={isLoggedIn ? `Profile: ${accountDisplayLabel}` : 'Sign in'}
             >
-              {userPhone ? (
-                userPhoto && !imgError ? (
+              {isLoggedIn ? (
+                effectivePhoto && !imgError ? (
                   <img
-                    src={userPhoto}
-                    alt={userName || 'Profile'}
+                    src={effectivePhoto}
+                    alt={accountDisplayLabel}
                     onError={() => setImgError(true)}
                     className="w-full h-full object-cover rounded-full"
                     referrerPolicy="no-referrer"
                   />
                 ) : (
                   <span className="text-xs font-black text-amber-950 bg-amber-400 w-full h-full rounded-full flex items-center justify-center border border-amber-500 shadow-inner">
-                    {getInitials(userName, userPhone)}
+                    {getInitials(effectiveName, effectivePhone, effectiveEmail)}
                   </span>
                 )
               ) : (

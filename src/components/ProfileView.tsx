@@ -766,11 +766,11 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                     className="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-100 hover:border-slate-200 transition-colors"
                   >
                     <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-lg bg-indigo-100 text-indigo-700 flex items-center justify-center font-black text-xs">
+                      <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-indigo-600 via-purple-600 to-pink-500 text-white flex items-center justify-center font-bold text-[11px] shadow-2xs">
                         UPI
                       </div>
                       <div>
-                        <p className="text-xs font-black text-slate-900">{upi}</p>
+                        <p className="text-xs font-bold text-slate-900">{upi}</p>
                         <p className="text-[10px] text-emerald-600 font-bold flex items-center gap-1">
                           <ShieldCheck className="w-3 h-3" />
                           <span>Saved on Server for Express Checkout</span>
@@ -815,7 +815,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
               {/* UPI */}
               <div className="py-3 flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-700 flex items-center justify-center font-black text-xs">
+                  <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-emerald-500 via-teal-600 to-cyan-500 text-white flex items-center justify-center font-black text-xs shadow-2xs">
                     UPI
                   </div>
                   <div>
@@ -831,8 +831,8 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
               {/* Debit Card */}
               <div className="py-3 flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-lg bg-slate-100 text-slate-700 flex items-center justify-center">
-                    <CreditCard className="w-4 h-4" />
+                  <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-blue-600 via-indigo-600 to-cyan-500 text-white flex items-center justify-center shadow-2xs">
+                    <CreditCard className="w-4 h-4 text-white" />
                   </div>
                   <div>
                     <p className="text-xs font-black text-slate-900">Debit Card</p>
@@ -847,8 +847,8 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
               {/* Credit Card */}
               <div className="py-3 flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-lg bg-slate-100 text-slate-700 flex items-center justify-center">
-                    <CreditCard className="w-4 h-4" />
+                  <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-purple-600 via-pink-600 to-rose-500 text-white flex items-center justify-center shadow-2xs">
+                    <CreditCard className="w-4 h-4 text-white" />
                   </div>
                   <div>
                     <p className="text-xs font-black text-slate-900">Credit Card</p>
@@ -863,7 +863,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
               {/* Cash on Delivery */}
               <div className="py-3 flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-lg bg-amber-50 text-amber-700 flex items-center justify-center font-black text-xs">
+                  <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-amber-500 via-yellow-500 to-amber-600 text-slate-950 flex items-center justify-center font-black text-xs shadow-2xs">
                     ₹
                   </div>
                   <div>
@@ -1304,23 +1304,23 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 pb-24">
       {/* 1. TOP HEADER BANNER (Full width touching top & both sides, bottom curves only) */}
-      <div className="bg-gradient-to-b from-[#8B0000] via-[#A30000] to-[#B31B1B] text-white pt-4 pb-7 px-4 sm:px-6 relative shadow-md rounded-b-[2rem] border-b border-red-950/30">
+      <div className="bg-gradient-to-b from-[#8B0000] via-[#A30000] to-[#B31B1B] text-white pt-3.5 pb-5 px-4 sm:px-6 relative shadow-md rounded-b-2xl border-b border-red-950/30">
         {/* Top Control Bar with Back Arrow & Actions */}
-        <div className="max-w-3xl mx-auto flex items-center justify-between mb-3">
+        <div className="max-w-3xl mx-auto flex items-center justify-between mb-2.5">
           {/* Arrow Back Button */}
           <button
             onClick={onBack}
-            className="p-2 -ml-1 rounded-full bg-white/10 hover:bg-white/20 active:bg-white/30 text-white transition-all cursor-pointer flex items-center gap-1.5"
+            className="p-1.5 -ml-1 rounded-full bg-white/10 hover:bg-white/20 active:bg-white/30 text-white transition-all cursor-pointer flex items-center gap-1.5"
             aria-label="Go back"
           >
-            <ArrowLeft className="w-5 h-5" />
-            <span className="text-xs font-bold sm:inline hidden">Back</span>
+            <ArrowLeft className="w-4 h-4" />
+            <span className="text-xs font-medium sm:inline hidden">Back</span>
           </button>
 
-          <div className="flex items-center gap-2.5 relative">
+          <div className="flex items-center gap-2 relative">
             <button
               onClick={() => setSubPage('help')}
-              className="text-xs font-black uppercase tracking-wider text-white hover:text-amber-200 transition-colors cursor-pointer px-2 py-1"
+              className="text-[11px] font-bold uppercase tracking-wider text-white hover:text-amber-200 transition-colors cursor-pointer px-2 py-1"
             >
               HELP
             </button>
@@ -1333,12 +1333,12 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                   e.stopPropagation();
                   setIsMenuOpen((prev) => !prev);
                 }}
-                className="p-2 rounded-full hover:bg-white/20 active:bg-white/30 text-white transition-colors cursor-pointer relative"
+                className="p-1.5 rounded-full hover:bg-white/20 active:bg-white/30 text-white transition-colors cursor-pointer relative"
                 aria-label="Profile options"
               >
-                <MoreVertical className="w-5 h-5" />
+                <MoreVertical className="w-4 h-4" />
                 {hasAnyMissingDetails && (
-                  <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 bg-red-400 border-2 border-red-900 rounded-full animate-pulse" />
+                  <span className="absolute top-1 right-1 w-2 h-2 bg-red-400 border-2 border-red-900 rounded-full animate-pulse" />
                 )}
               </button>
 
@@ -1428,10 +1428,10 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
         </div>
 
         {/* User Identity Details with Photo Circle (Swiggy Style) */}
-        <div className="max-w-3xl mx-auto flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3.5 sm:gap-4">
+        <div className="max-w-3xl mx-auto flex items-center justify-between gap-3.5">
+          <div className="flex items-center gap-3">
             {/* Front Circle Box: User Email Photo or Monogram */}
-            <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full border-2 border-white/60 bg-amber-400 text-slate-950 flex items-center justify-center shrink-0 shadow-md overflow-hidden relative">
+            <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-full border-2 border-white/60 bg-amber-400 text-slate-950 flex items-center justify-center shrink-0 shadow-sm overflow-hidden relative">
               {userPhoto && !avatarError ? (
                 <img
                   src={userPhoto}
@@ -1441,7 +1441,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                   referrerPolicy="no-referrer"
                 />
               ) : (
-                <span className="text-base sm:text-lg font-black tracking-tight">
+                <span className="text-sm sm:text-base font-bold tracking-tight">
                   {getInitials(rawName, rawPhone)}
                 </span>
               )}
@@ -1449,13 +1449,13 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
 
             <div>
               <div className="flex items-center gap-2">
-                <h1 className="text-xl sm:text-2xl font-black tracking-tight text-white capitalize">
+                <h1 className="text-base sm:text-lg font-bold tracking-tight text-white capitalize">
                   {displayName}
                 </h1>
                 {hasMissingName && (
                   <span
                     onClick={handleOpenEdit}
-                    className="inline-flex items-center gap-1 text-[10px] font-black bg-red-500 hover:bg-red-600 text-white px-2 py-0.5 rounded-full cursor-pointer shadow-xs animate-pulse"
+                    className="inline-flex items-center gap-1 text-[10px] font-bold bg-red-500 hover:bg-red-600 text-white px-2 py-0.5 rounded-full cursor-pointer shadow-xs animate-pulse"
                     title="Enter your full name"
                   >
                     <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping" />
@@ -1465,18 +1465,18 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
               </div>
 
               {/* Stack-wise Phone Number and Email */}
-              <div className="mt-1 space-y-0.5 text-xs text-white/90 font-medium">
+              <div className="mt-0.5 space-y-0.5 text-[11px] sm:text-xs text-white/90 font-normal">
                 {displayPhone ? (
                   <p className="flex items-center gap-1.5">
-                    <span className="font-semibold text-white tracking-wide">{displayPhone}</span>
+                    <span className="font-medium text-white tracking-wide">{displayPhone}</span>
                   </p>
                 ) : (
                   <button
                     onClick={handleOpenEdit}
                     className="flex items-center gap-1.5 text-left text-amber-200 hover:text-white transition-colors cursor-pointer group"
                   >
-                    <span className="w-2 h-2 rounded-full bg-red-400 ring-2 ring-red-200/50 shrink-0 group-hover:scale-110 transition-transform" />
-                    <span className="underline decoration-dotted underline-offset-2 text-[11px] font-semibold">
+                    <span className="w-1.5 h-1.5 rounded-full bg-red-400 ring-2 ring-red-200/50 shrink-0 group-hover:scale-110 transition-transform" />
+                    <span className="underline decoration-dotted underline-offset-2 text-[11px] font-medium">
                       Add mobile number
                     </span>
                   </button>
@@ -1486,7 +1486,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                   <p className="flex items-center gap-1.5 flex-wrap">
                     <span className="text-white/85 text-[11px] sm:text-xs break-all">{displayEmail}</span>
                     {userProfile?.emailVerified && (
-                      <span className="inline-flex items-center gap-0.5 text-[9px] font-black bg-emerald-500/30 text-emerald-200 px-1.5 py-0.2 rounded border border-emerald-400/40">
+                      <span className="inline-flex items-center gap-0.5 text-[9px] font-bold bg-emerald-500/30 text-emerald-200 px-1.5 py-0.2 rounded border border-emerald-400/40">
                         <Check className="w-2.5 h-2.5" /> Verified
                       </span>
                     )}
@@ -1496,15 +1496,15 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                     onClick={handleOpenEdit}
                     className="flex items-center gap-1.5 text-left text-amber-200 hover:text-white transition-colors cursor-pointer group"
                   >
-                    <span className="w-2 h-2 rounded-full bg-red-400 ring-2 ring-red-200/50 shrink-0 group-hover:scale-110 transition-transform" />
-                    <span className="underline decoration-dotted underline-offset-2 text-[11px] font-semibold">
+                    <span className="w-1.5 h-1.5 rounded-full bg-red-400 ring-2 ring-red-200/50 shrink-0 group-hover:scale-110 transition-transform" />
+                    <span className="underline decoration-dotted underline-offset-2 text-[11px] font-medium">
                       Add email address
                     </span>
                   </button>
                 )}
 
                 {displayDob && (
-                  <p className="text-[11px] text-amber-200 flex items-center gap-1 font-semibold pt-0.5">
+                  <p className="text-[11px] text-amber-200 flex items-center gap-1 font-medium pt-0.5">
                     <Calendar className="w-3 h-3" />
                     <span>
                       DOB: {new Date(displayDob).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
@@ -1523,56 +1523,56 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
           {/* Tile 1: Orders */}
           <button
             onClick={() => setSubPage('orders')}
-            className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md hover:border-amber-400 transition-all text-left flex flex-col justify-between min-h-[105px] cursor-pointer group"
+            className="bg-white p-4 sm:p-4.5 rounded-2xl border border-slate-200 shadow-xs hover:shadow-md hover:border-amber-400 transition-all text-left flex flex-col justify-between min-h-[110px] cursor-pointer group"
           >
-            <div className="w-9 h-9 rounded-xl bg-amber-50 border border-amber-200/60 text-amber-700 flex items-center justify-center group-hover:scale-105 transition-transform shadow-2xs">
-              <ShoppingBag className="w-4 h-4" />
+            <div className="w-10 h-10 rounded-2xl bg-amber-100 border border-amber-300/80 text-amber-600 flex items-center justify-center group-hover:scale-105 transition-transform shadow-2xs">
+              <ShoppingBag className="w-5 h-5" />
             </div>
-            <div className="mt-2">
-              <p className="text-xs sm:text-sm font-black text-slate-900 leading-tight">Your Orders</p>
-              <p className="text-[11px] text-amber-700 font-bold mt-0.5">{sortedOrders.length} Completed</p>
+            <div className="mt-2.5">
+              <p className="text-[14px] sm:text-[15px] font-bold text-slate-900 leading-tight">Your Orders</p>
+              <p className="text-xs text-amber-700 font-semibold mt-0.5">{sortedOrders.length} Completed</p>
             </div>
           </button>
 
           {/* Tile 2: Saved Address */}
           <button
             onClick={() => setSubPage('addresses')}
-            className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md hover:border-pink-400 transition-all text-left flex flex-col justify-between min-h-[105px] cursor-pointer group"
+            className="bg-white p-4 sm:p-4.5 rounded-2xl border border-slate-200 shadow-xs hover:shadow-md hover:border-rose-400 transition-all text-left flex flex-col justify-between min-h-[110px] cursor-pointer group"
           >
-            <div className="w-9 h-9 rounded-xl bg-pink-50 border border-pink-200/60 text-pink-600 flex items-center justify-center group-hover:scale-105 transition-transform shadow-2xs">
-              <MapPin className="w-4 h-4" />
+            <div className="w-10 h-10 rounded-2xl bg-rose-100 border border-rose-300/80 text-rose-600 flex items-center justify-center group-hover:scale-105 transition-transform shadow-2xs">
+              <MapPin className="w-5 h-5" />
             </div>
-            <div className="mt-2">
-              <p className="text-xs sm:text-sm font-black text-slate-900 leading-tight">Saved Address</p>
-              <p className="text-[11px] text-slate-500 font-semibold mt-0.5">{savedAddresses.length} Addresses</p>
+            <div className="mt-2.5">
+              <p className="text-[14px] sm:text-[15px] font-bold text-slate-900 leading-tight">Saved Address</p>
+              <p className="text-xs text-slate-500 font-semibold mt-0.5">{savedAddresses.length} Addresses</p>
             </div>
           </button>
 
           {/* Tile 3: Payment Modes */}
           <button
             onClick={() => setSubPage('payments')}
-            className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md hover:border-indigo-400 transition-all text-left flex flex-col justify-between min-h-[105px] cursor-pointer group"
+            className="bg-white p-4 sm:p-4.5 rounded-2xl border border-slate-200 shadow-xs hover:shadow-md hover:border-indigo-400 transition-all text-left flex flex-col justify-between min-h-[110px] cursor-pointer group"
           >
-            <div className="w-9 h-9 rounded-xl bg-indigo-50 border border-indigo-200/60 text-indigo-600 flex items-center justify-center group-hover:scale-105 transition-transform shadow-2xs">
-              <CreditCard className="w-4 h-4" />
+            <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-indigo-500 via-purple-500 to-pink-500 text-white flex items-center justify-center group-hover:scale-105 transition-transform shadow-xs">
+              <CreditCard className="w-5 h-5 text-white" />
             </div>
-            <div className="mt-2">
-              <p className="text-xs sm:text-sm font-black text-slate-900 leading-tight">Payment Modes</p>
-              <p className="text-[11px] text-slate-500 font-semibold mt-0.5">UPI &amp; Cards</p>
+            <div className="mt-2.5">
+              <p className="text-[14px] sm:text-[15px] font-bold text-slate-900 leading-tight">Payment Modes</p>
+              <p className="text-xs text-slate-500 font-semibold mt-0.5">UPI &amp; Cards</p>
             </div>
           </button>
 
           {/* Tile 4: Wallet */}
           <button
             onClick={() => setSubPage('wallet')}
-            className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md hover:border-emerald-500 transition-all text-left flex flex-col justify-between min-h-[105px] cursor-pointer group"
+            className="bg-white p-4 sm:p-4.5 rounded-2xl border border-slate-200 shadow-xs hover:shadow-md hover:border-emerald-500 transition-all text-left flex flex-col justify-between min-h-[110px] cursor-pointer group"
           >
-            <div className="w-9 h-9 rounded-xl bg-emerald-50 border border-emerald-200/60 text-emerald-600 flex items-center justify-center group-hover:scale-105 transition-transform shadow-2xs">
-              <Wallet className="w-4 h-4" />
+            <div className="w-10 h-10 rounded-2xl bg-emerald-100 border border-emerald-300/80 text-emerald-600 flex items-center justify-center group-hover:scale-105 transition-transform shadow-2xs">
+              <Wallet className="w-5 h-5" />
             </div>
-            <div className="mt-2">
-              <p className="text-xs sm:text-sm font-black text-slate-900 leading-tight">Wallet</p>
-              <p className="text-[11px] text-emerald-700 font-bold mt-0.5">₹{totalWalletBalance} Balance</p>
+            <div className="mt-2.5">
+              <p className="text-[14px] sm:text-[15px] font-bold text-slate-900 leading-tight">Wallet</p>
+              <p className="text-xs text-emerald-700 font-semibold mt-0.5">₹{totalWalletBalance} Balance</p>
             </div>
           </button>
         </div>
@@ -1581,147 +1581,141 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
         <div className="bg-white rounded-2xl border border-slate-200/80 divide-y divide-slate-100 overflow-hidden shadow-2xs">
           <button
             onClick={() => setSubPage('orders')}
-            className="w-full p-4 flex items-center justify-between hover:bg-slate-50 transition-colors text-left cursor-pointer"
+            className="w-full p-4 sm:p-4.5 flex items-center justify-between hover:bg-slate-50/80 transition-colors text-left cursor-pointer group"
           >
-            <div className="flex items-center gap-3">
-              <Clock className="w-5 h-5 text-amber-600" />
+            <div className="flex items-center gap-3.5 sm:gap-4">
+              <div className="w-10 h-10 rounded-2xl bg-amber-100 border border-amber-200 text-amber-600 flex items-center justify-center shrink-0 shadow-2xs group-hover:scale-105 transition-transform">
+                <Clock className="w-5 h-5" />
+              </div>
               <div>
-                <p className="text-xs font-black text-slate-900">Orders History</p>
-                <p className="text-[11px] text-slate-500">{sortedOrders.length} orders placed • View summary &amp; invoices</p>
+                <p className="text-base sm:text-lg font-normal text-slate-800">Orders History</p>
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-[10px] font-black text-amber-800 bg-amber-100 px-2 py-0.5 rounded-full">
+              <span className="text-xs font-normal text-amber-800 bg-amber-100 px-2.5 py-1 rounded-full">
                 {sortedOrders.length}
               </span>
-              <ChevronRight className="w-4 h-4 text-slate-400" />
+              <ChevronRight className="w-5 h-5 text-slate-400 group-hover:text-slate-600 transition-colors" />
             </div>
           </button>
 
           <button
             onClick={() => setSubPage('wallet')}
-            className="w-full p-4 flex items-center justify-between hover:bg-slate-50 transition-colors text-left cursor-pointer"
+            className="w-full p-4 sm:p-4.5 flex items-center justify-between hover:bg-slate-50/80 transition-colors text-left cursor-pointer group"
           >
-            <div className="flex items-center gap-3">
-              <Wallet className="w-5 h-5 text-emerald-600" />
+            <div className="flex items-center gap-3.5 sm:gap-4">
+              <div className="w-10 h-10 rounded-2xl bg-emerald-100 border border-emerald-200 text-emerald-600 flex items-center justify-center shrink-0 shadow-2xs group-hover:scale-105 transition-transform">
+                <Wallet className="w-5 h-5" />
+              </div>
               <div>
-                <p className="text-xs font-black text-slate-900">Wallet</p>
-                <p className="text-[11px] text-slate-500">₹{totalWalletBalance} balance available for instant checkout</p>
+                <p className="text-base sm:text-lg font-normal text-slate-800">Wallet</p>
               </div>
             </div>
-            <ChevronRight className="w-4 h-4 text-slate-400" />
+            <ChevronRight className="w-5 h-5 text-slate-400 group-hover:text-slate-600 transition-colors" />
           </button>
 
           <button
             onClick={() => setSubPage('payments')}
-            className="w-full p-4 flex items-center justify-between hover:bg-slate-50 transition-colors text-left cursor-pointer"
+            className="w-full p-4 sm:p-4.5 flex items-center justify-between hover:bg-slate-50/80 transition-colors text-left cursor-pointer group"
           >
-            <div className="flex items-center gap-3">
-              <CreditCard className="w-5 h-5 text-slate-600" />
+            <div className="flex items-center gap-3.5 sm:gap-4">
+              <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-indigo-500 via-purple-500 to-pink-500 text-white flex items-center justify-center shrink-0 shadow-xs group-hover:scale-105 transition-transform">
+                <CreditCard className="w-5 h-5 text-white" />
+              </div>
               <div>
-                <p className="text-xs font-black text-slate-900">Saved Payment Modes</p>
-                <p className="text-[11px] text-slate-500">Manage GooglePay, PhonePe &amp; Cards</p>
+                <p className="text-base sm:text-lg font-normal text-slate-800">Saved Payment Modes</p>
               </div>
             </div>
-            <ChevronRight className="w-4 h-4 text-slate-400" />
+            <ChevronRight className="w-5 h-5 text-slate-400 group-hover:text-slate-600 transition-colors" />
           </button>
 
           <button
             onClick={() => setSubPage('addresses')}
-            className="w-full p-4 flex items-center justify-between hover:bg-slate-50 transition-colors text-left cursor-pointer"
+            className="w-full p-4 sm:p-4.5 flex items-center justify-between hover:bg-slate-50/80 transition-colors text-left cursor-pointer group"
           >
-            <div className="flex items-center gap-3">
-              <MapPin className="w-5 h-5 text-slate-600" />
+            <div className="flex items-center gap-3.5 sm:gap-4">
+              <div className="w-10 h-10 rounded-2xl bg-rose-100 border border-rose-200 text-rose-600 flex items-center justify-center shrink-0 shadow-2xs group-hover:scale-105 transition-transform">
+                <MapPin className="w-5 h-5" />
+              </div>
               <div>
-                <p className="text-xs font-black text-slate-900">Delivery Addresses</p>
-                <p className="text-[11px] text-slate-500">Edit or pin home, site &amp; office on map</p>
+                <p className="text-base sm:text-lg font-normal text-slate-800">Delivery Addresses</p>
               </div>
             </div>
-            <ChevronRight className="w-4 h-4 text-slate-400" />
-          </button>
-
-          <button
-            onClick={() => setSubPage('services')}
-            className="w-full p-4 flex items-center justify-between hover:bg-slate-50 transition-colors text-left cursor-pointer"
-          >
-            <div className="flex items-center gap-3">
-              <Zap className="w-5 h-5 text-slate-600" />
-              <div>
-                <p className="text-xs font-black text-slate-900">Licensed Electricians &amp; Wiring Services</p>
-                <p className="text-[11px] text-slate-500">Apartment &amp; commercial wiring appointments</p>
-              </div>
-            </div>
-            <ChevronRight className="w-4 h-4 text-slate-400" />
+            <ChevronRight className="w-5 h-5 text-slate-400 group-hover:text-slate-600 transition-colors" />
           </button>
 
           <button
             onClick={() => setSubPage('help')}
-            className="w-full p-4 flex items-center justify-between hover:bg-slate-50 transition-colors text-left cursor-pointer"
+            className="w-full p-4 sm:p-4.5 flex items-center justify-between hover:bg-slate-50/80 transition-colors text-left cursor-pointer group"
           >
-            <div className="flex items-center gap-3">
-              <HelpCircle className="w-5 h-5 text-slate-600" />
+            <div className="flex items-center gap-3.5 sm:gap-4">
+              <div className="w-10 h-10 rounded-2xl bg-purple-100 border border-purple-200 text-purple-600 flex items-center justify-center shrink-0 shadow-2xs group-hover:scale-105 transition-transform">
+                <HelpCircle className="w-5 h-5" />
+              </div>
               <div>
-                <p className="text-xs font-black text-slate-900">Help Center</p>
-                <p className="text-[11px] text-slate-500">24x7 customer support, phone call &amp; WhatsApp help</p>
+                <p className="text-base sm:text-lg font-normal text-slate-800">Help Center</p>
               </div>
             </div>
-            <ChevronRight className="w-4 h-4 text-slate-400" />
+            <ChevronRight className="w-5 h-5 text-slate-400 group-hover:text-slate-600 transition-colors" />
           </button>
 
           <button
             onClick={() => setSubPage('notifications')}
-            className="w-full p-4 flex items-center justify-between hover:bg-slate-50 transition-colors text-left cursor-pointer"
+            className="w-full p-4 sm:p-4.5 flex items-center justify-between hover:bg-slate-50/80 transition-colors text-left cursor-pointer group"
           >
-            <div className="flex items-center gap-3">
-              <Bell className="w-5 h-5 text-slate-600" />
+            <div className="flex items-center gap-3.5 sm:gap-4">
+              <div className="w-10 h-10 rounded-2xl bg-cyan-100 border border-cyan-200 text-cyan-600 flex items-center justify-center shrink-0 shadow-2xs group-hover:scale-105 transition-transform">
+                <Bell className="w-5 h-5" />
+              </div>
               <div>
-                <p className="text-xs font-black text-slate-900">Communication Preferences</p>
-                <p className="text-[11px] text-slate-500">WhatsApp, SMS &amp; Email alerts</p>
+                <p className="text-base sm:text-lg font-normal text-slate-800">Communication Preferences</p>
               </div>
             </div>
-            <ChevronRight className="w-4 h-4 text-slate-400" />
+            <ChevronRight className="w-5 h-5 text-slate-400 group-hover:text-slate-600 transition-colors" />
           </button>
 
           <button
             onClick={() => setSubPage('privacy')}
-            className="w-full p-4 flex items-center justify-between hover:bg-slate-50 transition-colors text-left cursor-pointer"
+            className="w-full p-4 sm:p-4.5 flex items-center justify-between hover:bg-slate-50/80 transition-colors text-left cursor-pointer group"
           >
-            <div className="flex items-center gap-3">
-              <Lock className="w-5 h-5 text-slate-600" />
+            <div className="flex items-center gap-3.5 sm:gap-4">
+              <div className="w-10 h-10 rounded-2xl bg-teal-100 border border-teal-200 text-teal-600 flex items-center justify-center shrink-0 shadow-2xs group-hover:scale-105 transition-transform">
+                <Lock className="w-5 h-5" />
+              </div>
               <div>
-                <p className="text-xs font-black text-slate-900">Privacy Policy</p>
-                <p className="text-[11px] text-slate-500">User data protection &amp; Google OAuth compliance</p>
+                <p className="text-base sm:text-lg font-normal text-slate-800">Privacy Policy</p>
               </div>
             </div>
-            <ChevronRight className="w-4 h-4 text-slate-400" />
+            <ChevronRight className="w-5 h-5 text-slate-400 group-hover:text-slate-600 transition-colors" />
           </button>
 
           <button
             onClick={() => setSubPage('terms')}
-            className="w-full p-4 flex items-center justify-between hover:bg-slate-50 transition-colors text-left cursor-pointer"
+            className="w-full p-4 sm:p-4.5 flex items-center justify-between hover:bg-slate-50/80 transition-colors text-left cursor-pointer group"
           >
-            <div className="flex items-center gap-3">
-              <FileText className="w-5 h-5 text-slate-600" />
+            <div className="flex items-center gap-3.5 sm:gap-4">
+              <div className="w-10 h-10 rounded-2xl bg-indigo-100 border border-indigo-200 text-indigo-600 flex items-center justify-center shrink-0 shadow-2xs group-hover:scale-105 transition-transform">
+                <FileText className="w-5 h-5" />
+              </div>
               <div>
-                <p className="text-xs font-black text-slate-900">Terms of Service</p>
-                <p className="text-[11px] text-slate-500">User agreements, orders, warranties &amp; refunds</p>
+                <p className="text-base sm:text-lg font-normal text-slate-800">Terms of Service</p>
               </div>
             </div>
-            <ChevronRight className="w-4 h-4 text-slate-400" />
+            <ChevronRight className="w-5 h-5 text-slate-400 group-hover:text-slate-600 transition-colors" />
           </button>
         </div>
 
         {/* Separate Pill-Shaped Sign Out Button */}
-        <div className="pt-2">
+        <div className="pt-3">
           <button
             id="btn-profile-signout"
             onClick={() => {
               signOutUser();
               onLogout();
             }}
-            className="w-full py-3.5 px-6 rounded-full bg-red-500/10 hover:bg-red-500/20 text-red-600 border border-red-200/80 transition-all font-black text-xs sm:text-sm flex items-center justify-center gap-2 cursor-pointer shadow-2xs hover:shadow-xs active:scale-[0.99]"
+            className="w-full py-3.5 px-6 rounded-full bg-red-600 hover:bg-red-700 active:bg-red-800 text-white transition-all font-medium text-[15px] sm:text-base flex items-center justify-center gap-2.5 cursor-pointer shadow-sm hover:shadow-md active:scale-[0.99]"
           >
-            <LogOut className="w-4 h-4 text-red-600" />
+            <LogOut className="w-5 h-5 text-white" />
             <span>Sign Out</span>
           </button>
         </div>

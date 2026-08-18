@@ -39,6 +39,7 @@ export interface WiringServiceBooking {
   pincode: string;
   contactName: string;
   contactPhone: string;
+  contactEmail?: string;
   estimatedPrice: number;
   wireGrade: string;
   notes?: string;
@@ -52,6 +53,7 @@ export interface Order {
   id: string;
   customerName: string;
   phone: string;
+  customerEmail?: string;
   address: string;
   area: string;
   pincode: string;

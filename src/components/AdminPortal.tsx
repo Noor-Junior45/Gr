@@ -1,8 +1,26 @@
 import React, { useState, useEffect } from 'react';
-import { ShieldCheck, Bell, Volume2, VolumeX, CheckCircle, Package, Truck, Check, Phone, MessageSquare, Clock, MapPin, RefreshCw, X } from 'lucide-react';
+import {
+  ShieldCheck,
+  Bell,
+  Volume2,
+  VolumeX,
+  CheckCircle,
+  Package,
+  Truck,
+  Check,
+  Phone,
+  MessageSquare,
+  Clock,
+  MapPin,
+  RefreshCw,
+  X,
+  Mail,
+  Send
+} from 'lucide-react';
 import { Order, OrderStatus } from '../types';
 import { subscribeToOrders, updateOrderStatusInFirestore } from '../services/firebaseConfig';
 import { soundService } from '../services/sound';
+import { getEmailServiceStatus, sendOrderConfirmationEmail, sendTestEmail, EmailServiceStatus } from '../services/emailService';
 
 interface AdminPortalProps {
   isOpen: boolean;
@@ -14,6 +32,17 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ isOpen, onClose }) => 
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [activeFilter, setActiveFilter] = useState<'all' | 'pending' | 'accepted' | 'out_for_delivery' | 'delivered'>('all');
   const [lastOrderCount, setLastOrderCount] = useState<number>(0);
+  const [emailServiceStatus, setEmailServiceStatus] = useState<EmailServiceStatus | null>(null);
+  const [testEmailAddress, setTestEmailAddress] = useState('manager@girirajpower.com');
+  const [testSending, setTestSending] = useState(false);
+  const [testMessage, setTestMessage] = useState<string | null>(null);
+  const [sendingOrderEmailId, setSendingOrderEmailId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (isOpen) {
+      getEmailServiceStatus().then(setEmailServiceStatus).catch(console.warn);
+    }
+  }, [isOpen]);
 
   useEffect(() => {
     const unsubscribe = subscribeToOrders((newOrders) => {
@@ -43,6 +72,35 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ isOpen, onClose }) => 
 
   const handleTestChime = () => {
     soundService.playNewOrderChime();
+  };
+
+  const handleSendTestEmail = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!testEmailAddress.trim()) return;
+    setTestSending(true);
+    setTestMessage(null);
+    try {
+      const res = await sendTestEmail(testEmailAddress.trim(), 'Giriraj Admin Manager');
+      setTestMessage(res.message || (res.success ? 'Test email dispatched!' : 'Failed to send'));
+    } catch (err: any) {
+      setTestMessage(err.message || 'Error occurred while testing email');
+    } finally {
+      setTestSending(false);
+    }
+  };
+
+  const handleSendOrderInvoiceEmail = async (order: Order) => {
+    const target = order.customerEmail || prompt('Enter recipient email address for order tax invoice:', 'customer@example.com');
+    if (!target) return;
+    setSendingOrderEmailId(order.id);
+    try {
+      const res = await sendOrderConfirmationEmail(order, target);
+      alert(res.message || (res.success ? 'Tax invoice email sent!' : 'Could not send email.'));
+    } catch (err: any) {
+      alert(`Email sending error: ${err.message}`);
+    } finally {
+      setSendingOrderEmailId(null);
+    }
   };
 
   return (
@@ -99,12 +157,63 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ isOpen, onClose }) => 
             {/* Close */}
             <button
               onClick={onClose}
-              className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white transition-colors"
+              className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white transition-colors cursor-pointer"
             >
               <X className="w-5 h-5" />
             </button>
           </div>
         </div>
+
+        {/* Resend Email Gateway Management Bar */}
+        <div className="px-4 sm:px-6 py-3 bg-slate-900 border-b border-slate-800 flex flex-wrap items-center justify-between gap-3 text-xs">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-xl bg-yellow-400/20 text-yellow-400 flex items-center justify-center font-black text-xs shrink-0">
+              <Mail className="w-4 h-4" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="font-bold text-white">Resend Email Gateway:</span>
+                <span className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase ${
+                  emailServiceStatus?.configured
+                    ? 'bg-green-500/20 text-green-400 border border-green-500/30'
+                    : 'bg-yellow-500/20 text-yellow-300 border border-yellow-500/30'
+                }`}>
+                  {emailServiceStatus?.configured ? '⚡ Live API Active' : '⚙️ Ready (RESEND_API_KEY)'}
+                </span>
+              </div>
+              <span className="text-[11px] text-slate-400">
+                Sender: {emailServiceStatus?.fromEmail || 'Giriraj Power <onboarding@resend.dev>'}
+              </span>
+            </div>
+          </div>
+
+          <form onSubmit={handleSendTestEmail} className="flex items-center gap-2">
+            <input
+              type="email"
+              value={testEmailAddress}
+              onChange={(e) => setTestEmailAddress(e.target.value)}
+              placeholder="Test recipient email..."
+              className="px-3 py-1.5 bg-slate-950 border border-slate-700 rounded-xl text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-yellow-400"
+            />
+            <button
+              type="submit"
+              disabled={testSending}
+              className="px-3.5 py-1.5 bg-yellow-400 hover:bg-yellow-500 text-slate-950 font-bold rounded-xl text-xs flex items-center gap-1.5 transition-colors disabled:opacity-50 cursor-pointer"
+            >
+              {testSending ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
+              <span>Test Email</span>
+            </button>
+          </form>
+        </div>
+
+        {testMessage && (
+          <div className="px-4 sm:px-6 py-2 bg-yellow-400/15 border-b border-yellow-400/30 text-yellow-300 text-xs flex items-center justify-between">
+            <span>{testMessage}</span>
+            <button onClick={() => setTestMessage(null)} className="text-yellow-400 hover:text-white font-bold ml-2 cursor-pointer">
+              ✕
+            </button>
+          </div>
+        )}
 
         {/* Filter Navigation Tabs */}
         <div className="px-4 sm:px-6 py-3 bg-slate-900/60 border-b border-slate-800 flex items-center justify-between gap-2 overflow-x-auto no-scrollbar">
@@ -255,16 +364,23 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ isOpen, onClose }) => 
 
                   {/* Single Supplier Action Buttons */}
                   <div className="pt-3 border-t border-slate-800 flex flex-wrap items-center justify-between gap-2">
-                    <div className="text-[11px] text-slate-400 flex items-center gap-1">
-                      <Clock className="w-3.5 h-3.5 text-yellow-400" />
-                      <span>Est. 60-Min Delivery Window Active</span>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => handleSendOrderInvoiceEmail(order)}
+                        disabled={sendingOrderEmailId === order.id}
+                        className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-yellow-300 text-xs font-semibold flex items-center gap-1.5 transition-colors disabled:opacity-50 cursor-pointer"
+                        title="Send invoice via Resend email"
+                      >
+                        <Mail className="w-3.5 h-3.5" />
+                        <span>{sendingOrderEmailId === order.id ? 'Sending...' : 'Email Invoice (Resend)'}</span>
+                      </button>
                     </div>
 
                     <div className="flex items-center gap-2">
                       {isPending && (
                         <button
                           onClick={() => handleStatusChange(order.id, 'accepted')}
-                          className="px-3.5 py-1.5 rounded-xl bg-yellow-400 hover:bg-yellow-500 text-slate-950 font-black text-xs transition-colors flex items-center gap-1"
+                          className="px-3.5 py-1.5 rounded-xl bg-yellow-400 hover:bg-yellow-500 text-slate-950 font-black text-xs transition-colors flex items-center gap-1 cursor-pointer"
                         >
                           <Check className="w-3.5 h-3.5 stroke-[3]" />
                           <span>Accept &amp; Start Packing</span>
@@ -274,7 +390,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ isOpen, onClose }) => 
                       {isPacking && (
                         <button
                           onClick={() => handleStatusChange(order.id, 'out_for_delivery')}
-                          className="px-3.5 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-black text-xs transition-colors flex items-center gap-1"
+                          className="px-3.5 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-black text-xs transition-colors flex items-center gap-1 cursor-pointer"
                         >
                           <Truck className="w-3.5 h-3.5" />
                           <span>Dispatch (Out for Delivery)</span>
@@ -284,7 +400,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ isOpen, onClose }) => 
                       {isOut && (
                         <button
                           onClick={() => handleStatusChange(order.id, 'delivered')}
-                          className="px-3.5 py-1.5 rounded-xl bg-green-600 hover:bg-green-700 text-white font-black text-xs transition-colors flex items-center gap-1"
+                          className="px-3.5 py-1.5 rounded-xl bg-green-600 hover:bg-green-700 text-white font-black text-xs transition-colors flex items-center gap-1 cursor-pointer"
                         >
                           <CheckCircle className="w-3.5 h-3.5" />
                           <span>Mark Order Delivered</span>

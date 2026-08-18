@@ -38,6 +38,8 @@ import { Footer } from './components/Footer';
 import { LegalView } from './components/LegalViews';
 import {
   getSavedUserProfile,
+  saveUserProfile,
+  signOutUser,
   subscribeToOrders,
   subscribeToAddresses,
   ACTIVE_SAVED_ADDRESS_KEY,
@@ -94,22 +96,42 @@ export default function App() {
 
     const unsubAuth = onAuthStateChanged(auth, (fbUser) => {
       if (fbUser) {
-        const phone = fbUser.phoneNumber || safeGetItem('giriraj_user_phone') || '';
-        const name = fbUser.displayName || safeGetItem('giriraj_user_name') || '';
-        const email = fbUser.email || safeGetItem('giriraj_user_email') || '';
-        const photoURL = fbUser.photoURL || safeGetItem('giriraj_user_photo') || undefined;
-        const dob = safeGetItem('giriraj_user_dob') || '';
+        const local = getSavedUserProfile();
+        const phone = fbUser.phoneNumber || local?.phone || safeGetItem('giriraj_user_phone') || '';
+        const name = fbUser.displayName || local?.name || safeGetItem('giriraj_user_name') || 'Customer';
+        const email = fbUser.email || local?.email || safeGetItem('giriraj_user_email') || '';
+        const photoURL = fbUser.photoURL || local?.photoURL || safeGetItem('giriraj_user_photo') || undefined;
+        const dob = local?.dob || safeGetItem('giriraj_user_dob') || '';
         const prof: UserProfile = {
           id: fbUser.uid,
           phone,
           name,
           email,
+          emailVerified: fbUser.emailVerified || local?.emailVerified || true,
           photoURL,
-          dob
+          dob,
+          walletBalance: local?.walletBalance || 0,
+          refundBalance: local?.refundBalance || 0,
+          cashbackBalance: local?.cashbackBalance || 0
         };
         setUserProfile(prof);
         setUserPhone(phone || null);
         setUserName(name);
+        saveUserProfile({
+          phone,
+          name,
+          email,
+          photoURL: photoURL || undefined,
+          dob,
+          emailVerified: true
+        });
+      } else {
+        const local = getSavedUserProfile();
+        if (local && (local.phone || local.email || (local.name && local.name !== 'Kolkata Customer'))) {
+          setUserProfile(local);
+          setUserPhone(local.phone || null);
+          setUserName(local.name || '');
+        }
       }
     });
 
@@ -209,27 +231,30 @@ export default function App() {
   return (
     <div className="min-h-screen bg-white flex flex-col text-slate-900 selection:bg-yellow-400 selection:text-black">
       
-      {/* Top Header */}
-      <Header
-        currentArea={currentArea}
-        activeAddress={activeSavedAddress}
-        onOpenLocationModal={() => setIsLocationModalOpen(true)}
-        searchQuery={searchQuery}
-        onSearchChange={setSearchQuery}
-        cartCount={cartCount}
-        cartTotal={cartTotal}
-        onOpenCart={() => setActiveTab('cart')}
-        userPhone={userPhone}
-        userName={userName}
-        userPhoto={userProfile?.photoURL}
-        onOpenAuth={() => setIsAuthModalOpen(true)}
-        onOpenAdmin={() => setIsAdminOpen(true)}
-        onOpenAiAssistant={() => setIsAiAssistantOpen(true)}
-        activeTab={activeTab}
-        onTabChange={(tab) => setActiveTab(tab as typeof activeTab)}
-        activeCategory={activeCategory}
-        onSelectCategory={(cat) => setActiveCategory(cat as typeof activeCategory)}
-      />
+      {/* Top Header - Hidden when viewing profile page */}
+      {activeTab !== 'profile' && (
+        <Header
+          currentArea={currentArea}
+          activeAddress={activeSavedAddress}
+          onOpenLocationModal={() => setIsLocationModalOpen(true)}
+          searchQuery={searchQuery}
+          onSearchChange={setSearchQuery}
+          cartCount={cartCount}
+          cartTotal={cartTotal}
+          onOpenCart={() => setActiveTab('cart')}
+          userPhone={userPhone}
+          userName={userName}
+          userPhoto={userProfile?.photoURL}
+          userProfile={userProfile}
+          onOpenAuth={() => setIsAuthModalOpen(true)}
+          onOpenAdmin={() => setIsAdminOpen(true)}
+          onOpenAiAssistant={() => setIsAiAssistantOpen(true)}
+          activeTab={activeTab}
+          onTabChange={(tab) => setActiveTab(tab as typeof activeTab)}
+          activeCategory={activeCategory}
+          onSelectCategory={(cat) => setActiveCategory(cat as typeof activeCategory)}
+        />
+      )}
 
       {/* Main App Content View */}
       <main className="flex-1 pb-10">
@@ -278,13 +303,13 @@ export default function App() {
             onOpenServices={() => setActiveTab('services')}
             onProfileUpdated={(updated) => {
               setUserProfile(updated);
-              setUserPhone(updated.phone);
-              setUserName(updated.name);
+              setUserPhone(updated.phone || null);
+              setUserName(updated.name || '');
             }}
             onLogout={() => {
               setUserProfile(null);
               setUserPhone(null);
-              setUserName('Kolkata Customer');
+              setUserName('');
               setActiveTab('home');
             }}
           />
@@ -373,16 +398,22 @@ export default function App() {
       <AuthModal
         isOpen={isAuthModalOpen}
         onClose={() => setIsAuthModalOpen(false)}
+        onOpenTerms={() => setActiveTab('terms')}
+        onOpenPrivacy={() => setActiveTab('privacy')}
         onAuthSuccess={(phone, name, email) => {
-          setUserPhone(phone);
-          setUserName(name);
+          const photo = auth.currentUser?.photoURL || safeGetItem('giriraj_user_photo') || undefined;
           const prof: UserProfile = {
-            phone,
-            name,
+            id: auth.currentUser?.uid,
+            phone: phone || '',
+            name: name || '',
             email: email || '',
-            dob: userProfile?.dob || ''
+            emailVerified: Boolean(email),
+            photoURL: photo,
+            dob: userProfile?.dob || safeGetItem('giriraj_user_dob') || ''
           };
           setUserProfile(prof);
+          setUserPhone(phone || null);
+          setUserName(name || '');
           setActiveTab('profile');
         }}
       />

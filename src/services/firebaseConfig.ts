@@ -5,6 +5,8 @@ import {
   GoogleAuthProvider,
   signOut,
   onAuthStateChanged,
+  browserLocalPersistence,
+  setPersistence,
   User as FirebaseUser
 } from 'firebase/auth';
 import {
@@ -34,6 +36,10 @@ const app = initializeApp(firebaseConfig);
 // CRITICAL: Must supply firestoreDatabaseId
 export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
 export const auth = getAuth(app);
+// Set browser local persistence for resilient auth session
+if (typeof window !== 'undefined') {
+  setPersistence(auth, browserLocalPersistence).catch(() => {});
+}
 export const googleProvider = new GoogleAuthProvider();
 
 // Standard Firestore Error Handling conforming to FirestoreErrorInfo
@@ -363,17 +369,17 @@ export const USER_CASHBACK_BALANCE_KEY = 'giriraj_user_cashback_balance';
 
 // User Profile & Phone Authentication helpers
 export function getSavedUserProfile(): UserProfile | null {
-  const phone = localStorage.getItem(USER_PHONE_KEY) || '';
-  const name = localStorage.getItem(USER_NAME_KEY) || (auth.currentUser?.displayName || '');
-  const email = localStorage.getItem(USER_EMAIL_KEY) || auth.currentUser?.email || '';
-  const photoURL = localStorage.getItem(USER_PHOTO_KEY) || auth.currentUser?.photoURL || '';
-  const dob = localStorage.getItem(USER_DOB_KEY) || '';
-  const emailVerified = localStorage.getItem(USER_EMAIL_VERIFIED_KEY) === 'true' || !!auth.currentUser?.emailVerified;
-  const refundBalance = Number(localStorage.getItem(USER_REFUND_BALANCE_KEY)) || 0;
-  const cashbackBalance = Number(localStorage.getItem(USER_CASHBACK_BALANCE_KEY)) || 0;
+  const phone = safeGetItem(USER_PHONE_KEY) || '';
+  const name = safeGetItem(USER_NAME_KEY) || (auth.currentUser?.displayName || '');
+  const email = safeGetItem(USER_EMAIL_KEY) || auth.currentUser?.email || '';
+  const photoURL = safeGetItem(USER_PHOTO_KEY) || auth.currentUser?.photoURL || '';
+  const dob = safeGetItem(USER_DOB_KEY) || '';
+  const emailVerified = safeGetItem(USER_EMAIL_VERIFIED_KEY) === 'true' || !!auth.currentUser?.emailVerified;
+  const refundBalance = Number(safeGetItem(USER_REFUND_BALANCE_KEY)) || 0;
+  const cashbackBalance = Number(safeGetItem(USER_CASHBACK_BALANCE_KEY)) || 0;
   const walletBalance = refundBalance + cashbackBalance;
 
-  if (!phone && !email && !name && !auth.currentUser) return null;
+  if (!phone && !email && (!name || name === 'Kolkata Customer') && !auth.currentUser) return null;
   return {
     id: auth.currentUser?.uid,
     phone: phone || auth.currentUser?.phoneNumber || '',
@@ -398,14 +404,14 @@ export function saveUserProfile(data: {
   refundBalance?: number;
   cashbackBalance?: number;
 }): void {
-  if (data.phone !== undefined) localStorage.setItem(USER_PHONE_KEY, data.phone);
-  if (data.name !== undefined) localStorage.setItem(USER_NAME_KEY, data.name);
-  if (data.email !== undefined) localStorage.setItem(USER_EMAIL_KEY, data.email);
-  if (data.photoURL !== undefined) localStorage.setItem(USER_PHOTO_KEY, data.photoURL);
-  if (data.dob !== undefined) localStorage.setItem(USER_DOB_KEY, data.dob);
-  if (data.emailVerified !== undefined) localStorage.setItem(USER_EMAIL_VERIFIED_KEY, String(data.emailVerified));
-  if (data.refundBalance !== undefined) localStorage.setItem(USER_REFUND_BALANCE_KEY, String(data.refundBalance));
-  if (data.cashbackBalance !== undefined) localStorage.setItem(USER_CASHBACK_BALANCE_KEY, String(data.cashbackBalance));
+  if (data.phone !== undefined) safeSetItem(USER_PHONE_KEY, data.phone);
+  if (data.name !== undefined) safeSetItem(USER_NAME_KEY, data.name);
+  if (data.email !== undefined) safeSetItem(USER_EMAIL_KEY, data.email);
+  if (data.photoURL !== undefined) safeSetItem(USER_PHOTO_KEY, data.photoURL);
+  if (data.dob !== undefined) safeSetItem(USER_DOB_KEY, data.dob);
+  if (data.emailVerified !== undefined) safeSetItem(USER_EMAIL_VERIFIED_KEY, String(data.emailVerified));
+  if (data.refundBalance !== undefined) safeSetItem(USER_REFUND_BALANCE_KEY, String(data.refundBalance));
+  if (data.cashbackBalance !== undefined) safeSetItem(USER_CASHBACK_BALANCE_KEY, String(data.cashbackBalance));
 
   if (auth.currentUser) {
     const updatePayload: Record<string, unknown> = {
@@ -427,15 +433,15 @@ export function saveUserProfile(data: {
 }
 
 export function clearUserProfile(): void {
-  localStorage.removeItem(USER_PHONE_KEY);
-  localStorage.removeItem(USER_NAME_KEY);
-  localStorage.removeItem(USER_EMAIL_KEY);
-  localStorage.removeItem(USER_PHOTO_KEY);
-  localStorage.removeItem(USER_DOB_KEY);
-  localStorage.removeItem(USER_EMAIL_VERIFIED_KEY);
-  localStorage.removeItem(USER_WALLET_BALANCE_KEY);
-  localStorage.removeItem(USER_REFUND_BALANCE_KEY);
-  localStorage.removeItem(USER_CASHBACK_BALANCE_KEY);
+  safeRemoveItem(USER_PHONE_KEY);
+  safeRemoveItem(USER_NAME_KEY);
+  safeRemoveItem(USER_EMAIL_KEY);
+  safeRemoveItem(USER_PHOTO_KEY);
+  safeRemoveItem(USER_DOB_KEY);
+  safeRemoveItem(USER_EMAIL_VERIFIED_KEY);
+  safeRemoveItem(USER_WALLET_BALANCE_KEY);
+  safeRemoveItem(USER_REFUND_BALANCE_KEY);
+  safeRemoveItem(USER_CASHBACK_BALANCE_KEY);
 }
 
 // Google Sign-In helper via Firebase Auth Popup
@@ -445,14 +451,14 @@ export async function signInWithGoogle(): Promise<FirebaseUser | null> {
     if (result.user) {
       const displayName = result.user.displayName || 'Customer';
       const email = result.user.email || '';
-      const phone = result.user.phoneNumber || localStorage.getItem(USER_PHONE_KEY) || '';
+      const phone = result.user.phoneNumber || safeGetItem(USER_PHONE_KEY) || '';
       const photoURL = result.user.photoURL || '';
 
-      localStorage.setItem(USER_NAME_KEY, displayName);
-      if (email) localStorage.setItem(USER_EMAIL_KEY, email);
-      if (phone) localStorage.setItem(USER_PHONE_KEY, phone);
-      if (photoURL) localStorage.setItem(USER_PHOTO_KEY, photoURL);
-      localStorage.setItem(USER_EMAIL_VERIFIED_KEY, 'true');
+      safeSetItem(USER_NAME_KEY, displayName);
+      if (email) safeSetItem(USER_EMAIL_KEY, email);
+      if (phone) safeSetItem(USER_PHONE_KEY, phone);
+      if (photoURL) safeSetItem(USER_PHOTO_KEY, photoURL);
+      safeSetItem(USER_EMAIL_VERIFIED_KEY, 'true');
 
       // Save/update user doc in Firestore
       await setDoc(doc(db, 'users', result.user.uid), {
