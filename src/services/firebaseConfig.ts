@@ -99,10 +99,40 @@ export async function testFirestoreConnection(): Promise<boolean> {
 }
 testFirestoreConnection();
 
+// Safe LocalStorage helpers for SSR / sandboxed iframe environments
+export function safeGetItem(key: string): string | null {
+  try {
+    return typeof window !== 'undefined' && window.localStorage ? localStorage.getItem(key) : null;
+  } catch (e) {
+    console.warn(`Error reading from localStorage key "${key}":`, e);
+    return null;
+  }
+}
+
+export function safeSetItem(key: string, value: string): void {
+  try {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      localStorage.setItem(key, value);
+    }
+  } catch (e) {
+    console.warn(`Error writing to localStorage key "${key}":`, e);
+  }
+}
+
+export function safeRemoveItem(key: string): void {
+  try {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      localStorage.removeItem(key);
+    }
+  } catch (e) {
+    console.warn(`Error removing from localStorage key "${key}":`, e);
+  }
+}
+
 // Clear legacy demo storage if present
 try {
-  localStorage.removeItem('giriraj_orders_v1');
-  localStorage.removeItem('giriraj_orders');
+  safeRemoveItem('giriraj_orders_v1');
+  safeRemoveItem('giriraj_orders');
 } catch (e) {
   // ignore in SSR or restricted iframe
 }

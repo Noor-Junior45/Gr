@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { X, ArrowLeft, ShieldCheck, ArrowRight, RefreshCw, Smartphone, Sparkles, CheckCircle2 } from 'lucide-react';
-import { saveUserProfile, signInWithGoogle } from '../services/firebaseConfig';
+import { saveUserProfile, signInWithGoogle, safeGetItem, safeSetItem, safeRemoveItem } from "../services/firebaseConfig";
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -125,12 +125,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     try {
       const user = await signInWithGoogle();
       if (user) {
-        const phoneVal = user.phoneNumber || localStorage.getItem('giriraj_user_phone') || '';
+        const phoneVal = user.phoneNumber || safeGetItem('giriraj_user_phone') || '';
         const nameVal = user.displayName || 'Customer';
         const emailVal = user.email || '';
         const photoVal = user.photoURL || undefined;
         saveUserProfile({ phone: phoneVal, name: nameVal, email: emailVal, photoURL: photoVal, emailVerified: true });
-        onAuthSuccess(phoneVal || '+91 98300 00000', nameVal, emailVal);
+        onAuthSuccess(phoneVal || '', nameVal, emailVal);
         onClose();
       }
     } catch (e: unknown) {

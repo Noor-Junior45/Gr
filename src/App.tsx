@@ -26,7 +26,6 @@ import { Header } from './components/Header';
 import { LocationModal } from './components/LocationModal';
 import { AuthModal } from './components/AuthModal';
 import { ProfileView } from './components/ProfileView';
-import { CategoryChips, CategoryFilterType } from './components/CategoryChips';
 import { ProductCard } from './components/ProductCard';
 import { ProductDetailModal } from './components/ProductDetailModal';
 import { WiringServices } from './components/WiringServices';
@@ -45,13 +44,14 @@ import {
   auth
 } from './services/firebaseConfig';
 import { onAuthStateChanged } from 'firebase/auth';
+import { safeGetItem, safeSetItem, safeRemoveItem } from "./services/firebaseConfig";
 
 export default function App() {
   // State Management
   const [currentArea, setCurrentArea] = useState<KolkataArea>(KOLKATA_AREAS[3]); // Default: Salt Lake Sector V
   const [activeSavedAddress, setActiveSavedAddress] = useState<SavedAddress | null>(() => {
     try {
-      const stored = localStorage.getItem(ACTIVE_SAVED_ADDRESS_KEY);
+      const stored = safeGetItem(ACTIVE_SAVED_ADDRESS_KEY);
       if (stored) {
         return JSON.parse(stored);
       }
@@ -61,7 +61,7 @@ export default function App() {
     return null;
   });
   const [activeTab, setActiveTab] = useState<'home' | 'catalog' | 'services' | 'orders' | 'profile' | 'cart' | 'privacy' | 'terms'>('home');
-  const [activeCategory, setActiveCategory] = useState<CategoryFilterType>('all');
+  const [activeCategory, setActiveCategory] = useState<string>('all');
   const [subCategoryFilter, setSubCategoryFilter] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   
@@ -94,11 +94,11 @@ export default function App() {
 
     const unsubAuth = onAuthStateChanged(auth, (fbUser) => {
       if (fbUser) {
-        const phone = fbUser.phoneNumber || localStorage.getItem('giriraj_user_phone') || '';
-        const name = fbUser.displayName || localStorage.getItem('giriraj_user_name') || '';
-        const email = fbUser.email || localStorage.getItem('giriraj_user_email') || '';
-        const photoURL = fbUser.photoURL || localStorage.getItem('giriraj_user_photo') || undefined;
-        const dob = localStorage.getItem('giriraj_user_dob') || '';
+        const phone = fbUser.phoneNumber || safeGetItem('giriraj_user_phone') || '';
+        const name = fbUser.displayName || safeGetItem('giriraj_user_name') || '';
+        const email = fbUser.email || safeGetItem('giriraj_user_email') || '';
+        const photoURL = fbUser.photoURL || safeGetItem('giriraj_user_photo') || undefined;
+        const dob = safeGetItem('giriraj_user_dob') || '';
         const prof: UserProfile = {
           id: fbUser.uid,
           phone,
@@ -227,33 +227,12 @@ export default function App() {
         onOpenAiAssistant={() => setIsAiAssistantOpen(true)}
         activeTab={activeTab}
         onTabChange={(tab) => setActiveTab(tab as typeof activeTab)}
+        activeCategory={activeCategory}
+        onSelectCategory={(cat) => setActiveCategory(cat as typeof activeCategory)}
       />
 
-      {/* Top Filter & Navigation Bar (Hidden on Profile & Cart tabs) */}
-      {activeTab !== 'profile' && activeTab !== 'cart' && (
-        <CategoryChips
-          activeCategory={activeCategory}
-          onSelectCategory={(cat) => {
-            setActiveCategory(cat);
-            if (cat === 'services') {
-              setActiveTab('services');
-            } else if (activeTab === 'services' || activeTab === 'orders' || activeTab === 'cart' || activeTab === 'profile') {
-              setActiveTab('home');
-            }
-          }}
-          subCategoryFilter={subCategoryFilter}
-          onSelectSubCategory={setSubCategoryFilter}
-          activeTab={activeTab}
-          onTabChange={(tab) => {
-            setActiveTab(tab as typeof activeTab);
-          }}
-          onOpenLocationModal={() => setIsLocationModalOpen(true)}
-          onOpenCalculator={() => setActiveTab('services')}
-        />
-      )}
-
       {/* Main App Content View */}
-      <main className="flex-1 pb-24">
+      <main className="flex-1 pb-10">
         
         {/* VIEW 1: CART & CHECKOUT DEDICATED FULL-PAGE TAB */}
         {activeTab === 'cart' ? (
@@ -338,7 +317,12 @@ export default function App() {
         ) : (
           // VIEW 7: HOME / QUICK-COMMERCE CATALOG
           <div className="max-w-7xl mx-auto px-3 sm:px-6 py-6 space-y-6">
-            {filteredProducts.length > 0 && (
+            {activeTab === 'home' && activeCategory === 'all' && !searchQuery ? (
+              <div className="text-center py-20">
+                <h2 className="text-2xl font-medium text-slate-800 mb-2">Home Page Coming Soon</h2>
+                <p className="text-slate-500">We are currently designing our new home page. Please browse our categories above.</p>
+              </div>
+            ) : filteredProducts.length > 0 ? (
               <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-5">
                 {filteredProducts.map((product) => {
                   const cartItem = cartItems.find((i) => i.product.id === product.id);
@@ -354,6 +338,10 @@ export default function App() {
                   );
                 })}
               </div>
+            ) : (
+              <div className="text-center py-20">
+                <p className="text-slate-500">No products found in this category.</p>
+              </div>
             )}
           </div>
         )}
@@ -367,80 +355,6 @@ export default function App() {
           onOpenTerms={() => setActiveTab('terms')}
         />
       )}
-
-      {/* Fixed Bottom Navigation Bar (Visible on all devices) */}
-      <nav className="fixed bottom-0 inset-x-0 bg-white/95 backdrop-blur-md border-t border-slate-200 py-2 px-3 sm:px-6 z-40 shadow-xl">
-        <div className="max-w-2xl mx-auto flex items-center justify-around">
-          
-          {/* Home Tab */}
-          <button
-            onClick={() => {
-              setActiveTab('home');
-              setActiveCategory('all');
-            }}
-            className={`flex flex-col items-center py-1 px-3 rounded-xl transition-all cursor-pointer ${
-              activeTab === 'home' && activeCategory === 'all'
-                ? 'text-yellow-600 font-extrabold bg-yellow-50'
-                : 'text-slate-500 hover:text-slate-900'
-            }`}
-          >
-            <Home className="w-5 h-5" />
-            <span className="text-[10px] sm:text-xs mt-0.5">Home</span>
-          </button>
-
-          {/* Catalog Tab */}
-          <button
-            onClick={() => {
-              setActiveTab('home');
-              setActiveCategory('electrical');
-            }}
-            className={`flex flex-col items-center py-1 px-3 rounded-xl transition-all cursor-pointer ${
-              activeCategory === 'electrical' && activeTab === 'home'
-                ? 'text-yellow-600 font-extrabold bg-yellow-50'
-                : 'text-slate-500 hover:text-slate-900'
-            }`}
-          >
-            <Grid className="w-5 h-5" />
-            <span className="text-[10px] sm:text-xs mt-0.5">Catalog</span>
-          </button>
-
-          {/* Wiring Services Tab */}
-          <button
-            onClick={() => setActiveTab('services')}
-            className={`flex flex-col items-center py-1 px-3 rounded-xl transition-all cursor-pointer ${
-              activeTab === 'services'
-                ? 'text-yellow-600 font-extrabold bg-yellow-50'
-                : 'text-slate-500 hover:text-slate-900'
-            }`}
-          >
-            <Wrench className="w-5 h-5" />
-            <span className="text-[10px] sm:text-xs mt-0.5 whitespace-nowrap">Wiring Services</span>
-          </button>
-
-          {/* Cart Tab (Only here) */}
-          <button
-            onClick={() => setActiveTab('cart')}
-            className={`flex flex-col items-center py-1 px-3 rounded-xl transition-all relative cursor-pointer ${
-              activeTab === 'cart'
-                ? 'text-yellow-700 font-extrabold bg-yellow-100 ring-1 ring-yellow-400'
-                : 'text-slate-700 hover:text-slate-900 font-bold'
-            }`}
-          >
-            <div className="relative">
-              <ShoppingBag className="w-5 h-5" />
-              {cartCount > 0 && (
-                <span className="absolute -top-1.5 -right-2.5 bg-yellow-400 text-slate-950 text-[9px] font-black w-4 h-4 rounded-full flex items-center justify-center shadow-xs">
-                  {cartCount}
-                </span>
-              )}
-            </div>
-            <span className="text-[10px] sm:text-xs mt-0.5 whitespace-nowrap">
-              {cartCount === 0 ? 'Cart' : `₹${cartTotal.toLocaleString('en-IN')}`}
-            </span>
-          </button>
-
-        </div>
-      </nav>
 
       {/* Modals & Slide-Overs */}
       <LocationModal

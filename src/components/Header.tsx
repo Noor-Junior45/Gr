@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ShoppingBag, User, ChevronDown, Home, Briefcase, Building2, MapPin } from 'lucide-react';
+import { Zap, ShoppingBag, User, ChevronDown, Home, Briefcase, Building2, MapPin, Grid, Wrench, AlertTriangle } from 'lucide-react';
 import { KolkataArea, SavedAddress } from '../types';
 
 interface HeaderProps {
@@ -19,6 +19,8 @@ interface HeaderProps {
   onOpenAiAssistant?: () => void;
   activeTab: string;
   onTabChange: (tab: string) => void;
+  activeCategory: string;
+  onSelectCategory: (cat: string) => void;
   onOpenWishlist?: () => void;
 }
 
@@ -59,7 +61,9 @@ export const Header: React.FC<HeaderProps> = ({
   userPhoto,
   onOpenAuth,
   activeTab,
-  onTabChange
+  onTabChange,
+  activeCategory,
+  onSelectCategory
 }) => {
   const [imgError, setImgError] = useState(false);
   const locationInfo = getHeaderDisplayLocation(currentArea, activeAddress);
@@ -143,7 +147,9 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
 
           {/* Right Action Icons: Cart Button beside Profile Button */}
-          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+          <div className="flex items-center gap-2 sm:gap-4 shrink-0">
+            {/* Desktop Navigation Tabs (Hidden on mobile) */}
+
             {/* Cart Button */}
             <button
               id="top-navbar-cart-btn"
@@ -202,6 +208,69 @@ export const Header: React.FC<HeaderProps> = ({
               )}
             </button>
           </div>
+        </div>
+      </div>
+      {/* Navigation Tabs (Scrollable, centered) */}
+      <div className="border-t border-slate-100 bg-white">
+        <div className="flex items-center justify-center gap-4 px-3 overflow-x-auto no-scrollbar">
+           <button
+             onClick={() => {
+               onTabChange('home');
+               onSelectCategory('all');
+             }}
+             className={`flex items-center gap-1.5 py-3 px-2 whitespace-nowrap transition-all cursor-pointer border-b-2 font-medium ${
+               activeTab === 'home' && activeCategory === 'all'
+                 ? 'border-yellow-600 text-yellow-600'
+                 : 'border-transparent text-slate-600 hover:text-slate-900 hover:border-slate-300'
+             }`}
+           >
+             <Home className={`w-4 h-4 ${activeTab === 'home' && activeCategory === 'all' ? 'text-yellow-600' : ''}`} />
+             <span className="text-sm">Home</span>
+           </button>
+
+           <button
+             onClick={() => {
+               onTabChange('home');
+               onSelectCategory('electrical');
+             }}
+             className={`flex items-center gap-1.5 py-3 px-2 whitespace-nowrap transition-all cursor-pointer border-b-2 font-medium ${
+               activeTab === 'home' && activeCategory === 'electrical'
+                 ? 'border-yellow-600 text-yellow-600'
+                 : 'border-transparent text-slate-600 hover:text-slate-900 hover:border-slate-300'
+             }`}
+           >
+             <Zap className={`w-4 h-4 ${activeTab === 'home' && activeCategory === 'electrical' ? 'text-yellow-600' : ''}`} />
+             <span className="text-sm">Electrical</span>
+           </button>
+
+           <button
+             onClick={() => {
+               onTabChange('home');
+               onSelectCategory('construction');
+             }}
+             className={`flex items-center gap-1.5 py-3 px-2 whitespace-nowrap transition-all cursor-pointer border-b-2 font-medium ${
+               activeTab === 'home' && activeCategory === 'construction'
+                 ? 'border-yellow-600 text-yellow-600'
+                 : 'border-transparent text-slate-600 hover:text-slate-900 hover:border-slate-300'
+             }`}
+           >
+             <Building2 className={`w-4 h-4 ${activeTab === 'home' && activeCategory === 'construction' ? 'text-yellow-600' : ''}`} />
+             <span className="text-sm">Construction</span>
+           </button>
+
+           <button
+             onClick={() => {
+               onTabChange('services');
+             }}
+             className={`flex items-center gap-1.5 py-3 px-2 whitespace-nowrap transition-all cursor-pointer border-b-2 font-medium ${
+               activeTab === 'services'
+                 ? 'border-yellow-600 text-yellow-600'
+                 : 'border-transparent text-slate-600 hover:text-slate-900 hover:border-slate-300'
+             }`}
+           >
+             <Wrench className={`w-4 h-4 ${activeTab === 'services' ? 'text-yellow-600' : ''}`} />
+             <span className="text-sm">Wiring</span>
+           </button>
         </div>
       </div>
     </header>
