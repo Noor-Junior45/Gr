@@ -4,14 +4,15 @@ import {
   Star,
   Zap,
   ShoppingCart,
-  Flashlight,
   ShieldCheck,
   Truck,
   RotateCcw,
   Tag,
   ChevronRight,
+  ChevronLeft,
   ChevronDown,
   ChevronUp,
+  ArrowLeft,
   MapPin,
   CheckCircle2,
   AlertCircle,
@@ -22,7 +23,9 @@ import {
   Camera,
   X,
   Share2,
-  Check
+  Check,
+  HelpCircle,
+  Palette
 } from 'lucide-react';
 import { ElectricalProduct, ProductReview } from '../../types/electrical';
 import {
@@ -33,6 +36,7 @@ import {
 } from '../../services/electricalService';
 import { Product, UserProfile } from '../../types';
 import { supabase } from '../../lib/supabaseClient';
+import { INDIAN_STANDARD_WIRE_COLORS, isWireProduct } from '../../data/wireColors';
 
 interface ProductDetailPageProps {
   onAddToCart: (product: Product) => void;
@@ -57,11 +61,30 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
   const [reviews, setReviews] = useState<ProductReview[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+  const [selectedWireColor, setSelectedWireColor] = useState<string>('Red');
 
   // Zoom on Hover State
   const [isZooming, setIsZooming] = useState(false);
   const [zoomPosition, setZoomPosition] = useState({ x: 0, y: 0 });
   const imageContainerRef = useRef<HTMLDivElement>(null);
+  const thumbnailContainerRef = useRef<HTMLDivElement>(null);
+
+  const scrollThumbnails = (direction: 'prev' | 'next') => {
+    if (!thumbnailContainerRef.current) return;
+    const isMobile = window.innerWidth < 640;
+    const scrollAmount = isMobile ? 160 : 150;
+    if (isMobile) {
+      thumbnailContainerRef.current.scrollBy({
+        left: direction === 'next' ? scrollAmount : -scrollAmount,
+        behavior: 'smooth'
+      });
+    } else {
+      thumbnailContainerRef.current.scrollBy({
+        top: direction === 'next' ? scrollAmount : -scrollAmount,
+        behavior: 'smooth'
+      });
+    }
+  };
 
   // Delivery Pincode Check State
   const [pincode, setPincode] = useState('700091');
@@ -82,6 +105,9 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
   // Reviews Pagination State
   const [visibleReviewsCount, setVisibleReviewsCount] = useState(4);
   const [copiedLink, setCopiedLink] = useState(false);
+
+  // FAQ Accordion State (first item open by default)
+  const [openFaq, setOpenFaq] = useState<number | null>(0);
 
   const reviewsSectionRef = useRef<HTMLDivElement>(null);
 
@@ -125,6 +151,8 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
     };
   }, [id]);
 
+  const isWire = product ? isWireProduct(product) : false;
+
   // Adapt for App's Cart system
   const adaptToCartProduct = (ep: ElectricalProduct): Product => ({
     id: ep.id,
@@ -145,7 +173,8 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
     isEmergency: false,
     specs: typeof ep.specifications?.Specifications === 'object' ? ep.specifications.Specifications : {},
     description: ep.description,
-    tags: [ep.brand, ep.subcategory, 'Electrical']
+    tags: [ep.brand, ep.subcategory, 'Electrical'],
+    selectedColor: isWire ? selectedWireColor : undefined
   });
 
   const cartQty = product
@@ -273,29 +302,51 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
     'https://images.unsplash.com/photo-1558223616-e5d79faebdd6?q=80&w=800&auto=format&fit=crop';
 
   return (
-    <div className="min-h-screen bg-[#f1f3f6] text-slate-900 pb-20 font-sans">
+    <div className="min-h-screen bg-[#f1f3f6] text-slate-900 pb-32 sm:pb-36 font-sans">
       
-      {/* Top Flipkart Breadcrumbs Bar */}
-      <div className="bg-white border-b border-slate-200 shadow-2xs">
+      {/* Breadcrumbs Bar (Starts from Electrical) with Back Arrow Button */}
+      <div className="bg-white border-b border-slate-200 shadow-2xs sticky top-0 sm:static z-30">
         <div className="max-w-7xl mx-auto px-3 sm:px-6 py-2.5 flex items-center justify-between text-xs text-slate-500">
-          <div className="flex items-center gap-1.5 overflow-x-auto whitespace-nowrap scrollbar-none">
-            <Link to="/" className="hover:text-blue-600 font-medium">Home</Link>
-            <ChevronRight className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-            <Link to="/electrical" className="hover:text-blue-600 font-medium">Electrical</Link>
+          <div className="flex items-center gap-2 overflow-x-auto whitespace-nowrap scrollbar-none">
+            <button
+              onClick={() => navigate('/electrical')}
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-yellow-400 hover:text-slate-950 text-slate-800 font-bold transition-all cursor-pointer border border-slate-200 active:scale-95 shrink-0"
+              title="Back to all Electrical Products"
+            >
+              <ArrowLeft className="w-4 h-4 stroke-[2.5]" />
+              <span className="text-xs">Back to List</span>
+            </button>
+
+            <span className="text-slate-300">|</span>
+
+            <Link to="/electrical" className="hover:text-amber-600 font-bold text-slate-900">
+              Electrical
+            </Link>
             <ChevronRight className="w-3.5 h-3.5 text-slate-400 shrink-0" />
             <Link
               to={`/electrical?subcategory=${encodeURIComponent(product.subcategory)}`}
-              className="hover:text-blue-600 font-medium"
+              className="hover:text-amber-600 font-semibold text-slate-700"
             >
               {product.subcategory}
             </Link>
+            {product.brand && (
+              <>
+                <ChevronRight className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                <Link
+                  to={`/electrical?subcategory=${encodeURIComponent(product.subcategory)}&brand=${encodeURIComponent(product.brand)}`}
+                  className="hover:text-amber-600 font-semibold text-slate-700"
+                >
+                  {product.brand}
+                </Link>
+              </>
+            )}
             <ChevronRight className="w-3.5 h-3.5 text-slate-400 shrink-0" />
             <span className="font-bold text-slate-900 truncate max-w-xs">{product.name}</span>
           </div>
 
           <button
             onClick={handleShareProduct}
-            className="hidden sm:flex items-center gap-1.5 text-xs font-bold text-slate-600 hover:text-blue-600 cursor-pointer"
+            className="hidden sm:flex items-center gap-1.5 text-xs font-bold text-slate-600 hover:text-amber-600 cursor-pointer"
           >
             {copiedLink ? <Check className="w-3.5 h-3.5 text-green-600" /> : <Share2 className="w-3.5 h-3.5" />}
             <span>{copiedLink ? 'Link Copied' : 'Share'}</span>
@@ -315,27 +366,86 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
             {/* Gallery Image Display */}
             <div className="flex flex-col-reverse sm:flex-row gap-3">
               
-              {/* Thumbnail Strip */}
+              {/* Thumbnail Strip with Up/Down and Left/Right Scroll Arrows */}
               {product.image_urls.length > 1 && (
-                <div className="flex sm:flex-col gap-2 overflow-x-auto sm:overflow-y-auto sm:max-h-96 pr-1 scrollbar-none">
-                  {product.image_urls.map((imgUrl, idx) => (
+                <div className="flex sm:flex-col items-center justify-center relative select-none">
+                  {/* Desktop Up Scroll Button (shown when 5+ images) */}
+                  {product.image_urls.length >= 5 && (
                     <button
-                      key={idx}
-                      onClick={() => setSelectedImageIndex(idx)}
-                      onMouseEnter={() => setSelectedImageIndex(idx)}
-                      className={`w-14 h-14 sm:w-16 sm:h-16 rounded-md border p-1 bg-slate-50 shrink-0 transition-all cursor-pointer ${
-                        selectedImageIndex === idx
-                          ? 'border-blue-600 ring-2 ring-blue-100'
-                          : 'border-slate-200 hover:border-slate-400'
-                      }`}
+                      type="button"
+                      onClick={() => scrollThumbnails('prev')}
+                      className="hidden sm:flex mb-1 p-1 rounded-full bg-white hover:bg-yellow-400 hover:text-slate-950 text-slate-600 border border-slate-200 shadow-xs transition-all cursor-pointer items-center justify-center z-10 active:scale-90"
+                      title="Scroll previous thumbnails"
+                      aria-label="Scroll previous thumbnails"
                     >
-                      <img
-                        src={imgUrl}
-                        alt={`thumbnail-${idx}`}
-                        className="w-full h-full object-contain"
-                      />
+                      <ChevronUp className="w-4 h-4 stroke-[2.5]" />
                     </button>
-                  ))}
+                  )}
+
+                  {/* Mobile Left Scroll Button (shown when 5+ images) */}
+                  {product.image_urls.length >= 5 && (
+                    <button
+                      type="button"
+                      onClick={() => scrollThumbnails('prev')}
+                      className="sm:hidden absolute left-0 top-1/2 -translate-y-1/2 p-1.5 rounded-full bg-white/95 text-slate-800 border border-slate-200 shadow-md transition-all cursor-pointer z-20 active:scale-90 hover:bg-yellow-400"
+                      title="Scroll left"
+                      aria-label="Scroll left"
+                    >
+                      <ChevronLeft className="w-4 h-4 stroke-[2.5]" />
+                    </button>
+                  )}
+
+                  {/* Scrollable Thumbnails List */}
+                  <div
+                    ref={thumbnailContainerRef}
+                    className="flex sm:flex-col gap-2 overflow-x-auto sm:overflow-y-auto sm:max-h-96 px-6 sm:px-0 py-0.5 sm:py-1 scrollbar-none scroll-smooth"
+                  >
+                    {product.image_urls.map((imgUrl, idx) => (
+                      <button
+                        key={idx}
+                        onClick={() => setSelectedImageIndex(idx)}
+                        onMouseEnter={() => setSelectedImageIndex(idx)}
+                        className={`w-14 h-14 sm:w-16 sm:h-16 rounded-lg border p-1 bg-slate-50 shrink-0 transition-all cursor-pointer relative ${
+                          selectedImageIndex === idx
+                            ? 'border-yellow-500 ring-2 ring-yellow-300 shadow-xs'
+                            : 'border-slate-200 hover:border-slate-400 opacity-85 hover:opacity-100'
+                        }`}
+                        title={`View photo ${idx + 1}`}
+                      >
+                        <img
+                          src={imgUrl}
+                          alt={`thumbnail-${idx}`}
+                          className="w-full h-full object-contain"
+                        />
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Desktop Down Scroll Button (shown when 5+ images) */}
+                  {product.image_urls.length >= 5 && (
+                    <button
+                      type="button"
+                      onClick={() => scrollThumbnails('next')}
+                      className="hidden sm:flex mt-1 p-1 rounded-full bg-white hover:bg-yellow-400 hover:text-slate-950 text-slate-600 border border-slate-200 shadow-xs transition-all cursor-pointer items-center justify-center z-10 active:scale-90"
+                      title="Scroll next thumbnails"
+                      aria-label="Scroll next thumbnails"
+                    >
+                      <ChevronDown className="w-4 h-4 stroke-[2.5]" />
+                    </button>
+                  )}
+
+                  {/* Mobile Right Scroll Button (shown when 5+ images) */}
+                  {product.image_urls.length >= 5 && (
+                    <button
+                      type="button"
+                      onClick={() => scrollThumbnails('next')}
+                      className="sm:hidden absolute right-0 top-1/2 -translate-y-1/2 p-1.5 rounded-full bg-white/95 text-slate-800 border border-slate-200 shadow-md transition-all cursor-pointer z-20 active:scale-90 hover:bg-yellow-400"
+                      title="Scroll right"
+                      aria-label="Scroll right"
+                    >
+                      <ChevronRight className="w-4 h-4 stroke-[2.5]" />
+                    </button>
+                  )}
                 </div>
               )}
 
@@ -372,40 +482,66 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
                   <Zap className="w-3.5 h-3.5 fill-slate-950" />
                   60-Min Kolkata Dispatch
                 </div>
+
+                {/* 100% Genuine Transparent Pill Tag */}
+                <div className="absolute top-3 right-3 bg-white/80 backdrop-blur-md border border-white/60 text-emerald-800 text-[11px] font-black px-3 py-1 rounded-full shadow-xs flex items-center gap-1.5 z-10">
+                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>100% Genuine</span>
+                </div>
               </div>
             </div>
 
-            {/* Action Buttons (Flipkart Yellow Add to Cart & Orange Buy Now) */}
-            <div className="grid grid-cols-2 gap-3 pt-2">
-              <button
-                onClick={() => onAddToCart(adaptToCartProduct(product))}
-                className="py-3.5 px-4 rounded-md bg-yellow-400 hover:bg-yellow-500 text-slate-950 font-black text-sm uppercase tracking-wide flex items-center justify-center gap-2 shadow-xs transition-all cursor-pointer active:scale-98 border border-yellow-500/30"
-              >
-                <ShoppingCart className="w-4 h-4" />
-                <span>Add to Cart {cartQty > 0 && `(${cartQty})`}</span>
-              </button>
+            {/* Floating Action Buttons at Bottom of Screen */}
+            <div className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200/90 shadow-[0_-8px_30px_rgba(0,0,0,0.12)] py-3 px-4 sm:px-6">
+              <div className="max-w-7xl mx-auto flex items-center justify-between gap-3 sm:gap-6">
+                
+                {/* Left Product Quick Info (Shown on tablets and desktop) */}
+                <div className="hidden sm:flex items-center gap-3 min-w-0">
+                  <img
+                    src={product.image}
+                    alt={product.name}
+                    className="w-11 h-11 object-contain rounded-lg border border-slate-200 bg-white p-1 shrink-0"
+                  />
+                  <div className="min-w-0">
+                    <p className="font-bold text-xs text-slate-900 truncate max-w-xs md:max-w-sm">
+                      {product.name}
+                    </p>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <span className="font-black text-sm text-slate-950">
+                        ₹{product.price.toLocaleString('en-IN')}
+                      </span>
+                      {product.mrp && (
+                        <span className="text-[11px] text-slate-400 line-through">
+                          ₹{product.mrp.toLocaleString('en-IN')}
+                        </span>
+                      )}
+                      <span className="text-[11px] font-bold text-emerald-600">
+                        In Stock • Free Ezra St. Dispatch
+                      </span>
+                    </div>
+                  </div>
+                </div>
 
-              <button
-                onClick={() => {
-                  onAddToCart(adaptToCartProduct(product));
-                  onOpenCart();
-                }}
-                className="py-3.5 px-4 rounded-md bg-[#fb641b] hover:bg-[#e85b17] text-white font-black text-sm uppercase tracking-wide flex items-center justify-center gap-2 shadow-sm transition-all cursor-pointer active:scale-98"
-              >
-                <Flashlight className="w-4 h-4" />
-                <span>Buy Now</span>
-              </button>
-            </div>
+                {/* Floating Action Buttons */}
+                <div className="grid grid-cols-2 gap-2.5 sm:gap-3 w-full sm:w-auto sm:min-w-[360px] md:min-w-[400px]">
+                  <button
+                    onClick={() => onAddToCart(adaptToCartProduct(product))}
+                    className="py-3 px-4 rounded-xl bg-yellow-400 hover:bg-yellow-500 text-slate-950 font-black text-xs sm:text-sm uppercase tracking-wide flex items-center justify-center gap-2 shadow-sm transition-all cursor-pointer active:scale-98 border border-yellow-500/40"
+                  >
+                    <ShoppingCart className="w-4 h-4 shrink-0" />
+                    <span>Add to Cart {cartQty > 0 && `(${cartQty})`}</span>
+                  </button>
 
-            {/* Trust Badges */}
-            <div className="grid grid-cols-2 gap-2 pt-3 border-t border-slate-100 text-center text-[10px] font-semibold text-slate-600">
-              <div className="p-2 rounded bg-slate-50 border border-slate-100 flex flex-col items-center gap-1">
-                <ShieldCheck className="w-4 h-4 text-blue-600" />
-                <span>100% Genuine</span>
-              </div>
-              <div className="p-2 rounded bg-slate-50 border border-slate-100 flex flex-col items-center gap-1">
-                <Truck className="w-4 h-4 text-emerald-600" />
-                <span>Ezra St. Hub Dispatch</span>
+                  <button
+                    onClick={() => {
+                      onAddToCart(adaptToCartProduct(product));
+                      onOpenCart();
+                    }}
+                    className="py-3 px-4 rounded-xl bg-[#fb641b] hover:bg-[#e85b17] text-white font-black text-xs sm:text-sm uppercase tracking-wide flex items-center justify-center shadow-sm transition-all cursor-pointer active:scale-98"
+                  >
+                    <span>Buy Now</span>
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -475,6 +611,87 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
                 Inclusive of all taxes • GST invoice available on checkout
               </p>
             </div>
+
+            {/* Wire Colour Options (IS 694 Indian Standards) */}
+            {isWire && (
+              <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-br from-slate-50 to-blue-50/40 border border-slate-200/90 shadow-xs space-y-3">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2">
+                    <div className="w-7 h-7 rounded-lg bg-blue-600 text-white flex items-center justify-center shadow-xs">
+                      <Palette className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h3 className="text-xs sm:text-sm font-black text-slate-900 leading-tight">
+                        Select Wire Colour
+                      </h3>
+                      <p className="text-[11px] text-slate-500 font-medium">
+                        Indian Standard (IS 694 / IS 732) Colour Coding
+                      </p>
+                    </div>
+                  </div>
+                  <span className="text-xs font-black text-blue-800 bg-blue-100/90 px-3 py-1 rounded-full border border-blue-200 shadow-2xs">
+                    Selected: {selectedWireColor}
+                  </span>
+                </div>
+
+                {/* Interactive Colour Swatches Grid */}
+                <div className="grid grid-cols-3 sm:grid-cols-6 gap-2.5 pt-1">
+                  {INDIAN_STANDARD_WIRE_COLORS.map((opt) => {
+                    const isSelected = selectedWireColor === opt.name;
+                    return (
+                      <button
+                        key={opt.name}
+                        type="button"
+                        onClick={() => setSelectedWireColor(opt.name)}
+                        className={`p-2.5 rounded-xl border flex flex-col items-center gap-2 transition-all cursor-pointer text-center relative ${
+                          isSelected
+                            ? 'border-slate-900 bg-white ring-2 ring-slate-900 shadow-md scale-102'
+                            : 'border-slate-200 bg-white hover:border-slate-400 hover:bg-slate-50/80 shadow-2xs'
+                        }`}
+                      >
+                        <div
+                          className={`w-7 h-7 rounded-full flex items-center justify-center border transition-transform ${
+                            isSelected ? 'border-white ring-2 ring-slate-900 scale-110 shadow-sm' : 'border-black/20'
+                          }`}
+                          style={{ backgroundColor: opt.hex }}
+                        >
+                          {isSelected && (
+                            <Check
+                              className={`w-4 h-4 stroke-[3] ${
+                                opt.name === 'White' ? 'text-slate-900' : 'text-white'
+                              }`}
+                            />
+                          )}
+                        </div>
+                        <div className="min-w-0">
+                          <span className="block text-xs font-black text-slate-900 leading-none mb-0.5">
+                            {opt.name}
+                          </span>
+                          <span className="block text-[10px] font-bold text-slate-500 truncate">
+                            {opt.shortRole}
+                          </span>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Selected Color Purpose Banner */}
+                {(() => {
+                  const activeColor = INDIAN_STANDARD_WIRE_COLORS.find(c => c.name === selectedWireColor);
+                  if (!activeColor) return null;
+                  return (
+                    <div className="p-2.5 rounded-xl bg-white border border-blue-100 text-xs text-slate-700 flex items-start gap-2.5 shadow-2xs">
+                      <span className="w-3.5 h-3.5 rounded-full shrink-0 mt-0.5 border border-black/20" style={{ backgroundColor: activeColor.hex }}></span>
+                      <div className="leading-snug">
+                        <span className="font-extrabold text-slate-900">{activeColor.label}:</span>{' '}
+                        <span className="text-slate-600">{activeColor.description}</span>
+                      </div>
+                    </div>
+                  );
+                })()}
+              </div>
+            )}
 
             {/* Available Offers - Replaced with actual Product Discounts */}
             <div className="space-y-2">
@@ -620,6 +837,94 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
               <p className="text-xs text-slate-600 leading-relaxed bg-slate-50 p-4 rounded-xl border border-slate-100">
                 {product.description}
               </p>
+            </div>
+
+            {/* Return Policy Section */}
+            <div className="space-y-3 bg-amber-50/60 border border-amber-200/80 rounded-xl p-4 sm:p-5">
+              <div className="flex items-center gap-2 text-slate-950 font-black text-sm">
+                <RotateCcw className="w-4 h-4 text-amber-600 shrink-0" />
+                <span>Return &amp; Replacement Policy</span>
+              </div>
+              <div className="space-y-2 text-xs text-slate-700 leading-relaxed">
+                <div className="flex items-start gap-2">
+                  <AlertCircle className="w-3.5 h-3.5 text-amber-700 shrink-0 mt-0.5" />
+                  <span>
+                    <strong className="font-bold text-slate-900">Non-Refundable:</strong> All electrical supplies, wires, switches, and components are non-refundable once purchased.
+                  </span>
+                </div>
+                <div className="flex items-start gap-2">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
+                  <span>
+                    <strong className="font-bold text-slate-900">7-Day Replacement Only:</strong> Free instant replacement within 7 days if the product is received damaged, broken, or defective during transit.
+                  </span>
+                </div>
+                <div className="flex items-start gap-2">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
+                  <span>
+                    <strong className="font-bold text-slate-900">Return Eligibility:</strong> The item must be uninstalled, unused, and in its original manufacturer packaging with all seals, labels, and warranty cards intact.
+                  </span>
+                </div>
+                <div className="flex items-start gap-2">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
+                  <span>
+                    <strong className="font-bold text-slate-900">Manufacturer Warranty:</strong> Post-installation defects are fully covered under standard {product.brand} brand warranty support across authorized service centers.
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Frequently Asked Questions (FAQ) */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <h3 className="text-xs font-black uppercase tracking-wider text-slate-900 flex items-center gap-1.5">
+                  <HelpCircle className="w-4 h-4 text-amber-600" />
+                  Frequently Asked Questions
+                </h3>
+                <span className="text-[11px] text-slate-400 font-semibold">4 Questions</span>
+              </div>
+
+              <div className="border border-slate-200 rounded-xl divide-y divide-slate-100 overflow-hidden bg-white shadow-2xs">
+                {[
+                  {
+                    q: `Is this ${product.brand} ${product.subcategory} 100% original and certified?`,
+                    a: `Yes, all ${product.brand} products sold on Giriraj Power are 100% genuine, factory-sealed, and adhere strictly to standard ISI / BIS safety certifications. We source directly from authorized brand distributors.`
+                  },
+                  {
+                    q: 'How fast is delivery to my address in Kolkata?',
+                    a: 'We dispatch immediately from our central Ezra Street electrical market hub in Kolkata. Orders are delivered within minimum 60 minutes or maximum 7 days depending on your specific pin code and order volume.'
+                  },
+                  {
+                    q: 'Will I receive a GST tax invoice with my order?',
+                    a: 'Yes, every order includes a valid GST tax invoice with proper HSN codes and breakdown that you can use for business tax input credits (ITC) and warranty verification.'
+                  },
+                  {
+                    q: 'Can contractors and builders place bulk coil/carton orders?',
+                    a: 'Yes, you can order project-scale bulk quantities directly through the store with special wholesale benefits and site delivery across Kolkata and West Bengal.'
+                  }
+                ].map((faq, idx) => {
+                  const isOpen = openFaq === idx;
+                  return (
+                    <div key={idx} className="transition-colors">
+                      <button
+                        onClick={() => setOpenFaq(isOpen ? null : idx)}
+                        className="w-full p-3.5 sm:p-4 text-left flex items-center justify-between gap-3 hover:bg-slate-50 cursor-pointer font-bold text-xs text-slate-900 transition-colors"
+                      >
+                        <span className="flex-1">{faq.q}</span>
+                        {isOpen ? (
+                          <ChevronUp className="w-4 h-4 text-amber-600 shrink-0" />
+                        ) : (
+                          <ChevronDown className="w-4 h-4 text-slate-400 shrink-0" />
+                        )}
+                      </button>
+                      {isOpen && (
+                        <div className="px-3.5 sm:px-4 pb-4 pt-1 text-xs text-slate-600 leading-relaxed bg-slate-50/70 border-t border-slate-100 animate-in fade-in">
+                          {faq.a}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
             </div>
 
             {/* ========================================================================= */}

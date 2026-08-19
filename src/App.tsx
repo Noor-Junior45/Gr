@@ -40,6 +40,7 @@ import { Footer } from './components/Footer';
 import { LegalView } from './components/LegalViews';
 import { ElectricalListingPage } from './components/electrical/ElectricalListingPage';
 import { ProductDetailPage } from './components/electrical/ProductDetailPage';
+import { ConstructionPage } from './components/ConstructionPage';
 import {
   getSavedUserProfile,
   saveUserProfile,
@@ -197,10 +198,8 @@ export default function App() {
       setSavedAddresses(allAddrs);
     });
 
-    // Auto-sync products to Supabase and load live catalog
-    syncAllProductsToSupabase().then(() => {
-      fetchProductsFromSupabase().then(setProducts).catch(console.warn);
-    }).catch(console.warn);
+    // Load live catalog directly from Supabase (Strict Database Mode)
+    fetchProductsFromSupabase().then(setProducts).catch(console.warn);
 
     return () => {
       unsubAuth();
@@ -220,24 +219,36 @@ export default function App() {
   const cartTotal = cartItems.reduce((acc, item) => acc + (item.product.price * item.quantity), 0);
 
   const handleAddToCart = (product: Product) => {
+    const productCol = product.selectedColor || undefined;
     setCartItems((prev) => {
-      const existing = prev.find((i) => i.product.id === product.id);
+      const existing = prev.find(
+        (i) =>
+          i.product.id === product.id &&
+          (i.selectedColor || i.product.selectedColor) === productCol
+      );
       if (existing) {
         return prev.map((i) =>
-          i.product.id === product.id ? { ...i, quantity: i.quantity + 1 } : i
+          i.product.id === product.id &&
+          (i.selectedColor || i.product.selectedColor) === productCol
+            ? { ...i, quantity: Math.min(100, i.quantity + 1) }
+            : i
         );
       }
-      return [...prev, { product, quantity: 1 }];
+      return [...prev, { product, quantity: 1, selectedColor: productCol }];
     });
   };
 
-  const handleUpdateCartQuantity = (productId: string, delta: number) => {
+  const handleUpdateCartQuantity = (productId: string, delta: number, color?: string) => {
     setCartItems((prev) => {
       return prev
         .map((i) => {
-          if (i.product.id === productId) {
+          const matchColor = color !== undefined ? (i.selectedColor || i.product.selectedColor) === color : true;
+          if (i.product.id === productId && matchColor) {
             const newQty = i.quantity + delta;
-            return newQty > 0 ? { ...i, quantity: newQty } : null;
+            if (newQty <= 0) {
+              return null; // remove from cart when reaching 0
+            }
+            return { ...i, quantity: Math.min(100, newQty) };
           }
           return i;
         })
@@ -245,8 +256,16 @@ export default function App() {
     });
   };
 
-  const handleRemoveCartItem = (productId: string) => {
-    setCartItems((prev) => prev.filter((i) => i.product.id !== productId));
+  const handleRemoveCartItem = (productId: string, color?: string) => {
+    setCartItems((prev) =>
+      prev.filter(
+        (i) =>
+          !(
+            i.product.id === productId &&
+            (color === undefined || (i.selectedColor || i.product.selectedColor) === color)
+          )
+      )
+    );
   };
 
   const handleClearCart = () => {
@@ -259,6 +278,8 @@ export default function App() {
       navigate('/');
     } else if (tab === 'electrical') {
       navigate('/electrical');
+    } else if (tab === 'construction') {
+      navigate('/construction');
     } else if (tab === 'services') {
       navigate('/services');
     } else if (tab === 'orders') {
@@ -278,6 +299,8 @@ export default function App() {
     setActiveCategory(cat);
     if (cat === 'electrical') {
       navigate('/electrical');
+    } else if (cat === 'construction') {
+      navigate('/construction');
     } else {
       navigate('/');
     }
@@ -329,6 +352,7 @@ export default function App() {
             element={
               <ElectricalListingPage
                 onAddToCart={handleAddToCart}
+                onUpdateQuantity={handleUpdateCartQuantity}
                 cartItems={cartItems}
                 onOpenCart={() => navigate('/cart')}
               />
@@ -345,6 +369,18 @@ export default function App() {
                 onOpenCart={() => navigate('/cart')}
                 userProfile={userProfile}
                 onOpenAuth={() => setIsAuthModalOpen(true)}
+              />
+            }
+          />
+
+          {/* DEDICATED CONSTRUCTION MATERIALS PAGE */}
+          <Route
+            path="/construction"
+            element={
+              <ConstructionPage
+                onAddToCart={handleAddToCart}
+                cartItems={cartItems}
+                onOpenCart={() => navigate('/cart')}
               />
             }
           />

@@ -12,6 +12,8 @@ export interface Product {
   reviewsCount: number;
   deliveryMinutes: number;
   image: string;
+  images?: string[];
+  image_urls?: string[];
   inStock: boolean;
   stockCount: number;
   isEmergency: boolean;
@@ -19,11 +21,13 @@ export interface Product {
   specs: { [key: string]: string };
   description: string;
   tags: string[];
+  selectedColor?: string;
 }
 
 export interface CartItem {
   product: Product;
   quantity: number;
+  selectedColor?: string;
 }
 
 export interface WiringServiceBooking {

@@ -665,6 +665,36 @@ export async function createFirestoreOrder(order: Order): Promise<Order> {
     if (error) {
       console.warn('Supabase order insert note:', error.message);
     }
+
+    // Update product stock counts in backend database when items sell
+    if (Array.isArray(order.items) && order.items.length > 0) {
+      for (const item of order.items) {
+        if (!item?.product?.id) continue;
+        try {
+          // Fetch current stock from Supabase products table
+          const { data: prodData } = await supabase
+            .from('products')
+            .select('id, stock_quantity, stock_count')
+            .eq('id', String(item.product.id))
+            .single();
+
+          if (prodData) {
+            const currentStock = Number(prodData.stock_quantity ?? prodData.stock_count ?? 50);
+            const newStock = Math.max(0, currentStock - (item.quantity || 1));
+            await supabase
+              .from('products')
+              .update({
+                stock_quantity: newStock,
+                stock_count: newStock,
+                in_stock: newStock > 0
+              })
+              .eq('id', String(item.product.id));
+          }
+        } catch (stockErr) {
+          console.warn(`Stock decrement note for product ${item.product.id}:`, stockErr);
+        }
+      }
+    }
   } catch (error) {
     console.warn('Order database insert error:', error);
   }
@@ -1000,29 +1030,42 @@ export async function syncAllProductsToSupabase(
 ): Promise<{ success: boolean; count: number; error?: string }> {
   try {
     const productsToSync = customProducts || INITIAL_PRODUCTS;
-    const rows = productsToSync.map((p) => ({
-      id: p.id,
-      name: p.name,
-      brand: p.brand,
-      category: p.category,
-      sub_category: p.subCategory,
-      price: p.price,
-      original_price: p.originalPrice,
-      discount_percentage: p.discountPercentage,
-      unit: p.unit,
-      rating: p.rating,
-      reviews_count: p.reviewsCount,
-      delivery_minutes: p.deliveryMinutes,
-      image: p.image,
-      in_stock: p.inStock,
-      stock_count: p.stockCount,
-      tags: p.tags,
-      is_emergency: p.isEmergency,
-      is_best_seller: !!p.isBestSeller,
-      specs: p.specs,
-      description: p.description,
-      updated_at: new Date().toISOString()
-    }));
+    const rows = productsToSync.map((p) => {
+      const price = Number(p.price || 0);
+      const mrp = Number(p.originalPrice || price);
+      const discount = Number(p.discountPercentage || (mrp > price ? Math.round(((mrp - price) / mrp) * 100) : 0));
+      return {
+        id: String(p.id),
+        name: p.name,
+        brand: p.brand,
+        category: p.category || 'electrical',
+        subcategory: p.subCategory || 'General',
+        sub_category: p.subCategory || 'General',
+        price,
+        mrp,
+        original_price: mrp,
+        discount_percent: discount,
+        discount_percentage: discount,
+        unit: p.unit || '1 pc',
+        rating_avg: p.rating || 4.8,
+        rating: p.rating || 4.8,
+        rating_count: p.reviewsCount || 50,
+        reviews_count: p.reviewsCount || 50,
+        delivery_minutes: p.deliveryMinutes || 30,
+        image: p.image,
+        image_urls: [p.image || 'https://images.unsplash.com/photo-1558223616-e5d79faebdd6?q=80&w=800&auto=format&fit=crop'],
+        in_stock: p.inStock ?? true,
+        stock_quantity: p.stockCount || 50,
+        stock_count: p.stockCount || 50,
+        tags: p.tags || [],
+        is_emergency: !!p.isEmergency,
+        is_best_seller: !!p.isBestSeller,
+        specs: p.specs || {},
+        specifications: p.specs || {},
+        description: p.description || '',
+        updated_at: new Date().toISOString()
+      };
+    });
 
     const { error } = await supabase
       .from('products')
@@ -1042,7 +1085,7 @@ export async function syncAllProductsToSupabase(
 }
 
 /**
- * Fetches live products from Supabase `products` table with fallback to INITIAL_PRODUCTS
+ * Fetches live products strictly from Supabase `products` table (Strict Database Mode)
  */
 export async function fetchProductsFromSupabase(): Promise<Product[]> {
   try {
@@ -1051,33 +1094,34 @@ export async function fetchProductsFromSupabase(): Promise<Product[]> {
       .select('*')
       .order('id', { ascending: true });
 
-    if (!error && data && data.length > 0) {
+    if (!error && data) {
       return data.map((row) => ({
-        id: row.id,
-        name: row.name,
-        brand: row.brand,
+        id: String(row.id),
+        name: row.name || 'Product',
+        brand: row.brand || 'Giriraj Genuine',
         category: row.category || 'electrical',
-        subCategory: row.sub_category || row.subCategory || 'General',
+        subCategory: row.sub_category || row.subcategory || row.subCategory || 'General',
         price: Number(row.price || 0),
-        originalPrice: Number(row.original_price || row.originalPrice || row.price || 0),
+        originalPrice: Number(row.original_price || row.originalPrice || row.mrp || (row.price ? row.price * 1.15 : 0)),
         discountPercentage: Number(row.discount_percentage || row.discountPercentage || 0),
         unit: row.unit || '1 pc',
-        rating: Number(row.rating || 4.8),
-        reviewsCount: Number(row.reviews_count || row.reviewsCount || 50),
+        rating: Number(row.rating || row.rating_avg || 4.8),
+        reviewsCount: Number(row.reviews_count || row.rating_count || 50),
         deliveryMinutes: Number(row.delivery_minutes || row.deliveryMinutes || 30),
-        image: row.image || '',
+        image: row.image || (Array.isArray(row.image_urls) && row.image_urls.length > 0 ? row.image_urls[0] : 'https://images.unsplash.com/photo-1558223616-e5d79faebdd6?q=80&w=800&auto=format&fit=crop'),
         inStock: row.in_stock ?? row.inStock ?? true,
-        stockCount: Number(row.stock_count || row.stockCount || 50),
+        stockCount: Number(row.stock_count || row.stock_quantity || 50),
         tags: row.tags || [],
         isEmergency: !!(row.is_emergency ?? row.isEmergency),
         isBestSeller: !!(row.is_best_seller ?? row.isBestSeller),
-        specs: row.specs || {},
+        specs: row.specs || (typeof row.specifications === 'object' ? row.specifications : {}),
         description: row.description || ''
       }));
     }
   } catch (err) {
-    console.warn('Supabase products fetch fallback:', err);
+    console.warn('Supabase products fetch error:', err);
   }
-  return INITIAL_PRODUCTS;
+
+  return [];
 }
 

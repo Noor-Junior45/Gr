@@ -270,16 +270,16 @@ export const Header: React.FC<HeaderProps> = ({
            <button
              id="nav-tab-construction"
              onClick={() => {
-               onTabChange('home');
+               onTabChange('construction');
                onSelectCategory('construction');
              }}
              className={`flex items-center gap-2 py-3 px-3 sm:px-4 whitespace-nowrap transition-all cursor-pointer border-b-2 font-bold shrink-0 text-sm ${
-               activeCategory === 'construction'
+               activeTab === 'construction' || activeCategory === 'construction'
                  ? 'border-amber-500 text-amber-600'
                  : 'border-transparent text-slate-600 hover:text-slate-900 hover:border-slate-300'
              }`}
            >
-             <Building2 className={`w-4 h-4 ${activeCategory === 'construction' ? 'text-amber-600' : ''}`} />
+             <Building2 className={`w-4 h-4 ${activeTab === 'construction' || activeCategory === 'construction' ? 'text-amber-600' : ''}`} />
              <span>Construction</span>
            </button>
 

@@ -62,7 +62,7 @@ export function transformToElectricalProduct(item: any): ElectricalProduct {
 }
 
 /**
- * Fetch electrical products with real Supabase query + filters + sorting
+ * Fetch electrical products with STRICT Supabase query (Strict Database Mode)
  */
 export async function fetchElectricalProducts(
   filters?: FilterState,
@@ -70,138 +70,87 @@ export async function fetchElectricalProducts(
   searchQuery: string = ''
 ): Promise<{ products: ElectricalProduct[]; total: number }> {
   try {
-    let query = supabase
+    const { data, error } = await supabase
       .from('products')
-      .select('*', { count: 'exact' });
+      .select('*');
 
-    // Category filter: default to Electrical
-    query = query.ilike('category', '%electrical%');
+    if (!error && data) {
+      let productsList = data
+        .filter((row) => {
+          const cat = (row.category || '').toLowerCase();
+          return !cat || cat.includes('electrical') || cat.includes('wire') || cat.includes('cable') || cat.includes('switch');
+        })
+        .map(transformToElectricalProduct);
 
-    if (filters?.subcategories && filters.subcategories.length > 0) {
-      query = query.in('subcategory', filters.subcategories);
-    }
+      // Apply filters
+      if (filters?.subcategories && filters.subcategories.length > 0) {
+        productsList = productsList.filter((p) => filters.subcategories.includes(p.subcategory));
+      }
 
-    if (filters?.brands && filters.brands.length > 0) {
-      query = query.in('brand', filters.brands);
-    }
+      if (filters?.brands && filters.brands.length > 0) {
+        productsList = productsList.filter((p) => filters.brands.includes(p.brand));
+      }
 
-    if (filters?.minPrice !== undefined && filters.minPrice > 0) {
-      query = query.gte('price', filters.minPrice);
-    }
+      if (filters?.minPrice !== undefined && filters.minPrice > 0) {
+        productsList = productsList.filter((p) => p.price >= filters.minPrice!);
+      }
 
-    if (filters?.maxPrice !== undefined && filters.maxPrice > 0) {
-      query = query.lte('price', filters.maxPrice);
-    }
+      if (filters?.maxPrice !== undefined && filters.maxPrice > 0) {
+        productsList = productsList.filter((p) => p.price <= filters.maxPrice!);
+      }
 
-    if (filters?.minRating !== undefined && filters.minRating > 0) {
-      query = query.gte('rating_avg', filters.minRating);
-    }
+      if (filters?.minRating !== undefined && filters.minRating > 0) {
+        productsList = productsList.filter((p) => p.rating_avg >= filters.minRating!);
+      }
 
-    if (filters?.minDiscount !== undefined && filters.minDiscount > 0) {
-      query = query.gte('discount_percent', filters.minDiscount);
-    }
+      if (filters?.minDiscount !== undefined && filters.minDiscount > 0) {
+        productsList = productsList.filter((p) => p.discount_percent >= filters.minDiscount!);
+      }
 
-    if (filters?.inStockOnly) {
-      query = query.gt('stock_quantity', 0);
-    }
+      if (filters?.inStockOnly) {
+        productsList = productsList.filter((p) => p.stock_quantity > 0);
+      }
 
-    if (searchQuery.trim()) {
-      query = query.or(`name.ilike.%${searchQuery}%,brand.ilike.%${searchQuery}%,subcategory.ilike.%${searchQuery}%`);
-    }
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase().trim();
+        productsList = productsList.filter((p) =>
+          p.name.toLowerCase().includes(q) ||
+          p.brand.toLowerCase().includes(q) ||
+          p.subcategory.toLowerCase().includes(q)
+        );
+      }
 
-    // Sort order
-    switch (sort) {
-      case 'price_asc':
-        query = query.order('price', { ascending: true });
-        break;
-      case 'price_desc':
-        query = query.order('price', { ascending: false });
-        break;
-      case 'newest':
-        query = query.order('created_at', { ascending: false });
-        break;
-      case 'rating':
-        query = query.order('rating_avg', { ascending: false });
-        break;
-      case 'popularity':
-      default:
-        query = query.order('rating_count', { ascending: false });
-        break;
-    }
+      // Sort order
+      switch (sort) {
+        case 'price_asc':
+          productsList.sort((a, b) => a.price - b.price);
+          break;
+        case 'price_desc':
+          productsList.sort((a, b) => b.price - a.price);
+          break;
+        case 'newest':
+          productsList.sort((a, b) => (b.created_at || '').localeCompare(a.created_at || ''));
+          break;
+        case 'rating':
+          productsList.sort((a, b) => b.rating_avg - a.rating_avg);
+          break;
+        case 'popularity':
+        default:
+          productsList.sort((a, b) => b.rating_count - a.rating_count);
+          break;
+      }
 
-    const { data, count, error } = await query;
-
-    if (!error && data && data.length > 0) {
-      const transformed = data.map(transformToElectricalProduct);
-      return { products: transformed, total: count ?? transformed.length };
+      return { products: productsList, total: productsList.length };
     }
   } catch (err) {
-    console.warn('Supabase electrical products query fallback:', err);
+    console.warn('Supabase electrical products query error:', err);
   }
 
-  // Fallback to local catalog
-  let localProducts = INITIAL_PRODUCTS
-    .filter((p) => (p.category || '').toLowerCase() === 'electrical')
-    .map(transformToElectricalProduct);
-
-  if (filters?.subcategories && filters.subcategories.length > 0) {
-    localProducts = localProducts.filter((p) => filters.subcategories.includes(p.subcategory));
-  }
-
-  if (filters?.brands && filters.brands.length > 0) {
-    localProducts = localProducts.filter((p) => filters.brands.includes(p.brand));
-  }
-
-  if (filters?.minPrice !== undefined) {
-    localProducts = localProducts.filter((p) => p.price >= filters.minPrice!);
-  }
-
-  if (filters?.maxPrice !== undefined) {
-    localProducts = localProducts.filter((p) => p.price <= filters.maxPrice!);
-  }
-
-  if (filters?.minRating !== undefined) {
-    localProducts = localProducts.filter((p) => p.rating_avg >= filters.minRating!);
-  }
-
-  if (filters?.minDiscount !== undefined) {
-    localProducts = localProducts.filter((p) => p.discount_percent >= filters.minDiscount!);
-  }
-
-  if (searchQuery.trim()) {
-    const q = searchQuery.toLowerCase().trim();
-    localProducts = localProducts.filter((p) =>
-      p.name.toLowerCase().includes(q) ||
-      p.brand.toLowerCase().includes(q) ||
-      p.subcategory.toLowerCase().includes(q)
-    );
-  }
-
-  // Sort
-  switch (sort) {
-    case 'price_asc':
-      localProducts.sort((a, b) => a.price - b.price);
-      break;
-    case 'price_desc':
-      localProducts.sort((a, b) => b.price - a.price);
-      break;
-    case 'newest':
-      localProducts.sort((a, b) => (b.created_at || '').localeCompare(a.created_at || ''));
-      break;
-    case 'rating':
-      localProducts.sort((a, b) => b.rating_avg - a.rating_avg);
-      break;
-    case 'popularity':
-    default:
-      localProducts.sort((a, b) => b.rating_count - a.rating_count);
-      break;
-  }
-
-  return { products: localProducts, total: localProducts.length };
+  return { products: [], total: 0 };
 }
 
 /**
- * Fetch a single electrical product by ID
+ * Fetch a single electrical product by ID (Strict Database Mode)
  */
 export async function fetchElectricalProductById(id: string): Promise<ElectricalProduct | null> {
   try {
@@ -215,13 +164,7 @@ export async function fetchElectricalProductById(id: string): Promise<Electrical
       return transformToElectricalProduct(data);
     }
   } catch (err) {
-    console.warn('Supabase product by id fetch fallback:', err);
-  }
-
-  // Check in INITIAL_PRODUCTS
-  const found = INITIAL_PRODUCTS.find((p) => String(p.id) === String(id));
-  if (found) {
-    return transformToElectricalProduct(found);
+    console.warn('Supabase product by id fetch error:', err);
   }
 
   return null;
@@ -235,25 +178,22 @@ export async function fetchSimilarElectricalProducts(
   subcategory: string,
   limit: number = 6
 ): Promise<ElectricalProduct[]> {
-  try {
-    const { data, error } = await supabase
-      .from('products')
-      .select('*')
-      .ilike('subcategory', `%${subcategory}%`)
-      .neq('id', currentProductId)
-      .limit(limit);
+  const { products } = await fetchElectricalProducts();
 
-    if (!error && data && data.length > 0) {
-      return data.map(transformToElectricalProduct);
-    }
-  } catch (err) {
-    console.warn('Supabase similar products query notice:', err);
+  const sameSub = products.filter(
+    (p) => String(p.id) !== String(currentProductId) && p.subcategory.toLowerCase() === subcategory.toLowerCase()
+  );
+
+  if (sameSub.length >= limit) {
+    return sameSub.slice(0, limit);
   }
 
-  return INITIAL_PRODUCTS
-    .filter((p) => String(p.id) !== String(currentProductId))
-    .slice(0, limit)
-    .map(transformToElectricalProduct);
+  // If fewer than limit in same subcategory, supplement with other electrical products
+  const others = products.filter(
+    (p) => String(p.id) !== String(currentProductId) && p.subcategory.toLowerCase() !== subcategory.toLowerCase()
+  );
+
+  return [...sameSub, ...others].slice(0, limit);
 }
 
 /**

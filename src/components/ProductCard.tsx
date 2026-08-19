@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Minus, Zap, Star, ShieldCheck, Eye, Heart } from 'lucide-react';
+import { Plus, Minus, Zap, Star, ShieldCheck, Eye, Heart, Check } from 'lucide-react';
 import { Product } from '../types';
 import { isProductFavorite, toggleProductFavorite } from '../services/favorites';
+import { INDIAN_STANDARD_WIRE_COLORS, isWireProduct } from '../data/wireColors';
 
 interface ProductCardProps {
   product: Product;
@@ -20,6 +21,10 @@ export const ProductCard: React.FC<ProductCardProps> = ({
 }) => {
   const [isHovered, setIsHovered] = useState(false);
   const [isFav, setIsFav] = useState(() => isProductFavorite(product.id));
+  const isWire = isWireProduct(product);
+  const [selectedWireColor, setSelectedWireColor] = useState<string>(
+    product.selectedColor || (isWire ? 'Red' : '')
+  );
 
   useEffect(() => {
     const handleFavChange = () => {
@@ -33,6 +38,13 @@ export const ProductCard: React.FC<ProductCardProps> = ({
     e.stopPropagation();
     const updatedState = toggleProductFavorite(product.id);
     setIsFav(updatedState);
+  };
+
+  const handleAdd = () => {
+    onAddToCart({
+      ...product,
+      selectedColor: isWire ? selectedWireColor : undefined
+    });
   };
 
   return (
@@ -73,7 +85,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
 
       {/* Image Container with Quick View overlay */}
       <div
-        onClick={() => onOpenQuickView(product)}
+        onClick={() => onOpenQuickView({ ...product, selectedColor: isWire ? selectedWireColor : undefined })}
         className="relative w-full aspect-square bg-slate-50 rounded-xl overflow-hidden mb-3 cursor-pointer flex items-center justify-center"
       >
         <img
@@ -114,7 +126,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
 
           {/* Product Title */}
           <h4
-            onClick={() => onOpenQuickView(product)}
+            onClick={() => onOpenQuickView({ ...product, selectedColor: isWire ? selectedWireColor : undefined })}
             className="text-xs sm:text-sm font-bold text-slate-900 line-clamp-2 leading-snug hover:text-green-700 transition-colors cursor-pointer mb-1"
             title={product.name}
           >
@@ -122,9 +134,51 @@ export const ProductCard: React.FC<ProductCardProps> = ({
           </h4>
 
           {/* Unit / Packaging Details */}
-          <div className="text-[11px] font-semibold text-slate-500 mb-2">
+          <div className="text-[11px] font-semibold text-slate-500 mb-1.5">
             Unit: <span className="text-slate-800">{product.unit}</span>
           </div>
+
+          {/* IS 694 Indian Standard Wire Color Options */}
+          {isWire && (
+            <div className="mb-2.5 pt-1 border-t border-dashed border-slate-100">
+              <div className="flex items-center justify-between text-[10px] font-bold text-slate-600 mb-1.5">
+                <span>Wire Colour (IS 694):</span>
+                <span className="font-extrabold text-slate-900 bg-slate-100 px-1.5 py-0.2 rounded">
+                  {selectedWireColor}
+                </span>
+              </div>
+              <div className="flex items-center gap-1.5 flex-wrap">
+                {INDIAN_STANDARD_WIRE_COLORS.map((opt) => {
+                  const isSelected = selectedWireColor === opt.name;
+                  return (
+                    <button
+                      key={opt.name}
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedWireColor(opt.name);
+                      }}
+                      title={`${opt.label} - ${opt.shortRole}`}
+                      className={`w-5 h-5 rounded-full flex items-center justify-center transition-all cursor-pointer border ${
+                        isSelected
+                          ? 'ring-2 ring-offset-1 ring-slate-900 scale-110 shadow-xs border-white'
+                          : 'border-black/20 hover:scale-105 opacity-85 hover:opacity-100'
+                      }`}
+                      style={{ backgroundColor: opt.hex }}
+                    >
+                      {isSelected && (
+                        <Check
+                          className={`w-3 h-3 stroke-[3] ${
+                            opt.name === 'White' ? 'text-slate-900' : 'text-white'
+                          }`}
+                        />
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Price & Add to Cart Stepper */}
@@ -146,7 +200,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
           <div>
             {quantityInCart === 0 ? (
               <button
-                onClick={() => onAddToCart(product)}
+                onClick={handleAdd}
                 className="px-3 sm:px-4 py-1.5 rounded-xl bg-yellow-400 hover:bg-yellow-500 active:scale-95 text-slate-950 font-black text-xs uppercase tracking-wide transition-all shadow-xs flex items-center gap-1 cursor-pointer border border-yellow-500/30"
               >
                 <span>ADD</span>
@@ -156,8 +210,8 @@ export const ProductCard: React.FC<ProductCardProps> = ({
               <div className="flex items-center bg-yellow-400 text-slate-950 font-black rounded-xl overflow-hidden shadow-xs border border-yellow-500/40">
                 <button
                   onClick={() => onUpdateQuantity(product.id, -1)}
-                  className="px-2.5 py-1.5 hover:bg-yellow-500 transition-colors flex items-center justify-center cursor-pointer"
-                  title="Decrease"
+                  className="px-2.5 py-1.5 hover:bg-yellow-500 transition-colors flex items-center justify-center cursor-pointer active:scale-95"
+                  title="Decrease (reduces to 0)"
                 >
                   <Minus className="w-3 h-3 stroke-[3]" />
                 </button>
@@ -165,9 +219,14 @@ export const ProductCard: React.FC<ProductCardProps> = ({
                   {quantityInCart}
                 </span>
                 <button
-                  onClick={() => onUpdateQuantity(product.id, 1)}
-                  className="px-2.5 py-1.5 hover:bg-yellow-500 transition-colors flex items-center justify-center cursor-pointer"
-                  title="Increase"
+                  onClick={() => {
+                    if (quantityInCart < 100) {
+                      onUpdateQuantity(product.id, 1);
+                    }
+                  }}
+                  disabled={quantityInCart >= 100}
+                  className="px-2.5 py-1.5 hover:bg-yellow-500 transition-colors flex items-center justify-center cursor-pointer active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                  title={quantityInCart >= 100 ? 'Max 100 reached' : 'Increase'}
                 >
                   <Plus className="w-3 h-3 stroke-[3]" />
                 </button>
@@ -179,3 +238,4 @@ export const ProductCard: React.FC<ProductCardProps> = ({
     </div>
   );
 };
+

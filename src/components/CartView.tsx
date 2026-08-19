@@ -15,11 +15,13 @@ import {
   Truck,
   CreditCard,
   Smartphone,
-  Banknote
+  Banknote,
+  Palette
 } from 'lucide-react';
 import { CartItem, KolkataArea, Order, SavedAddress } from '../types';
 import { createFirestoreOrder } from '../services/supabaseService';
 import { sendOrderConfirmationEmail } from '../services/emailService';
+import { INDIAN_STANDARD_WIRE_COLORS } from '../data/wireColors';
 import confetti from 'canvas-confetti';
 
 interface CartViewProps {
@@ -244,54 +246,83 @@ export const CartView: React.FC<CartViewProps> = ({
             </div>
 
             <div className="divide-y divide-slate-100">
-              {items.map((item) => (
-                <div key={item.product.id} className="py-3.5 flex items-center justify-between gap-3 first:pt-0 last:pb-0">
-                  <img
-                    src={item.product.image}
-                    alt={item.product.name}
-                    className="w-16 h-16 rounded-xl object-cover bg-slate-100 border border-slate-200 shrink-0"
-                  />
-                  
-                  <div className="flex-1 min-w-0">
-                    <div className="text-[10px] font-bold text-yellow-700 uppercase tracking-wide">
-                      {item.product.brand} • {item.product.category}
-                    </div>
-                    <h3 className="text-sm font-bold text-slate-900 truncate">
-                      {item.product.name}
-                    </h3>
-                    <div className="text-xs text-slate-500 font-medium mt-0.5">
-                      ₹{item.product.price} / {item.product.unit}
-                    </div>
-                  </div>
+              {items.map((item, idx) => {
+                const chosenColor = item.selectedColor || item.product.selectedColor;
+                const colorMeta = chosenColor ? INDIAN_STANDARD_WIRE_COLORS.find(c => c.name.toLowerCase() === chosenColor.toLowerCase()) : null;
 
-                  {/* Quantity and Line Total */}
-                  <div className="flex flex-col items-end gap-1.5 shrink-0">
-                    <div className="text-sm font-black text-slate-900">
-                      ₹{(item.product.price * item.quantity).toLocaleString('en-IN')}
-                    </div>
+                return (
+                  <div key={`${item.product.id}_${chosenColor || idx}`} className="py-3.5 flex items-center justify-between gap-3 first:pt-0 last:pb-0">
+                    <img
+                      src={item.product.image}
+                      alt={item.product.name}
+                      className="w-16 h-16 rounded-xl object-cover bg-slate-100 border border-slate-200 shrink-0"
+                    />
                     
-                    <div className="flex items-center bg-slate-100 rounded-lg overflow-hidden border border-slate-200">
-                      <button
-                        onClick={() => onUpdateQuantity(item.product.id, -1)}
-                        className="p-1.5 hover:bg-slate-200 text-slate-700 transition-colors"
-                        title="Decrease"
-                      >
-                        <Minus className="w-3.5 h-3.5" />
-                      </button>
-                      <span className="px-2.5 text-xs font-black text-slate-900">
-                        {item.quantity}
-                      </span>
-                      <button
-                        onClick={() => onUpdateQuantity(item.product.id, 1)}
-                        className="p-1.5 hover:bg-slate-200 text-slate-700 transition-colors"
-                        title="Increase"
-                      >
-                        <Plus className="w-3.5 h-3.5" />
-                      </button>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-[10px] font-bold text-yellow-700 uppercase tracking-wide">
+                        {item.product.brand} • {item.product.category}
+                      </div>
+                      <h3 className="text-sm font-bold text-slate-900 truncate">
+                        {item.product.name}
+                      </h3>
+
+                      {/* Wire Colour Variant Pill */}
+                      {chosenColor && (
+                        <div className="mt-1 flex items-center gap-1.5 flex-wrap">
+                          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-slate-100 border border-slate-200 text-[11px] font-bold text-slate-900">
+                            <span
+                              className="w-2.5 h-2.5 rounded-full border border-black/20 shrink-0"
+                              style={{ backgroundColor: colorMeta?.hex || '#dc2626' }}
+                            />
+                            <span>Colour: <strong>{chosenColor}</strong></span>
+                            {colorMeta?.shortRole && (
+                              <span className="text-[10px] text-slate-500 font-semibold">
+                                ({colorMeta.shortRole})
+                              </span>
+                            )}
+                          </span>
+                        </div>
+                      )}
+
+                      <div className="text-xs text-slate-500 font-medium mt-0.5">
+                        ₹{item.product.price} / {item.product.unit}
+                      </div>
+                    </div>
+
+                    {/* Quantity and Line Total */}
+                    <div className="flex flex-col items-end gap-1.5 shrink-0">
+                      <div className="text-sm font-black text-slate-900">
+                        ₹{(item.product.price * item.quantity).toLocaleString('en-IN')}
+                      </div>
+                      
+                      <div className="flex items-center bg-slate-100 rounded-lg overflow-hidden border border-slate-200">
+                        <button
+                          onClick={() => onUpdateQuantity(item.product.id, -1, chosenColor)}
+                          className="p-1.5 hover:bg-slate-200 text-slate-700 transition-colors cursor-pointer active:scale-95"
+                          title="Decrease (reduces to 0)"
+                        >
+                          <Minus className="w-3.5 h-3.5" />
+                        </button>
+                        <span className="px-2.5 text-xs font-black text-slate-900 min-w-[24px] text-center">
+                          {item.quantity}
+                        </span>
+                        <button
+                          onClick={() => {
+                            if (item.quantity < 100) {
+                              onUpdateQuantity(item.product.id, 1, chosenColor);
+                            }
+                          }}
+                          disabled={item.quantity >= 100}
+                          className="p-1.5 hover:bg-slate-200 text-slate-700 transition-colors cursor-pointer active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
+                          title={item.quantity >= 100 ? 'Maximum 100 reached' : 'Increase'}
+                        >
+                          <Plus className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
 
             {/* Quick add items button */}

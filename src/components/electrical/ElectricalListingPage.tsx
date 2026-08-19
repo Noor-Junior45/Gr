@@ -19,10 +19,13 @@ import {
 import { ElectricalProduct, FilterState, SortOption } from '../../types/electrical';
 import { fetchElectricalProducts } from '../../services/electricalService';
 import { Product } from '../../types';
+import { supabase } from '../../lib/supabaseClient';
+import { INDIAN_STANDARD_WIRE_COLORS, isWireProduct } from '../../data/wireColors';
 
 interface ElectricalListingPageProps {
   onAddToCart: (product: Product) => void;
-  cartItems?: { product: Product; quantity: number }[];
+  onUpdateQuantity?: (productId: string, delta: number, color?: string) => void;
+  cartItems?: { product: Product; quantity: number; selectedColor?: string }[];
   onOpenCart?: () => void;
 }
 
@@ -43,6 +46,7 @@ const SORT_LABELS: Record<SortOption, string> = {
 
 export const ElectricalListingPage: React.FC<ElectricalListingPageProps> = ({
   onAddToCart,
+  onUpdateQuantity,
   cartItems = [],
   onOpenCart
 }) => {
@@ -93,21 +97,38 @@ export const ElectricalListingPage: React.FC<ElectricalListingPageProps> = ({
     let isMounted = true;
     setLoading(true);
 
-    fetchElectricalProducts(filters, sortOption, searchQuery)
-      .then(({ products: data, total }) => {
-        if (isMounted) {
-          setProducts(data);
-          setTotalCount(total);
-          setLoading(false);
+    const loadData = () => {
+      fetchElectricalProducts(filters, sortOption, searchQuery)
+        .then(({ products: data, total }) => {
+          if (isMounted) {
+            setProducts(data);
+            setTotalCount(total);
+            setLoading(false);
+          }
+        })
+        .catch((err) => {
+          console.error(err);
+          if (isMounted) setLoading(false);
+        });
+    };
+
+    loadData();
+
+    // Supabase Real-time listener: Auto-update catalog when products change in Supabase
+    const channel = supabase
+      .channel('electrical_products_realtime')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'products' },
+        () => {
+          loadData();
         }
-      })
-      .catch((err) => {
-        console.error(err);
-        if (isMounted) setLoading(false);
-      });
+      )
+      .subscribe();
 
     return () => {
       isMounted = false;
+      supabase.removeChannel(channel);
     };
   }, [filters, sortOption, searchQuery]);
 
@@ -233,25 +254,44 @@ export const ElectricalListingPage: React.FC<ElectricalListingPageProps> = ({
   return (
     <div className="min-h-screen bg-white text-slate-900 pb-20 font-sans">
       
-      {/* 1. BREADCRUMB ROW (Home > Electrical Store > Wire) */}
+      {/* 1. BREADCRUMB ROW (Electrical > Wire > Polycab) */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-5 pb-2">
         <div className="flex items-center gap-2 text-xs text-slate-500 font-medium overflow-x-auto whitespace-nowrap scrollbar-none">
-          <Link to="/" className="hover:text-amber-600 transition-colors">Home</Link>
-          <span className="text-slate-400 font-bold">&gt;</span>
           <Link
             to="/electrical"
             onClick={() => {
-              setFilters((prev) => ({ ...prev, subcategories: [] }));
+              setFilters((prev) => ({ ...prev, subcategories: [], brands: [] }));
               setSearchParams({});
             }}
-            className={`hover:text-amber-600 transition-colors ${filters.subcategories.length === 0 ? 'text-slate-900 font-bold' : ''}`}
+            className={`hover:text-amber-600 transition-colors ${
+              filters.subcategories.length === 0 && filters.brands.length === 0
+                ? 'text-slate-900 font-bold'
+                : 'text-slate-700 font-semibold'
+            }`}
           >
-            Electrical Store
+            electrical
           </Link>
+
           {filters.subcategories.length === 1 && (
             <>
               <span className="text-slate-400 font-bold">&gt;</span>
-              <span className="font-bold text-slate-900">{filters.subcategories[0]}</span>
+              <button
+                onClick={() => {
+                  setFilters((prev) => ({ ...prev, brands: [] }));
+                }}
+                className={`hover:text-amber-600 transition-colors cursor-pointer ${
+                  filters.brands.length === 0 ? 'text-slate-900 font-bold' : 'text-slate-700 font-medium'
+                }`}
+              >
+                {filters.subcategories[0].toLowerCase()}
+              </button>
+            </>
+          )}
+
+          {filters.brands.length === 1 && (
+            <>
+              <span className="text-slate-400 font-bold">&gt;</span>
+              <span className="font-bold text-slate-900">{filters.brands[0].toLowerCase()}</span>
             </>
           )}
         </div>
@@ -586,6 +626,23 @@ export const ElectricalListingPage: React.FC<ElectricalListingPageProps> = ({
                           </span>
                         )}
                       </div>
+
+                      {/* Wire Standard Colours Indicator */}
+                      {isWireProduct(adapted) && (
+                        <div className="mt-2 pt-1 border-t border-dashed border-slate-100 flex items-center justify-between gap-1">
+                          <span className="text-[10px] font-bold text-slate-500">IS 694 Colours:</span>
+                          <div className="flex items-center gap-1">
+                            {INDIAN_STANDARD_WIRE_COLORS.map(c => (
+                              <span
+                                key={c.name}
+                                title={`${c.name} (${c.shortRole})`}
+                                className="w-2.5 h-2.5 rounded-full border border-black/20"
+                                style={{ backgroundColor: c.hex }}
+                              />
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
 
                     {/* Delivery Tags matching Reference Image */}
@@ -618,21 +675,32 @@ export const ElectricalListingPage: React.FC<ElectricalListingPageProps> = ({
                           <button
                             onClick={(e) => {
                               e.preventDefault();
-                              // Call onAddToCart or pass a custom decrease if needed
+                              if (onUpdateQuantity) {
+                                onUpdateQuantity(adapted.id, -1);
+                              }
                             }}
-                            className="p-1 hover:bg-yellow-500 rounded cursor-pointer"
+                            className="p-1 hover:bg-yellow-500 rounded cursor-pointer transition-colors active:scale-95"
+                            title="Decrease quantity (goes to 0)"
                           >
-                            <Minus className="w-3.5 h-3.5" />
+                            <Minus className="w-3.5 h-3.5 stroke-[2.5]" />
                           </button>
                           <span className="text-xs font-black px-2">{cartQty} in cart</span>
                           <button
                             onClick={(e) => {
                               e.preventDefault();
-                              onAddToCart(adapted);
+                              if (cartQty < 100) {
+                                if (onUpdateQuantity) {
+                                  onUpdateQuantity(adapted.id, 1);
+                                } else {
+                                  onAddToCart(adapted);
+                                }
+                              }
                             }}
-                            className="p-1 hover:bg-yellow-500 rounded cursor-pointer"
+                            disabled={cartQty >= 100}
+                            className="p-1 hover:bg-yellow-500 rounded cursor-pointer transition-colors active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                            title={cartQty >= 100 ? 'Maximum limit of 100 reached' : 'Increase quantity'}
                           >
-                            <Plus className="w-3.5 h-3.5" />
+                            <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
                           </button>
                         </div>
                       ) : (
