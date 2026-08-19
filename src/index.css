@@ -11,6 +11,10 @@
   h1, h2, h3, h4, .font-display {
     font-family: 'Outfit', 'Plus Jakarta Sans', sans-serif;
   }
+
+  .font-bodoni {
+    font-family: 'Bodoni Moda', 'Libre Bodoni', 'Bodoni MT', 'Didot', 'Didot LT STD', 'Hoefler Text', 'Garamond', 'Times New Roman', serif;
+  }
 }
 
 /* Hide scrollbar for clean horizontal product & category sliders */

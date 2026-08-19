@@ -60,7 +60,7 @@ class AudioNotifier {
     }
   }
 
-  // Urgent loud alert for Emergency 30-min orders or Admin panel mode
+  // Urgent loud alert for Emergency orders or Admin panel mode
   public playUrgentAlert() {
     try {
       this.initCtx();

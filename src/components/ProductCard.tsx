@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
-import { Plus, Minus, Zap, Star, ShieldCheck, Eye } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Plus, Minus, Zap, Star, ShieldCheck, Eye, Heart } from 'lucide-react';
 import { Product } from '../types';
+import { isProductFavorite, toggleProductFavorite } from '../services/favorites';
 
 interface ProductCardProps {
   product: Product;
@@ -18,6 +19,21 @@ export const ProductCard: React.FC<ProductCardProps> = ({
   onOpenQuickView
 }) => {
   const [isHovered, setIsHovered] = useState(false);
+  const [isFav, setIsFav] = useState(() => isProductFavorite(product.id));
+
+  useEffect(() => {
+    const handleFavChange = () => {
+      setIsFav(isProductFavorite(product.id));
+    };
+    window.addEventListener('giriraj_favorites_changed', handleFavChange);
+    return () => window.removeEventListener('giriraj_favorites_changed', handleFavChange);
+  }, [product.id]);
+
+  const handleFavoriteClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const updatedState = toggleProductFavorite(product.id);
+    setIsFav(updatedState);
+  };
 
   return (
     <div
@@ -25,18 +41,34 @@ export const ProductCard: React.FC<ProductCardProps> = ({
       onMouseLeave={() => setIsHovered(false)}
       className="bg-white rounded-2xl border border-slate-200 hover:border-yellow-400 hover:shadow-lg transition-all duration-200 flex flex-col justify-between overflow-hidden relative group p-3 sm:p-4"
     >
-      {/* Top Badges: Delivery Time & Discount */}
+      {/* Top Badges: Delivery Time, Discount & Favorite Heart */}
       <div className="flex items-center justify-between gap-1 mb-2">
-        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-green-50 text-green-700 text-[10px] sm:text-[11px] font-extrabold border border-green-200">
-          <Zap className="w-3 h-3 text-green-600 fill-green-600" />
-          <span>{product.deliveryMinutes} MINS</span>
-        </span>
-
-        {product.discountPercentage > 0 && (
-          <span className="px-1.5 py-0.5 rounded bg-yellow-400 text-slate-950 text-[10px] sm:text-[11px] font-extrabold">
-            {product.discountPercentage}% OFF
+        <div className="flex items-center gap-1">
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-green-50 text-green-700 text-[10px] sm:text-[11px] font-extrabold border border-green-200">
+            <Zap className="w-3 h-3 text-green-600 fill-green-600" />
+            <span>60 Mins – 7 Days</span>
           </span>
-        )}
+
+          {product.discountPercentage > 0 && (
+            <span className="px-1.5 py-0.5 rounded bg-yellow-400 text-slate-950 text-[10px] sm:text-[11px] font-extrabold">
+              {product.discountPercentage}% OFF
+            </span>
+          )}
+        </div>
+
+        {/* Favorite Heart Button */}
+        <button
+          type="button"
+          onClick={handleFavoriteClick}
+          className={`p-1.5 rounded-full transition-all cursor-pointer ${
+            isFav
+              ? 'bg-pink-50 text-pink-600 hover:bg-pink-100'
+              : 'text-slate-400 hover:text-pink-600 hover:bg-slate-100'
+          }`}
+          title={isFav ? 'Remove from favourites' : 'Add to favourites'}
+        >
+          <Heart className={`w-4 h-4 ${isFav ? 'fill-pink-500 text-pink-500' : ''}`} />
+        </button>
       </div>
 
       {/* Image Container with Quick View overlay */}

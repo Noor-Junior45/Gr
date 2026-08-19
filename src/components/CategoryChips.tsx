@@ -64,7 +64,7 @@ export const CategoryChips: React.FC<CategoryChipsProps> = ({
     },
     {
       id: 'emergency',
-      label: '30-Min Emergency',
+      label: 'Emergency Express',
       icon: AlertTriangle,
       action: () => {
         if (onTabChange) onTabChange('home');

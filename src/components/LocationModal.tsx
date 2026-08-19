@@ -239,6 +239,108 @@ export const LocationModal: React.FC<LocationModalProps> = ({
     }
   };
 
+  // Instantly apply current location / area without filling details
+  const handleUseCurrentLocationDirectly = (areaToUse?: KolkataArea, streetToUse?: string) => {
+    const area = areaToUse || matchedArea;
+    const street = streetToUse || detectedStreet || area.exactStreet || area.name;
+
+    try {
+      localStorage.removeItem(ACTIVE_SAVED_ADDRESS_KEY);
+      localStorage.setItem('giriraj_active_address', street);
+    } catch (e) {
+      console.error(e);
+    }
+
+    const appliedArea: KolkataArea = {
+      ...area,
+      exactStreet: street
+    };
+
+    onSelectArea(appliedArea, undefined);
+    onClose();
+  };
+
+  // Trigger high-precision GPS Current Location fetch and use directly without filling details
+  const handleFetchAndUseInstantLocation = () => {
+    setGpsLoading(true);
+
+    if (!navigator.geolocation) {
+      setGpsLoading(false);
+      const defaultArea = KOLKATA_AREAS[3]; // Sector V
+      handleUseCurrentLocationDirectly(defaultArea, defaultArea.exactStreet || defaultArea.name);
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        setGpsLoading(false);
+        const lat = pos.coords.latitude;
+        const lng = pos.coords.longitude;
+        setPinCoordinates({ lat, lng });
+
+        let resolvedStreet = '';
+        let matched = KOLKATA_AREAS[0];
+
+        try {
+          const res = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`,
+            { headers: { 'Accept-Language': 'en' } }
+          );
+          if (res.ok) {
+            const data = await res.json();
+            if (data && data.address) {
+              const addr = data.address;
+              const road = addr.road || addr.street || addr.pedestrian || addr.footway || '';
+              const suburb = addr.suburb || addr.neighbourhood || addr.residential || addr.quarter || addr.city_district || '';
+              const building = addr.building || addr.amenity || addr.shop || '';
+              const postcode = addr.postcode || '';
+              const parts = [building, road, suburb].filter(Boolean);
+              resolvedStreet = parts.join(', ') || data.display_name?.split(',').slice(0, 3).join(', ');
+
+              let minDistance = Number.MAX_VALUE;
+              KOLKATA_AREAS.forEach((a) => {
+                if (a.pincode && postcode && a.pincode === postcode) {
+                  matched = a;
+                  minDistance = 0;
+                } else if (a.lat && a.lng) {
+                  const dist = Math.hypot(a.lat - lat, a.lng - lng);
+                  if (dist < minDistance) {
+                    minDistance = dist;
+                    matched = a;
+                  }
+                }
+              });
+            }
+          }
+        } catch {
+          // Fallback to hub match
+        }
+
+        if (!resolvedStreet) {
+          let minDistance = Number.MAX_VALUE;
+          KOLKATA_AREAS.forEach((a) => {
+            if (a.lat && a.lng) {
+              const dist = Math.hypot(a.lat - lat, a.lng - lng);
+              if (dist < minDistance) {
+                minDistance = dist;
+                matched = a;
+              }
+            }
+          });
+          resolvedStreet = matched.exactStreet || matched.name;
+        }
+
+        handleUseCurrentLocationDirectly(matched, resolvedStreet);
+      },
+      () => {
+        setGpsLoading(false);
+        const fallback = KOLKATA_AREAS[3];
+        handleUseCurrentLocationDirectly(fallback, fallback.exactStreet || fallback.name);
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+    );
+  };
+
   // Trigger high-precision GPS Current Location fetch and proceed to Step 2
   const handleEnableCurrentLocation = () => {
     setGpsLoading(true);
@@ -474,7 +576,7 @@ export const LocationModal: React.FC<LocationModalProps> = ({
               </h2>
               {step === 'details_form' && (
                 <p className="text-[11px] text-slate-500 mt-0.5 font-medium">
-                  Add house name &amp; flat for express 60-min delivery
+                  Add house name &amp; flat for delivery (60 Mins – 7 Days)
                 </p>
               )}
               {step === 'map_pin' && (
@@ -553,99 +655,130 @@ export const LocationModal: React.FC<LocationModalProps> = ({
               </div>
             )}
 
-            {/* "Use My Current Location" Card (Exact design matching user's screenshot) */}
-            <div className="p-4 rounded-2xl bg-slate-50/90 border border-slate-200/80 flex items-center justify-between gap-3 shadow-2xs">
+            {/* "Use My Current Location" Card with Direct and Map Options */}
+            <div className="p-4 rounded-2xl bg-gradient-to-r from-pink-50/90 via-slate-50/90 to-amber-50/70 border border-slate-200/90 space-y-3 shadow-2xs">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-pink-50 flex items-center justify-center shrink-0">
+                <div className="w-10 h-10 rounded-full bg-pink-100/90 flex items-center justify-center shrink-0">
                   <LocateFixed className={`w-5 h-5 text-[#e91e63] ${gpsLoading ? 'animate-spin' : ''}`} />
                 </div>
                 <div>
-                  <div className="text-xs sm:text-sm font-black text-[#e91e63] leading-tight">
-                    Use My Current Location
+                  <div className="text-xs sm:text-sm font-black text-slate-900 leading-tight">
+                    Current Location
                   </div>
                   <div className="text-[11px] text-slate-500 font-medium leading-tight mt-0.5">
-                    Enable your current location for better services
+                    Fast delivery (60 Mins – 7 Days for bulk stock) across Kolkata
                   </div>
                 </div>
               </div>
 
-              <button
-                type="button"
-                onClick={handleEnableCurrentLocation}
-                disabled={gpsLoading}
-                className="px-4 py-1.5 rounded-xl border border-[#e91e63] text-[#e91e63] hover:bg-[#e91e63] hover:text-white text-xs font-bold transition-all cursor-pointer shrink-0 disabled:opacity-50"
-              >
-                {gpsLoading ? 'Locating...' : 'Enable'}
-              </button>
+              {/* Two quick options: Use Current Location (without filling details) OR Pin on Map */}
+              <div className="grid grid-cols-2 gap-2 pt-0.5">
+                <button
+                  type="button"
+                  onClick={handleFetchAndUseInstantLocation}
+                  disabled={gpsLoading}
+                  className="py-2.5 px-2.5 rounded-xl bg-[#e91e63] hover:bg-[#d81b60] text-white text-xs font-black transition-all cursor-pointer flex items-center justify-center gap-1.5 shadow-xs active:scale-95 disabled:opacity-50 text-center"
+                  title="Deliver directly to current GPS without filling forms"
+                >
+                  <LocateFixed className={`w-3.5 h-3.5 shrink-0 ${gpsLoading ? 'animate-spin' : ''}`} />
+                  <span className="truncate">{gpsLoading ? 'Locating...' : 'Use Current Location'}</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleEnableCurrentLocation}
+                  disabled={gpsLoading}
+                  className="py-2.5 px-2.5 rounded-xl border border-pink-300 bg-white hover:bg-pink-50 text-[#e91e63] text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 active:scale-95 disabled:opacity-50 text-center"
+                  title="Open map to pinpoint or customize house details"
+                >
+                  <MapPin className="w-3.5 h-3.5 shrink-0" />
+                  <span className="truncate">Pin on Map</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Quick Choose Saved Location Bar */}
+            <div className="flex items-center justify-between px-1">
+              <span className="text-xs font-black text-slate-800 uppercase tracking-wider">
+                Saved Locations {savedAddresses.length > 0 ? `(${savedAddresses.length})` : ''}
+              </span>
+              {savedAddresses.length === 0 && (
+                <button
+                  type="button"
+                  onClick={() => setStep('details_form')}
+                  className="text-xs font-bold text-pink-600 hover:text-pink-700 cursor-pointer"
+                >
+                  + Add New Address
+                </button>
+              )}
             </div>
 
             {/* If user has saved addresses in database: Show them here */}
-            {savedAddresses.length > 0 && (
-              <div className="pt-2">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs font-black text-slate-800 uppercase tracking-wider">
-                    Saved Addresses ({savedAddresses.length})
-                  </span>
-                </div>
-
-                <div className="space-y-2">
-                  {savedAddresses.map((addr) => {
-                    const isSelected = activeAddress?.id === addr.id;
-                    return (
-                      <div
-                        key={addr.id}
-                        onClick={() => handleSelectSavedAddress(addr)}
-                        className={`p-3.5 rounded-2xl border transition-all cursor-pointer flex items-start justify-between gap-3 ${
-                          isSelected
-                            ? 'border-pink-500 bg-pink-50/40 ring-1 ring-pink-400 shadow-2xs'
-                            : 'border-slate-200 hover:border-slate-300 bg-white hover:bg-slate-50/80'
-                        }`}
-                      >
-                        <div className="flex items-start gap-3 overflow-hidden">
-                          <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 mt-0.5 ${
-                            isSelected ? 'bg-pink-100 text-pink-700' : 'bg-slate-100 text-slate-700'
-                          }`}>
-                            {getTagIcon(addr.tag)}
-                          </div>
-                          <div className="overflow-hidden">
-                            <div className="flex items-center gap-2">
-                              <span className="text-xs sm:text-sm font-black text-slate-900">
-                                {addr.houseName}
-                              </span>
-                              <span className="text-[10px] font-bold text-slate-500 bg-slate-100 px-1.5 py-0.2 rounded-md">
-                                {getTagLabel(addr)}
-                              </span>
-                              {isSelected && (
-                                <span className="text-[9px] font-black uppercase tracking-wider bg-pink-500 text-white px-1.5 py-0.2 rounded-md">
-                                  Selected
-                                </span>
-                              )}
-                            </div>
-                            <div className="text-xs font-medium text-slate-600 line-clamp-1 mt-0.5">
-                              {addr.houseFlat}, {addr.buildingRoad}
-                            </div>
-                            <div className="text-[11px] text-slate-500 mt-0.5 truncate">
-                              {addr.area.name} (PIN {addr.area.pincode})
-                              {addr.landmark && ` • Near ${addr.landmark}`}
-                            </div>
-                          </div>
+            {savedAddresses.length > 0 ? (
+              <div className="space-y-2">
+                {savedAddresses.map((addr) => {
+                  const isSelected = activeAddress?.id === addr.id;
+                  return (
+                    <div
+                      key={addr.id}
+                      onClick={() => handleSelectSavedAddress(addr)}
+                      className={`p-3.5 rounded-2xl border transition-all cursor-pointer flex items-start justify-between gap-3 ${
+                        isSelected
+                          ? 'border-pink-500 bg-pink-50/40 ring-1 ring-pink-400 shadow-2xs'
+                          : 'border-slate-200 hover:border-slate-300 bg-white hover:bg-slate-50/80'
+                      }`}
+                    >
+                      <div className="flex items-start gap-3 overflow-hidden">
+                        <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 mt-0.5 ${
+                          isSelected ? 'bg-pink-100 text-pink-700' : 'bg-slate-100 text-slate-700'
+                        }`}>
+                          {getTagIcon(addr.tag)}
                         </div>
-
-                        <div className="flex items-center gap-1.5 shrink-0 self-center">
-                          <button
-                            type="button"
-                            onClick={(e) => handleDeleteAddress(addr.id, e)}
-                            className="p-1 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
-                            title="Delete address"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                          {isSelected && <Check className="w-4 h-4 text-pink-600 shrink-0" />}
+                        <div className="overflow-hidden">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs sm:text-sm font-black text-slate-900">
+                              {addr.houseName}
+                            </span>
+                            <span className="text-[10px] font-bold text-slate-500 bg-slate-100 px-1.5 py-0.2 rounded-md">
+                              {getTagLabel(addr)}
+                            </span>
+                            {isSelected && (
+                              <span className="text-[9px] font-black uppercase tracking-wider bg-pink-500 text-white px-1.5 py-0.2 rounded-md">
+                                Selected
+                              </span>
+                            )}
+                          </div>
+                          <div className="text-xs font-medium text-slate-600 line-clamp-1 mt-0.5">
+                            {addr.houseFlat}, {addr.buildingRoad}
+                          </div>
+                          <div className="text-[11px] text-slate-500 mt-0.5 truncate">
+                            {addr.area.name} (PIN {addr.area.pincode})
+                            {addr.landmark && ` • Near ${addr.landmark}`}
+                          </div>
                         </div>
                       </div>
-                    );
-                  })}
-                </div>
+
+                      <div className="flex items-center gap-1.5 shrink-0 self-center">
+                        <button
+                          type="button"
+                          onClick={(e) => handleDeleteAddress(addr.id, e)}
+                          className="p-1 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
+                          title="Delete address"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                        {isSelected && <Check className="w-4 h-4 text-pink-600 shrink-0" />}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="p-4 rounded-2xl border border-dashed border-slate-200 text-center space-y-1 bg-slate-50/50">
+                <p className="text-xs font-bold text-slate-700">No saved addresses yet</p>
+                <p className="text-[11px] text-slate-500">
+                  Select your current location above or search any Kolkata locality.
+                </p>
               </div>
             )}
 
@@ -867,14 +1000,39 @@ export const LocationModal: React.FC<LocationModalProps> = ({
                 </div>
               </div>
 
-              <button
-                type="button"
-                onClick={handleProceedToDetails}
-                className="w-full py-3.5 px-4 rounded-2xl bg-[#e91e63] hover:bg-[#d81b60] text-white font-black text-sm tracking-tight flex items-center justify-center gap-2 cursor-pointer transition-all shadow-md active:scale-[0.99]"
-              >
-                <span>Continue</span>
-                <ChevronRight className="w-4 h-4 text-white" />
-              </button>
+              {/* Action Buttons: 1. Use Current Location (Direct), 2. Add Details, 3. Choose Saved */}
+              <div className="space-y-2 pt-1">
+                <button
+                  type="button"
+                  onClick={() => handleUseCurrentLocationDirectly()}
+                  className="w-full py-3.5 px-4 rounded-2xl bg-[#e91e63] hover:bg-[#d81b60] text-white font-black text-sm tracking-tight flex items-center justify-center gap-2 cursor-pointer transition-all shadow-md active:scale-[0.99]"
+                  title="Deliver directly to this location without filling address forms"
+                >
+                  <LocateFixed className="w-4 h-4" />
+                  <span>Use Current Location</span>
+                </button>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={handleProceedToDetails}
+                    className="py-2.5 px-3 rounded-xl border border-slate-300 hover:border-slate-400 bg-white text-slate-800 font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer transition-all hover:bg-slate-50 active:scale-[0.99]"
+                    title="Enter house name, flat number and save address"
+                  >
+                    <span>Add House Details</span>
+                    <ChevronRight className="w-3.5 h-3.5 text-slate-500" />
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setStep('zepto_home')}
+                    className="py-2.5 px-3 rounded-xl border border-slate-300 hover:border-slate-400 bg-white text-slate-800 font-bold text-xs flex items-center justify-center gap-1.5 cursor-pointer transition-all hover:bg-slate-50 active:scale-[0.99]"
+                    title="Switch to saved addresses or search other areas"
+                  >
+                    <span>Choose Saved Location</span>
+                  </button>
+                </div>
+              </div>
             </div>
 
           </div>

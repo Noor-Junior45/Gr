@@ -35,9 +35,10 @@ import {
   Smartphone,
   Loader2,
   FileText,
-  Lock
+  Lock,
+  Heart
 } from 'lucide-react';
-import { Order, SavedAddress, UserProfile, CartItem, WalletTransaction } from '../types';
+import { Order, SavedAddress, UserProfile, CartItem, WalletTransaction, Product } from '../types';
 import { LegalView } from './LegalViews';
 import {
   saveUserProfile,
@@ -48,6 +49,8 @@ import {
   deleteUpiFromFirestore
 } from '../services/firebaseConfig';
 import { WIRING_SERVICES } from '../data/services';
+import { INITIAL_PRODUCTS } from '../data/products';
+import { getFavoriteProductIds, toggleProductFavorite, clearAllFavorites } from '../services/favorites';
 
 interface ProfileViewProps {
   userProfile: UserProfile | null;
@@ -61,6 +64,7 @@ interface ProfileViewProps {
   onOpenServices: () => void;
   onProfileUpdated: (updated: UserProfile) => void;
   onLogout: () => void;
+  onAddToCart?: (product: Product) => void;
 }
 
 export const ProfileView: React.FC<ProfileViewProps> = ({
@@ -74,12 +78,31 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
   onOpenShop,
   onOpenServices,
   onProfileUpdated,
-  onLogout
+  onLogout,
+  onAddToCart
 }) => {
-  // Current active sub-page view: 'main' | 'orders' | 'addresses' | 'payments' | 'wallet' | 'services' | 'membership' | 'help' | 'notifications' | 'privacy' | 'terms'
+  // Current active sub-page view: 'main' | 'orders' | 'addresses' | 'payments' | 'wallet' | 'services' | 'membership' | 'help' | 'notifications' | 'privacy' | 'terms' | 'favorites'
   const [subPage, setSubPage] = useState<
-    'main' | 'orders' | 'addresses' | 'payments' | 'wallet' | 'services' | 'membership' | 'help' | 'notifications' | 'privacy' | 'terms'
+    'main' | 'orders' | 'addresses' | 'payments' | 'wallet' | 'services' | 'membership' | 'help' | 'notifications' | 'privacy' | 'terms' | 'favorites'
   >('main');
+
+  // Favorites state
+  const [favoriteProductIds, setFavoriteProductIds] = useState<string[]>(() => getFavoriteProductIds());
+
+  useEffect(() => {
+    const handleFavsChanged = () => {
+      setFavoriteProductIds(getFavoriteProductIds());
+    };
+    window.addEventListener('giriraj_favorites_changed', handleFavsChanged);
+    return () => window.removeEventListener('giriraj_favorites_changed', handleFavsChanged);
+  }, []);
+
+  const handleToggleFavorite = (productId: string) => {
+    toggleProductFavorite(productId);
+    setFavoriteProductIds(getFavoriteProductIds());
+  };
+
+  const favoriteProducts = INITIAL_PRODUCTS.filter((p) => favoriteProductIds.includes(p.id));
 
   // Edit Profile Modal
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -641,18 +664,6 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
             </button>
             <h1 className="text-lg font-black text-slate-900">Saved Payment Modes</h1>
           </div>
-          {savedUpi.length > 0 && !showAddUpi && (
-            <button
-              onClick={() => {
-                setShowAddUpi(true);
-                setUpiError(null);
-              }}
-              className="flex items-center gap-1.5 text-xs font-black text-indigo-700 bg-indigo-50 hover:bg-indigo-100 px-3 py-1.5 rounded-full transition-colors cursor-pointer"
-            >
-              <Plus className="w-4 h-4" />
-              <span>Add UPI ID</span>
-            </button>
-          )}
         </div>
 
         <div className="max-w-2xl mx-auto p-4 sm:p-6 space-y-6">
@@ -965,74 +976,21 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
   // -------------------------------------------------------------
   if (subPage === 'services') {
     return (
-      <div className="min-h-screen bg-slate-50 text-slate-900 pb-20">
-        <div className="bg-white border-b border-slate-200 px-4 py-3.5 flex items-center gap-3 shadow-2xs">
+      <div className="min-h-screen bg-white text-black pb-20">
+        <div className="border-b border-slate-200 px-4 py-3.5 flex items-center gap-3">
           <button
             onClick={() => setSubPage('main')}
-            className="p-1.5 rounded-full hover:bg-slate-100 text-slate-700 transition-colors cursor-pointer"
+            className="p-1.5 rounded-full hover:bg-slate-100 text-black transition-colors cursor-pointer"
             title="Back to Profile"
           >
             <ArrowLeft className="w-5 h-5" />
           </button>
-          <h1 className="text-lg font-black text-slate-900">Licensed Electricians &amp; Wiring Services</h1>
         </div>
 
-        <div className="max-w-4xl mx-auto p-4 sm:p-6 space-y-4">
-          <div className="bg-amber-400/20 backdrop-blur-xs border border-amber-300/60 text-slate-900 rounded-2xl p-5 shadow-xs flex items-center justify-between">
-            <div>
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-[10px] font-black uppercase tracking-wider bg-slate-900 text-amber-300 px-2 py-0.5 rounded">
-                  Verified Kolkata Electricians
-                </span>
-                <span className="text-[10px] font-extrabold uppercase tracking-wider bg-amber-500/20 text-amber-900 border border-amber-400/50 px-2 py-0.5 rounded-full flex items-center gap-1">
-                  <Sparkles className="w-3 h-3 text-amber-600" />
-                  <span>Coming Soon</span>
-                </span>
-              </div>
-              <h2 className="text-base font-black mt-2 text-slate-900">Book Licensed Technicians in 60 Mins</h2>
-              <p className="text-xs font-medium text-slate-700 mt-0.5 leading-relaxed">
-                Full residential wiring, MCB board repair, inverter setup, and load calculation. On-demand technician booking is launching soon across Kolkata!
-              </p>
-            </div>
-            <div className="w-12 h-12 rounded-2xl bg-amber-400/25 border border-amber-300/60 flex items-center justify-center shrink-0 ml-3">
-              <Wrench className="w-6 h-6 text-amber-700" />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {WIRING_SERVICES.map((srv) => (
-              <div
-                key={srv.id}
-                className="bg-white rounded-2xl p-5 border border-slate-200 shadow-2xs hover:border-slate-300 transition-all flex flex-col justify-between"
-              >
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="px-2 py-0.5 rounded bg-slate-900 text-amber-300 text-[10px] font-extrabold uppercase">
-                      {srv.badge}
-                    </span>
-                    <span className="text-sm font-black text-slate-900">₹{srv.basePrice}</span>
-                  </div>
-                  <h3 className="font-bold text-slate-900 text-sm mb-1">{srv.title}</h3>
-                  <p className="text-xs text-slate-600 leading-relaxed">{srv.shortDesc}</p>
-                </div>
-
-                <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between">
-                  <span className="text-[11px] text-emerald-700 font-bold flex items-center gap-1">
-                    <CheckCircle2 className="w-3.5 h-3.5" />
-                    <span>Includes 30-Day Guarantee</span>
-                  </span>
-                  <button
-                    onClick={() => {
-                      setSubPage('help');
-                    }}
-                    className="px-3.5 py-1.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-black rounded-xl cursor-pointer"
-                  >
-                    Book Now
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
+        <div className="py-24 flex items-center justify-center">
+          <h1 className="text-2xl sm:text-3xl font-medium text-black">
+            Coming Soon
+          </h1>
         </div>
       </div>
     );
@@ -1108,38 +1066,70 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
         </div>
 
         <div className="max-w-2xl mx-auto p-4 sm:p-6 space-y-4">
-          <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-2xs space-y-3">
-            <h3 className="text-sm font-extrabold text-slate-900">Kolkata Central Support Desk</h3>
-            <p className="text-xs text-slate-600">
-              Need assistance with your 60-min delivery, wire measurements, GST tax invoices, or technician bookings?
-            </p>
+          <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-2xs space-y-4">
+            <div>
+              <h3 className="text-sm font-extrabold text-slate-900">Kolkata Central Support Desk</h3>
+              <p className="text-xs text-slate-600 mt-0.5">
+                Need assistance with your 60-min express delivery, wire measurements, GST tax invoices, contractor requests, or technician bookings?
+              </p>
+            </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {/* 1. Business WhatsApp Support */}
               <a
-                href="tel:+919830577889"
-                className="flex items-center gap-3 p-3.5 rounded-xl bg-amber-50 hover:bg-amber-100 border border-amber-200 text-slate-900 transition-colors"
-              >
-                <div className="w-9 h-9 rounded-lg bg-amber-400 text-black flex items-center justify-center shrink-0">
-                  <Phone className="w-4 h-4" />
-                </div>
-                <div>
-                  <p className="text-xs font-black">Call Central Hub</p>
-                  <p className="text-[11px] text-slate-600">+91 98305 77889</p>
-                </div>
-              </a>
-
-              <a
-                href="https://wa.me/919830577889?text=Hi%20Giriraj%20Power,%20I%20need%20help%20with%20my%20order"
+                href="https://wa.me/message/COQKKO7B7UOVM1"
                 target="_blank"
                 rel="noreferrer"
                 className="flex items-center gap-3 p-3.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-slate-900 transition-colors"
               >
-                <div className="w-9 h-9 rounded-lg bg-emerald-500 text-white flex items-center justify-center shrink-0">
+                <div className="w-9 h-9 rounded-lg bg-emerald-500 text-white flex items-center justify-center shrink-0 shadow-2xs">
                   <MessageSquare className="w-4 h-4" />
                 </div>
                 <div>
-                  <p className="text-xs font-black">WhatsApp Chat</p>
-                  <p className="text-[11px] text-emerald-800">Instant Reply in 2 mins</p>
+                  <p className="text-xs font-black text-emerald-950">Chat on WhatsApp</p>
+                  <p className="text-[11px] text-emerald-700 font-semibold">+91 87774 00280 (Instant)</p>
+                </div>
+              </a>
+
+              {/* 2. Business Support Phone */}
+              <a
+                href="tel:+918777400280"
+                className="flex items-center gap-3 p-3.5 rounded-xl bg-amber-50 hover:bg-amber-100 border border-amber-200 text-slate-900 transition-colors"
+              >
+                <div className="w-9 h-9 rounded-lg bg-amber-400 text-black flex items-center justify-center shrink-0 shadow-2xs">
+                  <Phone className="w-4 h-4" />
+                </div>
+                <div>
+                  <p className="text-xs font-black text-slate-900">Business Help Center</p>
+                  <p className="text-[11px] text-slate-600 font-semibold">+91 87774 00280</p>
+                </div>
+              </a>
+
+              {/* 3. Contractor & Technician Helpline */}
+              <a
+                href="tel:+919007168561"
+                className="flex items-center gap-3 p-3.5 rounded-xl bg-blue-50 hover:bg-blue-100 border border-blue-200 text-slate-900 transition-colors"
+              >
+                <div className="w-9 h-9 rounded-lg bg-blue-600 text-white flex items-center justify-center shrink-0 shadow-2xs">
+                  <Phone className="w-4 h-4" />
+                </div>
+                <div>
+                  <p className="text-xs font-black text-slate-900">Contractor Helpline</p>
+                  <p className="text-[11px] text-blue-700 font-semibold">+91 90071 68561</p>
+                </div>
+              </a>
+
+              {/* 4. Alternative Support Line */}
+              <a
+                href="tel:+919874569712"
+                className="flex items-center gap-3 p-3.5 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-900 transition-colors"
+              >
+                <div className="w-9 h-9 rounded-lg bg-slate-700 text-white flex items-center justify-center shrink-0 shadow-2xs">
+                  <Phone className="w-4 h-4" />
+                </div>
+                <div>
+                  <p className="text-xs font-black text-slate-900">Alternative Support</p>
+                  <p className="text-[11px] text-slate-600 font-semibold">+91 98745 69712</p>
                 </div>
               </a>
             </div>
@@ -1189,8 +1179,8 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
             {/* WhatsApp Dispatch Tracking */}
             <div className="flex items-center justify-between gap-4">
               <div className="flex-1 pr-2">
-                <p className="text-xs font-black text-slate-900">WhatsApp Dispatch Tracking</p>
-                <p className="text-[11px] text-slate-500 mt-0.5 leading-relaxed">
+                <p className="text-sm sm:text-base font-bold text-slate-900 leading-snug">WhatsApp Dispatch Tracking</p>
+                <p className="text-xs sm:text-[13px] text-slate-600 font-normal mt-1 leading-relaxed">
                   Receive live rider phone number and delivery OTP on WhatsApp
                 </p>
               </div>
@@ -1220,8 +1210,8 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
             {/* SMS Order Status Updates */}
             <div className="flex items-center justify-between gap-4 pt-4 border-t border-slate-100">
               <div className="flex-1 pr-2">
-                <p className="text-xs font-black text-slate-900">SMS Order Status Updates</p>
-                <p className="text-[11px] text-slate-500 mt-0.5 leading-relaxed">
+                <p className="text-sm sm:text-base font-bold text-slate-900 leading-snug">SMS Order Status Updates</p>
+                <p className="text-xs sm:text-[13px] text-slate-600 font-normal mt-1 leading-relaxed">
                   Get packing and out-for-delivery SMS
                 </p>
               </div>
@@ -1251,8 +1241,8 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
             {/* Email Invoices & Order Summary Alerts */}
             <div className="flex items-center justify-between gap-4 pt-4 border-t border-slate-100">
               <div className="flex-1 pr-2">
-                <p className="text-xs font-black text-slate-900">Email Invoices &amp; Order Summaries</p>
-                <p className="text-[11px] text-slate-500 mt-0.5 leading-relaxed">
+                <p className="text-sm sm:text-base font-bold text-slate-900 leading-snug">Email Invoices &amp; Order Summaries</p>
+                <p className="text-xs sm:text-[13px] text-slate-600 font-normal mt-1 leading-relaxed">
                   Receive official GST invoices, order receipts, and delivery confirmations via email
                 </p>
               </div>
@@ -1299,6 +1289,155 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
   }
 
   // -------------------------------------------------------------
+  // SUB-PAGE 10: FAVORITE ITEMS (Dedicated White Page with Back Button)
+  // -------------------------------------------------------------
+  if (subPage === 'favorites') {
+    return (
+      <div className="min-h-screen bg-slate-50 text-slate-900 pb-24 animate-in fade-in duration-200">
+        {/* Sticky Header with Back Arrow Button */}
+        <div className="bg-white border-b border-slate-200 px-4 py-3.5 flex items-center justify-between shadow-2xs sticky top-0 z-30">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setSubPage('main')}
+              className="p-1.5 rounded-full hover:bg-slate-100 text-slate-700 transition-colors cursor-pointer"
+              title="Back to Profile"
+            >
+              <ArrowLeft className="w-5 h-5" />
+            </button>
+            <div>
+              <h1 className="text-lg font-black text-slate-900 flex items-center gap-2">
+                <span>Favourites</span>
+                <Heart className="w-5 h-5 fill-pink-500 text-pink-500" />
+              </h1>
+              <p className="text-xs text-slate-500 font-medium">
+                {favoriteProducts.length} {favoriteProducts.length === 1 ? 'item' : 'items'} saved for quick ordering
+              </p>
+            </div>
+          </div>
+
+          {favoriteProducts.length > 0 && (
+            <button
+              type="button"
+              onClick={() => {
+                clearAllFavorites();
+                setFavoriteProductIds([]);
+              }}
+              className="text-xs font-bold text-slate-500 hover:text-red-600 transition-colors cursor-pointer px-2.5 py-1.5 rounded-lg hover:bg-red-50"
+            >
+              Clear All
+            </button>
+          )}
+        </div>
+
+        {/* Content Container */}
+        <div className="max-w-3xl mx-auto p-4 sm:p-6 space-y-4">
+          {favoriteProducts.length === 0 ? (
+            <div className="bg-white rounded-3xl p-8 sm:p-12 text-center border border-slate-200 shadow-2xs space-y-3">
+              <div className="w-16 h-16 rounded-full bg-pink-50 text-pink-500 mx-auto flex items-center justify-center border border-pink-100">
+                <Heart className="w-8 h-8" />
+              </div>
+              <h3 className="text-base sm:text-lg font-extrabold text-slate-900">No favourites yet</h3>
+              <p className="text-xs sm:text-sm text-slate-500 max-w-sm mx-auto leading-relaxed">
+                Save electrical supplies, tools, switches, and wiring materials to your favourites for instant 1-click reordering anytime.
+              </p>
+              <div className="pt-3">
+                <button
+                  type="button"
+                  onClick={onOpenShop}
+                  className="px-6 py-2.5 rounded-full bg-amber-400 hover:bg-amber-500 active:scale-95 text-slate-950 font-black text-xs sm:text-sm transition-all shadow-sm cursor-pointer inline-flex items-center gap-2"
+                >
+                  <ShoppingBag className="w-4 h-4" />
+                  <span>Explore Catalog</span>
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {favoriteProducts.map((product) => (
+                <div
+                  key={product.id}
+                  className="bg-white rounded-2xl p-3.5 sm:p-4 border border-slate-200 hover:border-pink-200 shadow-2xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4 transition-all"
+                >
+                  <div className="flex items-center gap-3.5 sm:gap-4 overflow-hidden w-full sm:w-auto">
+                    <div className="relative w-20 h-20 sm:w-24 sm:h-24 rounded-xl bg-slate-50 border border-slate-100 shrink-0 overflow-hidden flex items-center justify-center">
+                      <img
+                        src={product.image}
+                        alt={product.name}
+                        className="w-full h-full object-cover"
+                      />
+                      <span className="absolute bottom-1 left-1 px-1.5 py-0.5 rounded bg-black/70 text-white text-[9px] font-bold">
+                        {product.brand}
+                      </span>
+                    </div>
+
+                    <div className="overflow-hidden flex-1">
+                      <div className="flex items-center gap-1.5 mb-1">
+                        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-green-50 text-green-700 text-[10px] font-black border border-green-200">
+                          <Zap className="w-3 h-3 fill-green-600" />
+                          <span>60 MINS – 7 DAYS</span>
+                        </span>
+                        {product.discountPercentage > 0 && (
+                          <span className="px-1.5 py-0.5 rounded bg-yellow-400 text-slate-950 text-[10px] font-black">
+                            {product.discountPercentage}% OFF
+                          </span>
+                        )}
+                      </div>
+
+                      <h3 className="text-xs sm:text-sm font-bold text-slate-900 line-clamp-1 leading-snug">
+                        {product.name}
+                      </h3>
+                      <p className="text-[11px] text-slate-500 font-medium mt-0.5">
+                        Unit: {product.unit} • <span className="text-amber-600 font-bold">★ {product.rating.toFixed(1)}</span>
+                      </p>
+
+                      <div className="flex items-baseline gap-2 mt-1">
+                        <span className="text-sm sm:text-base font-black text-slate-950">
+                          ₹{product.price.toLocaleString('en-IN')}
+                        </span>
+                        {product.originalPrice > product.price && (
+                          <span className="text-xs text-slate-400 line-through">
+                            ₹{product.originalPrice.toLocaleString('en-IN')}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 w-full sm:w-auto justify-end pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100">
+                    <button
+                      type="button"
+                      onClick={() => handleToggleFavorite(product.id)}
+                      className="p-2.5 rounded-xl text-pink-600 bg-pink-50 hover:bg-pink-100 transition-colors cursor-pointer shrink-0"
+                      title="Remove from Favourites"
+                    >
+                      <Heart className="w-4 h-4 fill-pink-500 text-pink-500" />
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (onAddToCart) {
+                          onAddToCart(product);
+                        } else {
+                          onReorder([{ product, quantity: 1 }]);
+                        }
+                      }}
+                      className="flex-1 sm:flex-initial px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-black text-xs rounded-xl transition-all shadow-xs flex items-center justify-center gap-1.5 cursor-pointer"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>Add to Cart</span>
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // -------------------------------------------------------------
   // PRIMARY VIEW: SWIGGY-STYLE PROFILE DASHBOARD
   // -------------------------------------------------------------
   return (
@@ -1337,9 +1476,6 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                 aria-label="Profile options"
               >
                 <MoreVertical className="w-4 h-4" />
-                {hasAnyMissingDetails && (
-                  <span className="absolute top-1 right-1 w-2 h-2 bg-red-400 border-2 border-red-900 rounded-full animate-pulse" />
-                )}
               </button>
 
               {/* 3-Dots Dropdown Pop Up */}
@@ -1365,8 +1501,23 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                         <span>Edit Profile Details</span>
                       </div>
                       {hasAnyMissingDetails && (
-                        <span className="w-2 h-2 rounded-full bg-red-500 shrink-0" />
+                        <span className="w-2 h-2 rounded-full bg-yellow-500 shrink-0" />
                       )}
+                    </button>
+                    <button
+                      onClick={() => {
+                        setIsMenuOpen(false);
+                        setSubPage('favorites');
+                      }}
+                      className="w-full px-4 py-2.5 text-left text-xs font-bold text-slate-800 hover:bg-slate-100 flex items-center justify-between cursor-pointer"
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <Heart className="w-4 h-4 text-pink-500 fill-pink-500 shrink-0" />
+                        <span>Favourites</span>
+                      </div>
+                      <span className="text-[11px] font-bold text-pink-600 bg-pink-50 px-2 py-0.5 rounded-full">
+                        {favoriteProducts.length}
+                      </span>
                     </button>
                     <button
                       onClick={() => {
@@ -1455,10 +1606,10 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                 {hasMissingName && (
                   <span
                     onClick={handleOpenEdit}
-                    className="inline-flex items-center gap-1 text-[10px] font-bold bg-red-500 hover:bg-red-600 text-white px-2 py-0.5 rounded-full cursor-pointer shadow-xs animate-pulse"
+                    className="inline-flex items-center gap-1 text-[10px] font-bold bg-yellow-400 hover:bg-yellow-300 text-slate-950 px-2 py-0.5 rounded-full cursor-pointer shadow-xs animate-pulse"
                     title="Enter your full name"
                   >
-                    <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping" />
+                    <span className="w-1.5 h-1.5 rounded-full bg-slate-950" />
                     Add Name
                   </span>
                 )}
@@ -1469,13 +1620,19 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                 {displayPhone ? (
                   <p className="flex items-center gap-1.5">
                     <span className="font-medium text-white tracking-wide">{displayPhone}</span>
+                    <span
+                      title="Verified Phone"
+                      className="inline-flex items-center justify-center w-3.5 h-3.5 rounded-full bg-blue-500 text-white shadow-2xs shrink-0"
+                    >
+                      <Check className="w-2.5 h-2.5 stroke-[3]" />
+                    </span>
                   </p>
                 ) : (
                   <button
                     onClick={handleOpenEdit}
                     className="flex items-center gap-1.5 text-left text-amber-200 hover:text-white transition-colors cursor-pointer group"
                   >
-                    <span className="w-1.5 h-1.5 rounded-full bg-red-400 ring-2 ring-red-200/50 shrink-0 group-hover:scale-110 transition-transform" />
+                    <span className="w-1.5 h-1.5 rounded-full bg-yellow-400 ring-2 ring-yellow-200/50 shrink-0 group-hover:scale-110 transition-transform" />
                     <span className="underline decoration-dotted underline-offset-2 text-[11px] font-medium">
                       Add mobile number
                     </span>
@@ -1486,8 +1643,11 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                   <p className="flex items-center gap-1.5 flex-wrap">
                     <span className="text-white/85 text-[11px] sm:text-xs break-all">{displayEmail}</span>
                     {userProfile?.emailVerified && (
-                      <span className="inline-flex items-center gap-0.5 text-[9px] font-bold bg-emerald-500/30 text-emerald-200 px-1.5 py-0.2 rounded border border-emerald-400/40">
-                        <Check className="w-2.5 h-2.5" /> Verified
+                      <span
+                        title="Verified Email"
+                        className="inline-flex items-center justify-center w-3.5 h-3.5 rounded-full bg-blue-500 text-white shadow-2xs shrink-0"
+                      >
+                        <Check className="w-2.5 h-2.5 stroke-[3]" />
                       </span>
                     )}
                   </p>
@@ -1496,7 +1656,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                     onClick={handleOpenEdit}
                     className="flex items-center gap-1.5 text-left text-amber-200 hover:text-white transition-colors cursor-pointer group"
                   >
-                    <span className="w-1.5 h-1.5 rounded-full bg-red-400 ring-2 ring-red-200/50 shrink-0 group-hover:scale-110 transition-transform" />
+                    <span className="w-1.5 h-1.5 rounded-full bg-yellow-400 ring-2 ring-yellow-200/50 shrink-0 group-hover:scale-110 transition-transform" />
                     <span className="underline decoration-dotted underline-offset-2 text-[11px] font-medium">
                       Add email address
                     </span>
@@ -1518,67 +1678,33 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
       </div>
 
       <div className="max-w-3xl mx-auto px-3 sm:px-6 mt-4 sm:mt-5 space-y-4">
-        {/* 3. 4 QUICK ACCESS ACTION TILES (Properly spaced, visibly distinct and elevated) */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-3.5">
-          {/* Tile 1: Orders */}
-          <button
-            onClick={() => setSubPage('orders')}
-            className="bg-white p-4 sm:p-4.5 rounded-2xl border border-slate-200 shadow-xs hover:shadow-md hover:border-amber-400 transition-all text-left flex flex-col justify-between min-h-[110px] cursor-pointer group"
-          >
-            <div className="w-10 h-10 rounded-2xl bg-amber-100 border border-amber-300/80 text-amber-600 flex items-center justify-center group-hover:scale-105 transition-transform shadow-2xs">
-              <ShoppingBag className="w-5 h-5" />
-            </div>
-            <div className="mt-2.5">
-              <p className="text-[14px] sm:text-[15px] font-bold text-slate-900 leading-tight">Your Orders</p>
-              <p className="text-xs text-amber-700 font-semibold mt-0.5">{sortedOrders.length} Completed</p>
-            </div>
-          </button>
-
-          {/* Tile 2: Saved Address */}
-          <button
-            onClick={() => setSubPage('addresses')}
-            className="bg-white p-4 sm:p-4.5 rounded-2xl border border-slate-200 shadow-xs hover:shadow-md hover:border-rose-400 transition-all text-left flex flex-col justify-between min-h-[110px] cursor-pointer group"
-          >
-            <div className="w-10 h-10 rounded-2xl bg-rose-100 border border-rose-300/80 text-rose-600 flex items-center justify-center group-hover:scale-105 transition-transform shadow-2xs">
-              <MapPin className="w-5 h-5" />
-            </div>
-            <div className="mt-2.5">
-              <p className="text-[14px] sm:text-[15px] font-bold text-slate-900 leading-tight">Saved Address</p>
-              <p className="text-xs text-slate-500 font-semibold mt-0.5">{savedAddresses.length} Addresses</p>
-            </div>
-          </button>
-
-          {/* Tile 3: Payment Modes */}
-          <button
-            onClick={() => setSubPage('payments')}
-            className="bg-white p-4 sm:p-4.5 rounded-2xl border border-slate-200 shadow-xs hover:shadow-md hover:border-indigo-400 transition-all text-left flex flex-col justify-between min-h-[110px] cursor-pointer group"
-          >
-            <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-indigo-500 via-purple-500 to-pink-500 text-white flex items-center justify-center group-hover:scale-105 transition-transform shadow-xs">
-              <CreditCard className="w-5 h-5 text-white" />
-            </div>
-            <div className="mt-2.5">
-              <p className="text-[14px] sm:text-[15px] font-bold text-slate-900 leading-tight">Payment Modes</p>
-              <p className="text-xs text-slate-500 font-semibold mt-0.5">UPI &amp; Cards</p>
-            </div>
-          </button>
-
-          {/* Tile 4: Wallet */}
-          <button
-            onClick={() => setSubPage('wallet')}
-            className="bg-white p-4 sm:p-4.5 rounded-2xl border border-slate-200 shadow-xs hover:shadow-md hover:border-emerald-500 transition-all text-left flex flex-col justify-between min-h-[110px] cursor-pointer group"
-          >
-            <div className="w-10 h-10 rounded-2xl bg-emerald-100 border border-emerald-300/80 text-emerald-600 flex items-center justify-center group-hover:scale-105 transition-transform shadow-2xs">
-              <Wallet className="w-5 h-5" />
-            </div>
-            <div className="mt-2.5">
-              <p className="text-[14px] sm:text-[15px] font-bold text-slate-900 leading-tight">Wallet</p>
-              <p className="text-xs text-emerald-700 font-semibold mt-0.5">₹{totalWalletBalance} Balance</p>
-            </div>
-          </button>
-        </div>
-
-        {/* 4. VERTICAL MENU BUTTON LIST (All Open Dedicated Sub-Pages with Back Arrows) */}
+        {/* VERTICAL MENU BUTTON LIST (All Open Dedicated Sub-Pages with Back Arrows) */}
         <div className="bg-white rounded-2xl border border-slate-200/80 divide-y divide-slate-100 overflow-hidden shadow-2xs">
+          {/* 1. Favourites */}
+          <button
+            id="btn-profile-favorites"
+            onClick={() => setSubPage('favorites')}
+            className="w-full p-4 sm:p-4.5 flex items-center justify-between hover:bg-slate-50/80 transition-colors text-left cursor-pointer group"
+          >
+            <div className="flex items-center gap-3.5 sm:gap-4">
+              <div className="w-10 h-10 rounded-2xl bg-pink-100 border border-pink-200 text-pink-600 flex items-center justify-center shrink-0 shadow-2xs group-hover:scale-105 transition-transform">
+                <Heart className="w-5 h-5 fill-pink-500 text-pink-500" />
+              </div>
+              <div>
+                <p className="text-base sm:text-lg font-normal text-slate-800">Favourites</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              {favoriteProducts.length > 0 && (
+                <span className="text-xs font-normal text-pink-800 bg-pink-100 px-2.5 py-1 rounded-full">
+                  {favoriteProducts.length} {favoriteProducts.length === 1 ? 'item' : 'items'}
+                </span>
+              )}
+              <ChevronRight className="w-5 h-5 text-slate-400 group-hover:text-slate-600 transition-colors" />
+            </div>
+          </button>
+
+          {/* 2. Orders History */}
           <button
             onClick={() => setSubPage('orders')}
             className="w-full p-4 sm:p-4.5 flex items-center justify-between hover:bg-slate-50/80 transition-colors text-left cursor-pointer group"
@@ -1599,6 +1725,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
             </div>
           </button>
 
+          {/* 3. Wallet */}
           <button
             onClick={() => setSubPage('wallet')}
             className="w-full p-4 sm:p-4.5 flex items-center justify-between hover:bg-slate-50/80 transition-colors text-left cursor-pointer group"
@@ -1614,6 +1741,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
             <ChevronRight className="w-5 h-5 text-slate-400 group-hover:text-slate-600 transition-colors" />
           </button>
 
+          {/* 4. Saved Payment Modes */}
           <button
             onClick={() => setSubPage('payments')}
             className="w-full p-4 sm:p-4.5 flex items-center justify-between hover:bg-slate-50/80 transition-colors text-left cursor-pointer group"
@@ -1629,6 +1757,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
             <ChevronRight className="w-5 h-5 text-slate-400 group-hover:text-slate-600 transition-colors" />
           </button>
 
+          {/* 5. Delivery Addresses */}
           <button
             onClick={() => setSubPage('addresses')}
             className="w-full p-4 sm:p-4.5 flex items-center justify-between hover:bg-slate-50/80 transition-colors text-left cursor-pointer group"
@@ -1644,21 +1773,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
             <ChevronRight className="w-5 h-5 text-slate-400 group-hover:text-slate-600 transition-colors" />
           </button>
 
-          <button
-            onClick={() => setSubPage('help')}
-            className="w-full p-4 sm:p-4.5 flex items-center justify-between hover:bg-slate-50/80 transition-colors text-left cursor-pointer group"
-          >
-            <div className="flex items-center gap-3.5 sm:gap-4">
-              <div className="w-10 h-10 rounded-2xl bg-purple-100 border border-purple-200 text-purple-600 flex items-center justify-center shrink-0 shadow-2xs group-hover:scale-105 transition-transform">
-                <HelpCircle className="w-5 h-5" />
-              </div>
-              <div>
-                <p className="text-base sm:text-lg font-normal text-slate-800">Help Center</p>
-              </div>
-            </div>
-            <ChevronRight className="w-5 h-5 text-slate-400 group-hover:text-slate-600 transition-colors" />
-          </button>
-
+          {/* 6. Communication Preferences */}
           <button
             onClick={() => setSubPage('notifications')}
             className="w-full p-4 sm:p-4.5 flex items-center justify-between hover:bg-slate-50/80 transition-colors text-left cursor-pointer group"
@@ -1674,6 +1789,23 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
             <ChevronRight className="w-5 h-5 text-slate-400 group-hover:text-slate-600 transition-colors" />
           </button>
 
+          {/* 7. Help Center */}
+          <button
+            onClick={() => setSubPage('help')}
+            className="w-full p-4 sm:p-4.5 flex items-center justify-between hover:bg-slate-50/80 transition-colors text-left cursor-pointer group"
+          >
+            <div className="flex items-center gap-3.5 sm:gap-4">
+              <div className="w-10 h-10 rounded-2xl bg-purple-100 border border-purple-200 text-purple-600 flex items-center justify-center shrink-0 shadow-2xs group-hover:scale-105 transition-transform">
+                <HelpCircle className="w-5 h-5" />
+              </div>
+              <div>
+                <p className="text-base sm:text-lg font-normal text-slate-800">Help Center</p>
+              </div>
+            </div>
+            <ChevronRight className="w-5 h-5 text-slate-400 group-hover:text-slate-600 transition-colors" />
+          </button>
+
+          {/* 8. Privacy Policy */}
           <button
             onClick={() => setSubPage('privacy')}
             className="w-full p-4 sm:p-4.5 flex items-center justify-between hover:bg-slate-50/80 transition-colors text-left cursor-pointer group"
@@ -1689,6 +1821,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
             <ChevronRight className="w-5 h-5 text-slate-400 group-hover:text-slate-600 transition-colors" />
           </button>
 
+          {/* 9. Terms of Service */}
           <button
             onClick={() => setSubPage('terms')}
             className="w-full p-4 sm:p-4.5 flex items-center justify-between hover:bg-slate-50/80 transition-colors text-left cursor-pointer group"
@@ -1723,9 +1856,6 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
         {/* App Version Tag */}
         <div className="text-center pt-6 pb-2">
           <p className="text-[11px] font-bold text-slate-400">Giriraj Power App Version 4.114.3</p>
-          <p className="text-[10px] text-slate-400 mt-0.5">
-            Serving Kolkata with 60-Minute Express Electrical Delivery
-          </p>
         </div>
       </div>
 
@@ -1748,7 +1878,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                       <label className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
                         <span>Full Name</span>
                         {hasMissingName && (
-                          <span className="w-2 h-2 rounded-full bg-red-500 inline-block animate-pulse" title="Name is required" />
+                          <span className="w-2 h-2 rounded-full bg-yellow-500 inline-block animate-pulse" title="Name is required" />
                         )}
                       </label>
                     </div>
@@ -1766,7 +1896,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                       <label className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
                         <span>Gmail / Email Address</span>
                         {hasMissingEmail && (
-                          <span className="w-2 h-2 rounded-full bg-red-500 inline-block animate-pulse" title="Email is required" />
+                          <span className="w-2 h-2 rounded-full bg-yellow-500 inline-block animate-pulse" title="Email is required" />
                         )}
                       </label>
                       <span className="text-[10px] font-bold text-amber-700 bg-amber-50 px-1.5 py-0.5 rounded">
@@ -1787,7 +1917,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                       <label className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
                         <span>Mobile Number</span>
                         {hasMissingPhone && (
-                          <span className="w-2 h-2 rounded-full bg-red-500 inline-block animate-pulse" title="Mobile number is required" />
+                          <span className="w-2 h-2 rounded-full bg-yellow-500 inline-block animate-pulse" title="Mobile number is required" />
                         )}
                       </label>
                     </div>

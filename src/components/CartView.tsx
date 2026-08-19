@@ -126,7 +126,7 @@ export const CartView: React.FC<CartViewProps> = ({
       estimatedDeliveryTimestamp: Date.now() + currentArea.deliveryMinutes * 60 * 1000,
       deliveryPartner: {
         name: 'Bikash Mondal ⚡',
-        phone: '+91 98305 77889',
+        phone: '+91 87774 00280',
         vehicleNumber: 'WB 07 C 1089 (Express Runner)',
         currentHub: currentArea.hub
       },
@@ -211,8 +211,8 @@ export const CartView: React.FC<CartViewProps> = ({
         <div className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-green-50 border border-green-200 text-xs text-green-900">
           <Truck className="w-4 h-4 text-green-700 shrink-0" />
           <div>
-            <span className="font-extrabold">Delivery in ~{currentArea.deliveryMinutes} Mins</span>
-            <span className="text-[11px] text-green-700 block">Hub: {currentArea.hub}</span>
+            <span className="font-extrabold">Delivery: 60 Mins – 7 Days</span>
+            <span className="text-[11px] text-green-700 block">Hub: {currentArea.hub} (Bulk & Retail Stock)</span>
           </div>
         </div>
       </div>
@@ -336,7 +336,7 @@ export const CartView: React.FC<CartViewProps> = ({
                 </div>
               </div>
               <span className="px-2 py-0.5 rounded-full bg-yellow-300 text-slate-950 font-black text-[10px] uppercase">
-                ~{currentArea.deliveryMinutes} Mins Dispatch
+                60 Mins – 7 Days Delivery
               </span>
             </div>
 
@@ -594,7 +594,7 @@ export const CartView: React.FC<CartViewProps> = ({
               </div>
 
               <div className="flex justify-between">
-                <span>⚡ Express Delivery (~{currentArea.deliveryMinutes} Mins)</span>
+                <span>⚡ Standard & Bulk Delivery (60 Mins – 7 Days)</span>
                 <span className={deliveryFee === 0 ? 'text-green-400 font-bold' : 'text-white'}>
                   {deliveryFee === 0 ? 'FREE (Above ₹499)' : `₹${deliveryFee}`}
                 </span>
@@ -631,7 +631,7 @@ export const CartView: React.FC<CartViewProps> = ({
                   {paymentMethod === 'cod' ? 'Pay upon Delivery' : `Pay via ${paymentMethod.toUpperCase()}`}
                 </div>
                 <div className="text-xs font-black">
-                  Dispatch in ~{currentArea.deliveryMinutes} mins
+                  Delivery: 60 mins – 7 days
                 </div>
               </div>
               <div className="flex items-center gap-2">

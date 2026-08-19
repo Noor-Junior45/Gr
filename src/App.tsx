@@ -29,6 +29,7 @@ import { ProfileView } from './components/ProfileView';
 import { ProductCard } from './components/ProductCard';
 import { ProductDetailModal } from './components/ProductDetailModal';
 import { WiringServices } from './components/WiringServices';
+import { CategorySearchBar } from './components/CategorySearchBar';
 import { CartView } from './components/CartView';
 import { OrderSuccessModal } from './components/OrderSuccessModal';
 import { AdminPortal } from './components/AdminPortal';
@@ -252,7 +253,25 @@ export default function App() {
           activeTab={activeTab}
           onTabChange={(tab) => setActiveTab(tab as typeof activeTab)}
           activeCategory={activeCategory}
-          onSelectCategory={(cat) => setActiveCategory(cat as typeof activeCategory)}
+          onSelectCategory={(cat) => {
+            setActiveCategory(cat as typeof activeCategory);
+            setSearchQuery('');
+          }}
+        />
+      )}
+
+      {/* Dedicated Glassmorphism Pill Search Bar (For Electrical, Construction & Wiring Pages Only) */}
+      {((activeTab === 'home' && (activeCategory === 'electrical' || activeCategory === 'construction')) || activeTab === 'services') && (
+        <CategorySearchBar
+          searchQuery={searchQuery}
+          onSearchChange={setSearchQuery}
+          placeholder={
+            activeTab === 'services'
+              ? 'Search wiring services...'
+              : activeCategory === 'construction'
+              ? 'Search construction materials...'
+              : 'Search electrical wires, switches, MCBs...'
+          }
         />
       )}
 
@@ -290,6 +309,7 @@ export default function App() {
               setActiveSavedAddress(addr);
               setCurrentArea(addr.area);
             }}
+            onAddToCart={handleAddToCart}
             onReorder={(reorderItems) => {
               reorderItems.forEach((item) => {
                 handleAddToCart(item.product);
@@ -347,6 +367,11 @@ export default function App() {
                 <h2 className="text-2xl font-medium text-slate-800 mb-2">Home Page Coming Soon</h2>
                 <p className="text-slate-500">We are currently designing our new home page. Please browse our categories above.</p>
               </div>
+            ) : activeTab === 'home' && activeCategory === 'construction' && !searchQuery ? (
+              <div className="text-center py-20">
+                <h2 className="text-2xl sm:text-3xl font-medium text-black mb-2">Coming Soon</h2>
+                <p className="text-slate-500">Construction materials and catalog are launching soon.</p>
+              </div>
             ) : filteredProducts.length > 0 ? (
               <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-5">
                 {filteredProducts.map((product) => {
@@ -365,7 +390,13 @@ export default function App() {
               </div>
             ) : (
               <div className="text-center py-20">
-                <p className="text-slate-500">No products found in this category.</p>
+                <p className="text-slate-500">No products found matching "{searchQuery}".</p>
+                <button
+                  onClick={() => setSearchQuery('')}
+                  className="mt-3 px-4 py-1.5 text-xs font-semibold text-slate-800 bg-slate-100 hover:bg-slate-200 rounded-full cursor-pointer transition-colors"
+                >
+                  Clear search
+                </button>
               </div>
             )}
           </div>
@@ -391,6 +422,8 @@ export default function App() {
           setCurrentArea(area);
           if (addr) {
             setActiveSavedAddress(addr);
+          } else {
+            setActiveSavedAddress(null);
           }
         }}
       />

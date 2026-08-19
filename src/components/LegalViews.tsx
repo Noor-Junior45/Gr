@@ -277,9 +277,11 @@ export const LegalView: React.FC<LegalViewProps> = ({ onBack, type }) => {
               <div className="flex items-start gap-2.5">
                 <Phone className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
                 <div>
-                  <p className="font-bold text-slate-900">Phone Support</p>
+                  <p className="font-bold text-slate-900">Helpline Numbers</p>
                   <p className="text-[11px] text-slate-600 leading-tight">
-                    +91 98305 77889 (24x7 Help Center)
+                    Business: +91 87774 00280<br />
+                    Contractor: +91 90071 68561<br />
+                    Alternative: +91 98745 69712
                   </p>
                 </div>
               </div>

@@ -1,6 +1,7 @@
-import React from 'react';
-import { X, Zap, Star, ShieldCheck, Check, Plus, Minus, Truck } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { X, Zap, Star, ShieldCheck, Check, Plus, Minus, Truck, Heart } from 'lucide-react';
 import { Product } from '../types';
+import { isProductFavorite, toggleProductFavorite } from '../services/favorites';
 
 interface ProductDetailModalProps {
   product: Product | null;
@@ -17,19 +18,44 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
   onAddToCart,
   onUpdateQuantity
 }) => {
+  const [isFav, setIsFav] = useState(() => (product ? isProductFavorite(product.id) : false));
+
+  useEffect(() => {
+    if (product) {
+      setIsFav(isProductFavorite(product.id));
+    }
+  }, [product]);
+
   if (!product) return null;
+
+  const handleToggleFav = () => {
+    const updated = toggleProductFavorite(product.id);
+    setIsFav(updated);
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
       <div className="bg-white rounded-2xl max-w-2xl w-full p-5 sm:p-7 shadow-2xl border border-slate-200 relative max-h-[90vh] overflow-y-auto">
         
-        {/* Close Button */}
-        <button
-          onClick={onClose}
-          className="absolute top-4 right-4 p-2 rounded-full hover:bg-slate-100 text-slate-500 transition-colors z-10"
-        >
-          <X className="w-5 h-5" />
-        </button>
+        {/* Actions Top Right: Favorite & Close Button */}
+        <div className="absolute top-4 right-4 flex items-center gap-1.5 z-10">
+          <button
+            type="button"
+            onClick={handleToggleFav}
+            className={`p-2 rounded-full transition-colors cursor-pointer ${
+              isFav ? 'bg-pink-50 text-pink-600' : 'hover:bg-slate-100 text-slate-400 hover:text-pink-600'
+            }`}
+            title={isFav ? 'Remove from favourites' : 'Add to favourites'}
+          >
+            <Heart className={`w-5 h-5 ${isFav ? 'fill-pink-500 text-pink-500' : ''}`} />
+          </button>
+          <button
+            onClick={onClose}
+            className="p-2 rounded-full hover:bg-slate-100 text-slate-500 transition-colors"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
           {/* Image & Quick Guarantee */}
@@ -42,7 +68,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
               />
               <span className="absolute top-3 left-3 px-2.5 py-1 rounded-md bg-green-600 text-white text-xs font-black flex items-center gap-1 shadow-sm">
                 <Zap className="w-3.5 h-3.5 fill-white" />
-                <span>{product.deliveryMinutes} MINS EXPRESS</span>
+                <span>60 MINS – 7 DAYS DELIVERY</span>
               </span>
             </div>
 

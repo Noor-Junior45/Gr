@@ -81,7 +81,7 @@ export const MapsGroundingAssistant: React.FC<MapsGroundingAssistantProps> = ({
 1. Recommended Wire: 2.5 sq mm pure copper (Havells LifeLine HRFR or Polycab FR-LSH).
 2. Breaker: 16A or 20A C-Curve MCB (like Havells Euroload).
 3. Socket: 16A 3-pin shuttered modular socket (Legrand Arteor / Schneider AvatarOn).
-All items are in stock for 60-min delivery to ${currentArea.name}!`;
+All items are in stock for fast delivery (60 Mins – 7 Days) to ${currentArea.name}!`;
       }
 
       setMessages((prev) => [

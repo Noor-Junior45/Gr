@@ -138,15 +138,16 @@ export const Header: React.FC<HeaderProps> = ({
             <div className="flex flex-col justify-center text-left">
               <button
                 onClick={() => onTabChange('home')}
-                className="text-base sm:text-lg font-black tracking-tight text-slate-900 leading-none flex items-center text-left cursor-pointer focus:outline-none"
+                className="text-lg sm:text-xl font-bold tracking-normal leading-none flex items-center gap-1.5 text-left cursor-pointer focus:outline-none font-bodoni"
               >
-                GIRIRAJ POWER
+                <span className="text-black">Giriraj</span>
+                <span className="text-[#00875a]">Power</span>
               </button>
 
               {/* Saved Address House Name Only / Location Selector */}
               <button
                 onClick={onOpenLocationModal}
-                className="flex items-center gap-1.5 text-xs font-bold text-slate-800 hover:text-black transition-colors text-left cursor-pointer group leading-none mt-1 focus:outline-none max-w-[200px] sm:max-w-[320px] truncate"
+                className="flex items-center gap-1.5 text-xs font-normal text-slate-700 hover:text-black transition-colors text-left cursor-pointer group leading-none mt-1 focus:outline-none max-w-[200px] sm:max-w-[320px] truncate"
                 title="View full address or change location"
               >
                 {activeAddress?.tag === 'home' && (
@@ -161,10 +162,10 @@ export const Header: React.FC<HeaderProps> = ({
                 {!activeAddress && (
                   <MapPin className="w-3.5 h-3.5 text-slate-600 shrink-0" />
                 )}
-                <span className="truncate text-slate-900 group-hover:text-pink-600 font-extrabold text-[12px] sm:text-[13px]">
+                <span className="truncate text-slate-700 group-hover:text-slate-900 font-normal text-[12px] sm:text-[13px]">
                   {locationInfo.houseNameOnly}
                 </span>
-                <ChevronDown className="w-3.5 h-3.5 text-slate-500 group-hover:text-black shrink-0 transition-transform group-hover:translate-y-0.5" />
+                <ChevronDown className="w-3.5 h-3.5 text-slate-400 group-hover:text-slate-700 shrink-0 transition-transform group-hover:translate-y-0.5" />
               </button>
             </div>
           </div>
@@ -231,15 +232,15 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
         </div>
       </div>
-      {/* Navigation Tabs (Scrollable, centered) */}
+      {/* Navigation Tabs (Scrollable, with left margin on mobile) */}
       <div className="border-t border-slate-100 bg-white">
-        <div className="flex items-center justify-center gap-4 px-3 overflow-x-auto no-scrollbar">
+        <div className="flex items-center justify-start sm:justify-center gap-2 sm:gap-4 px-4 sm:px-6 overflow-x-auto no-scrollbar scroll-smooth">
            <button
              onClick={() => {
                onTabChange('home');
                onSelectCategory('all');
              }}
-             className={`flex items-center gap-1.5 py-3 px-2 whitespace-nowrap transition-all cursor-pointer border-b-2 font-medium ${
+             className={`flex items-center gap-1.5 py-3 px-2.5 sm:px-2 whitespace-nowrap transition-all cursor-pointer border-b-2 font-medium shrink-0 ${
                activeTab === 'home' && activeCategory === 'all'
                  ? 'border-yellow-600 text-yellow-600'
                  : 'border-transparent text-slate-600 hover:text-slate-900 hover:border-slate-300'
@@ -254,7 +255,7 @@ export const Header: React.FC<HeaderProps> = ({
                onTabChange('home');
                onSelectCategory('electrical');
              }}
-             className={`flex items-center gap-1.5 py-3 px-2 whitespace-nowrap transition-all cursor-pointer border-b-2 font-medium ${
+             className={`flex items-center gap-1.5 py-3 px-2.5 sm:px-2 whitespace-nowrap transition-all cursor-pointer border-b-2 font-medium shrink-0 ${
                activeTab === 'home' && activeCategory === 'electrical'
                  ? 'border-yellow-600 text-yellow-600'
                  : 'border-transparent text-slate-600 hover:text-slate-900 hover:border-slate-300'
@@ -269,7 +270,7 @@ export const Header: React.FC<HeaderProps> = ({
                onTabChange('home');
                onSelectCategory('construction');
              }}
-             className={`flex items-center gap-1.5 py-3 px-2 whitespace-nowrap transition-all cursor-pointer border-b-2 font-medium ${
+             className={`flex items-center gap-1.5 py-3 px-2.5 sm:px-2 whitespace-nowrap transition-all cursor-pointer border-b-2 font-medium shrink-0 ${
                activeTab === 'home' && activeCategory === 'construction'
                  ? 'border-yellow-600 text-yellow-600'
                  : 'border-transparent text-slate-600 hover:text-slate-900 hover:border-slate-300'
@@ -283,7 +284,7 @@ export const Header: React.FC<HeaderProps> = ({
              onClick={() => {
                onTabChange('services');
              }}
-             className={`flex items-center gap-1.5 py-3 px-2 whitespace-nowrap transition-all cursor-pointer border-b-2 font-medium ${
+             className={`flex items-center gap-1.5 py-3 px-2.5 sm:px-2 whitespace-nowrap transition-all cursor-pointer border-b-2 font-medium shrink-0 ${
                activeTab === 'services'
                  ? 'border-yellow-600 text-yellow-600'
                  : 'border-transparent text-slate-600 hover:text-slate-900 hover:border-slate-300'

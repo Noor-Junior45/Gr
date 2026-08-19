@@ -288,7 +288,7 @@ export async function updateOrderStatusInFirestore(orderId: string, newStatus: O
   if (newStatus === 'out_for_delivery') {
     updatedDeliveryPartner = {
       name: 'Bikash Mondal ⚡',
-      phone: '+91 98305 77889',
+      phone: '+91 87774 00280',
       vehicleNumber: 'WB 07 C 1089',
       currentHub: 'Central Ezra Street Hub'
     };
