@@ -234,64 +234,68 @@ export const Header: React.FC<HeaderProps> = ({
       </div>
       {/* Navigation Tabs (Scrollable, with left margin on mobile) */}
       <div className="border-t border-slate-100 bg-white">
-        <div className="flex items-center justify-start sm:justify-center gap-2 sm:gap-4 px-4 sm:px-6 overflow-x-auto no-scrollbar scroll-smooth">
+        <div className="flex items-center justify-start sm:justify-center gap-4 sm:gap-8 px-4 sm:px-6 overflow-x-auto no-scrollbar scroll-smooth">
            <button
+             id="nav-tab-home"
              onClick={() => {
                onTabChange('home');
                onSelectCategory('all');
              }}
-             className={`flex items-center gap-1.5 py-3 px-2.5 sm:px-2 whitespace-nowrap transition-all cursor-pointer border-b-2 font-medium shrink-0 ${
-               activeTab === 'home' && activeCategory === 'all'
-                 ? 'border-yellow-600 text-yellow-600'
+             className={`flex items-center gap-2 py-3 px-3 sm:px-4 whitespace-nowrap transition-all cursor-pointer border-b-2 font-bold shrink-0 text-sm ${
+               (activeTab === 'home' || activeTab === 'catalog') && activeCategory === 'all'
+                 ? 'border-amber-500 text-amber-600'
                  : 'border-transparent text-slate-600 hover:text-slate-900 hover:border-slate-300'
              }`}
            >
-             <Home className={`w-4 h-4 ${activeTab === 'home' && activeCategory === 'all' ? 'text-yellow-600' : ''}`} />
-             <span className="text-sm">Home</span>
+             <Home className={`w-4 h-4 ${(activeTab === 'home' || activeTab === 'catalog') && activeCategory === 'all' ? 'text-amber-600' : ''}`} />
+             <span>Home</span>
            </button>
 
            <button
+             id="nav-tab-electrical"
              onClick={() => {
-               onTabChange('home');
+               onTabChange('electrical');
                onSelectCategory('electrical');
              }}
-             className={`flex items-center gap-1.5 py-3 px-2.5 sm:px-2 whitespace-nowrap transition-all cursor-pointer border-b-2 font-medium shrink-0 ${
-               activeTab === 'home' && activeCategory === 'electrical'
-                 ? 'border-yellow-600 text-yellow-600'
+             className={`flex items-center gap-2 py-3 px-3 sm:px-4 whitespace-nowrap transition-all cursor-pointer border-b-2 font-bold shrink-0 text-sm ${
+               activeTab === 'electrical' || activeCategory === 'electrical'
+                 ? 'border-amber-500 text-amber-600'
                  : 'border-transparent text-slate-600 hover:text-slate-900 hover:border-slate-300'
              }`}
            >
-             <Zap className={`w-4 h-4 ${activeTab === 'home' && activeCategory === 'electrical' ? 'text-yellow-600' : ''}`} />
-             <span className="text-sm">Electrical</span>
+             <Zap className={`w-4 h-4 ${activeTab === 'electrical' || activeCategory === 'electrical' ? 'text-amber-600 fill-amber-500/20' : ''}`} />
+             <span>Electrical</span>
            </button>
 
            <button
+             id="nav-tab-construction"
              onClick={() => {
                onTabChange('home');
                onSelectCategory('construction');
              }}
-             className={`flex items-center gap-1.5 py-3 px-2.5 sm:px-2 whitespace-nowrap transition-all cursor-pointer border-b-2 font-medium shrink-0 ${
-               activeTab === 'home' && activeCategory === 'construction'
-                 ? 'border-yellow-600 text-yellow-600'
+             className={`flex items-center gap-2 py-3 px-3 sm:px-4 whitespace-nowrap transition-all cursor-pointer border-b-2 font-bold shrink-0 text-sm ${
+               activeCategory === 'construction'
+                 ? 'border-amber-500 text-amber-600'
                  : 'border-transparent text-slate-600 hover:text-slate-900 hover:border-slate-300'
              }`}
            >
-             <Building2 className={`w-4 h-4 ${activeTab === 'home' && activeCategory === 'construction' ? 'text-yellow-600' : ''}`} />
-             <span className="text-sm">Construction</span>
+             <Building2 className={`w-4 h-4 ${activeCategory === 'construction' ? 'text-amber-600' : ''}`} />
+             <span>Construction</span>
            </button>
 
            <button
+             id="nav-tab-wiring"
              onClick={() => {
                onTabChange('services');
              }}
-             className={`flex items-center gap-1.5 py-3 px-2.5 sm:px-2 whitespace-nowrap transition-all cursor-pointer border-b-2 font-medium shrink-0 ${
+             className={`flex items-center gap-2 py-3 px-3 sm:px-4 whitespace-nowrap transition-all cursor-pointer border-b-2 font-bold shrink-0 text-sm ${
                activeTab === 'services'
-                 ? 'border-yellow-600 text-yellow-600'
+                 ? 'border-amber-500 text-amber-600'
                  : 'border-transparent text-slate-600 hover:text-slate-900 hover:border-slate-300'
              }`}
            >
-             <Wrench className={`w-4 h-4 ${activeTab === 'services' ? 'text-yellow-600' : ''}`} />
-             <span className="text-sm">Wiring</span>
+             <Wrench className={`w-4 h-4 ${activeTab === 'services' ? 'text-amber-600' : ''}`} />
+             <span>Wiring</span>
            </button>
         </div>
       </div>

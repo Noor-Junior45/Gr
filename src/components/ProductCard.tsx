@@ -102,13 +102,15 @@ export const ProductCard: React.FC<ProductCardProps> = ({
       {/* Product Information */}
       <div className="flex-1 flex flex-col justify-between">
         <div>
-          {/* Clean Rating-Only Display */}
-          <div className="flex items-center gap-1 mb-1.5">
-            <div className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-amber-50 border border-amber-200/80 text-amber-900 font-extrabold text-[11px]">
-              <Star className="w-3 h-3 text-amber-500 fill-amber-400" />
-              <span>{product.rating.toFixed(1)}</span>
+          {/* Rating Display (only if rated) */}
+          {product.rating > 0 && (
+            <div className="flex items-center gap-1 mb-1.5">
+              <div className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-amber-50 border border-amber-200/80 text-amber-900 font-extrabold text-[11px]">
+                <Star className="w-3 h-3 text-amber-500 fill-amber-400" />
+                <span>{product.rating.toFixed(1)}</span>
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Product Title */}
           <h4
@@ -145,16 +147,16 @@ export const ProductCard: React.FC<ProductCardProps> = ({
             {quantityInCart === 0 ? (
               <button
                 onClick={() => onAddToCart(product)}
-                className="px-3 sm:px-4 py-1.5 rounded-xl bg-green-600 hover:bg-green-700 active:scale-95 text-white font-extrabold text-xs uppercase tracking-wide transition-all shadow-xs flex items-center gap-1 cursor-pointer"
+                className="px-3 sm:px-4 py-1.5 rounded-xl bg-yellow-400 hover:bg-yellow-500 active:scale-95 text-slate-950 font-black text-xs uppercase tracking-wide transition-all shadow-xs flex items-center gap-1 cursor-pointer border border-yellow-500/30"
               >
                 <span>ADD</span>
                 <Plus className="w-3.5 h-3.5 stroke-[3]" />
               </button>
             ) : (
-              <div className="flex items-center bg-green-700 text-white rounded-xl overflow-hidden shadow-xs">
+              <div className="flex items-center bg-yellow-400 text-slate-950 font-black rounded-xl overflow-hidden shadow-xs border border-yellow-500/40">
                 <button
                   onClick={() => onUpdateQuantity(product.id, -1)}
-                  className="px-2.5 py-1.5 hover:bg-green-800 transition-colors flex items-center justify-center cursor-pointer"
+                  className="px-2.5 py-1.5 hover:bg-yellow-500 transition-colors flex items-center justify-center cursor-pointer"
                   title="Decrease"
                 >
                   <Minus className="w-3 h-3 stroke-[3]" />
@@ -164,7 +166,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
                 </span>
                 <button
                   onClick={() => onUpdateQuantity(product.id, 1)}
-                  className="px-2.5 py-1.5 hover:bg-green-800 transition-colors flex items-center justify-center cursor-pointer"
+                  className="px-2.5 py-1.5 hover:bg-yellow-500 transition-colors flex items-center justify-center cursor-pointer"
                   title="Increase"
                 >
                   <Plus className="w-3 h-3 stroke-[3]" />

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import {
   Zap,
   ShoppingBag,
@@ -37,6 +38,8 @@ import { MapsGroundingAssistant } from './components/MapsGroundingAssistant';
 import { OrderHistoryView } from './components/OrderHistoryView';
 import { Footer } from './components/Footer';
 import { LegalView } from './components/LegalViews';
+import { ElectricalListingPage } from './components/electrical/ElectricalListingPage';
+import { ProductDetailPage } from './components/electrical/ProductDetailPage';
 import {
   getSavedUserProfile,
   saveUserProfile,
@@ -52,6 +55,9 @@ import {
 } from './services/supabaseService';
 
 export default function App() {
+  const navigate = useNavigate();
+  const location = useLocation();
+
   // State Management
   const [isAuthLoading, setIsAuthLoading] = useState(true);
   const [products, setProducts] = useState<Product[]>(INITIAL_PRODUCTS);
@@ -67,37 +73,24 @@ export default function App() {
     }
     return null;
   });
-  const getInitialTab = (): 'home' | 'catalog' | 'services' | 'orders' | 'profile' | 'cart' | 'privacy' | 'terms' => {
-    if (typeof window !== 'undefined') {
-      const path = window.location.pathname.toLowerCase();
-      const search = new URLSearchParams(window.location.search);
-      const hash = window.location.hash.toLowerCase();
-      
-      if (path === '/privacy' || path === '/privacy-policy' || search.get('page') === 'privacy' || hash === '#privacy') {
-        return 'privacy';
-      }
-      if (path === '/terms' || path === '/terms-of-service' || path === '/tos' || search.get('page') === 'terms' || hash === '#terms') {
-        return 'terms';
-      }
-      if (path === '/services' || hash === '#services') {
-        return 'services';
-      }
-      if (path === '/orders' || hash === '#orders') {
-        return 'orders';
-      }
-      if (path === '/profile' || hash === '#profile') {
-        return 'profile';
-      }
-      if (path === '/cart' || hash === '#cart') {
-        return 'cart';
-      }
-    }
+
+  const getActiveTabFromLocation = (): 'home' | 'catalog' | 'services' | 'orders' | 'profile' | 'cart' | 'privacy' | 'terms' | 'electrical' => {
+    const path = location.pathname.toLowerCase();
+    if (path.startsWith('/electrical')) return 'electrical';
+    if (path === '/privacy' || path === '/privacy-policy') return 'privacy';
+    if (path === '/terms' || path === '/terms-of-service') return 'terms';
+    if (path === '/services') return 'services';
+    if (path === '/orders') return 'orders';
+    if (path === '/profile') return 'profile';
+    if (path === '/cart') return 'cart';
     return 'home';
   };
 
-  const [activeTab, setActiveTab] = useState<'home' | 'catalog' | 'services' | 'orders' | 'profile' | 'cart' | 'privacy' | 'terms'>(getInitialTab);
-  const [activeCategory, setActiveCategory] = useState<string>('all');
-  const [subCategoryFilter, setSubCategoryFilter] = useState<string | null>(null);
+  const activeTab = getActiveTabFromLocation();
+  const [activeCategory, setActiveCategory] = useState<string>(() => {
+    if (location.pathname.startsWith('/electrical')) return 'electrical';
+    return 'all';
+  });
   const [searchQuery, setSearchQuery] = useState('');
   
   // Cart State
@@ -158,29 +151,21 @@ export default function App() {
       }
     });
 
-    const unsubAuth = onAuthStateChange((event, session, sbUser) => {
-      setIsAuthLoading(false);
-      if (event === 'SIGNED_OUT' || (!session && !sbUser && event !== 'INITIAL_SESSION')) {
-        setUserProfile(null);
-        setUserPhone(null);
-        setUserName('');
-        return;
-      }
-
-      if (sbUser) {
+    const unsubAuth = onAuthStateChange((event, session, user) => {
+      if (user) {
         const local = getSavedUserProfile();
-        const userMeta = sbUser.user_metadata || {};
-        const phone = sbUser.phone || userMeta.phone || local?.phone || safeGetItem('giriraj_user_phone') || '';
+        const userMeta = user.user_metadata || {};
+        const phone = user.phone || userMeta.phone || local?.phone || safeGetItem('giriraj_user_phone') || '';
         const name = userMeta.full_name || userMeta.name || local?.name || safeGetItem('giriraj_user_name') || 'Customer';
-        const email = sbUser.email || local?.email || safeGetItem('giriraj_user_email') || '';
+        const email = user.email || local?.email || safeGetItem('giriraj_user_email') || '';
         const photoURL = userMeta.avatar_url || userMeta.picture || local?.photoURL || safeGetItem('giriraj_user_photo') || undefined;
         const dob = local?.dob || safeGetItem('giriraj_user_dob') || '';
         const prof: UserProfile = {
-          id: sbUser.id,
+          id: user.id,
           phone,
           name,
           email,
-          emailVerified: !!sbUser.email_confirmed_at || !!sbUser.confirmed_at || local?.emailVerified || true,
+          emailVerified: !!user.email_confirmed_at || !!user.confirmed_at || local?.emailVerified || true,
           photoURL,
           dob,
           walletBalance: local?.walletBalance || 0,
@@ -190,26 +175,10 @@ export default function App() {
         setUserProfile(prof);
         setUserPhone(phone || null);
         setUserName(name);
-        setIsAuthModalOpen(false);
-        saveUserProfile({
-          phone,
-          name,
-          email,
-          photoURL: photoURL || undefined,
-          dob,
-          emailVerified: true
-        });
       } else {
-        const local = getSavedUserProfile();
-        if (local && (local.phone || local.email || (local.name && local.name !== 'Kolkata Customer'))) {
-          setUserProfile(local);
-          setUserPhone(local.phone || null);
-          setUserName(local.name || '');
-        } else {
-          setUserProfile(null);
-          setUserPhone(null);
-          setUserName('');
-        }
+        setUserProfile(null);
+        setUserPhone(null);
+        setUserName('');
       }
     });
 
@@ -241,38 +210,10 @@ export default function App() {
     };
   }, []);
 
-  // Global Scroll Reset & URL History Sync: Whenever activeTab or activeCategory changes, reset window scroll to top
+  // Global Scroll Reset on route change
   useEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
-    
-    // Sync browser URL path for direct linking and Google Console compliance
-    if (typeof window !== 'undefined') {
-      let targetPath = '/';
-      if (activeTab === 'privacy') targetPath = '/privacy';
-      else if (activeTab === 'terms') targetPath = '/terms';
-      else if (activeTab === 'services') targetPath = '/services';
-      else if (activeTab === 'orders') targetPath = '/orders';
-      else if (activeTab === 'profile') targetPath = '/profile';
-      else if (activeTab === 'cart') targetPath = '/cart';
-
-      if (window.location.pathname !== targetPath && !window.location.search && !window.location.hash) {
-        try {
-          window.history.pushState({ tab: activeTab }, '', targetPath);
-        } catch {
-          // ignore
-        }
-      }
-    }
-  }, [activeTab, activeCategory]);
-
-  // Listen to browser Back/Forward navigation
-  useEffect(() => {
-    const handlePopState = () => {
-      setActiveTab(getInitialTab());
-    };
-    window.addEventListener('popstate', handlePopState);
-    return () => window.removeEventListener('popstate', handlePopState);
-  }, []);
+  }, [location.pathname]);
 
   // Cart Helpers
   const cartCount = cartItems.reduce((acc, item) => acc + item.quantity, 0);
@@ -312,46 +253,41 @@ export default function App() {
     setCartItems([]);
   };
 
-  // Product Filtering logic
-  const filteredProducts = products.filter((product) => {
-    // Search query filter
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase().trim();
-      const matchName = product.name.toLowerCase().includes(q);
-      const matchBrand = product.brand.toLowerCase().includes(q);
-      const matchCategory = product.category.toLowerCase().includes(q);
-      const matchSub = product.subCategory.toLowerCase().includes(q);
-      const matchTags = product.tags.some((t) => t.toLowerCase().includes(q));
-      if (!matchName && !matchBrand && !matchCategory && !matchSub && !matchTags) {
-        return false;
-      }
+  // Header Tab change handler with react-router navigation
+  const handleTabChange = (tab: string) => {
+    if (tab === 'home') {
+      navigate('/');
+    } else if (tab === 'electrical') {
+      navigate('/electrical');
+    } else if (tab === 'services') {
+      navigate('/services');
+    } else if (tab === 'orders') {
+      navigate('/orders');
+    } else if (tab === 'profile') {
+      navigate('/profile');
+    } else if (tab === 'cart') {
+      navigate('/cart');
+    } else if (tab === 'privacy') {
+      navigate('/privacy');
+    } else if (tab === 'terms') {
+      navigate('/terms');
     }
+  };
 
-    // Category filter
-    if (activeCategory !== 'all') {
-      if (product.category !== activeCategory) {
-        return false;
-      }
+  const handleCategorySelect = (cat: string) => {
+    setActiveCategory(cat);
+    if (cat === 'electrical') {
+      navigate('/electrical');
+    } else {
+      navigate('/');
     }
-
-    // Subcategory filter
-    if (subCategoryFilter) {
-      if (product.subCategory !== subCategoryFilter) {
-        return false;
-      }
-    }
-
-    return true;
-  });
-
-  const emergencyProducts = products.filter((p) => p.isEmergency);
-  const bestSellerProducts = products.filter((p) => p.isBestSeller);
+  };
 
   return (
     <div className="min-h-screen bg-white flex flex-col text-slate-900 selection:bg-yellow-400 selection:text-black">
       
       {/* Top Header - Hidden when viewing profile page */}
-      {activeTab !== 'profile' && (
+      {location.pathname !== '/profile' && (
         <Header
           currentArea={currentArea}
           activeAddress={activeSavedAddress}
@@ -360,7 +296,7 @@ export default function App() {
           onSearchChange={setSearchQuery}
           cartCount={cartCount}
           cartTotal={cartTotal}
-          onOpenCart={() => setActiveTab('cart')}
+          onOpenCart={() => navigate('/cart')}
           userPhone={userPhone}
           userName={userName}
           userPhoto={userProfile?.photoURL}
@@ -369,164 +305,187 @@ export default function App() {
           onOpenAdmin={() => setIsAdminOpen(true)}
           onOpenAiAssistant={() => setIsAiAssistantOpen(true)}
           activeTab={activeTab}
-          onTabChange={(tab) => setActiveTab(tab as typeof activeTab)}
+          onTabChange={handleTabChange}
           activeCategory={activeCategory}
-          onSelectCategory={(cat) => {
-            setActiveCategory(cat as typeof activeCategory);
-            setSearchQuery('');
-          }}
+          onSelectCategory={handleCategorySelect}
         />
       )}
 
-      {/* Dedicated Glassmorphism Pill Search Bar (For Electrical, Construction & Wiring Pages Only) */}
-      {((activeTab === 'home' && (activeCategory === 'electrical' || activeCategory === 'construction')) || activeTab === 'services') && (
+      {/* Dedicated Glassmorphism Pill Search Bar (For Services Page) */}
+      {location.pathname === '/services' && (
         <CategorySearchBar
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}
-          placeholder={
-            activeTab === 'services'
-              ? 'Search wiring services...'
-              : activeCategory === 'construction'
-              ? 'Search construction materials...'
-              : 'Search electrical wires, switches, MCBs...'
-          }
+          placeholder="Search wiring services in Kolkata..."
         />
       )}
 
-      {/* Main App Content View */}
-      <main className="flex-1 pb-10">
-        
-        {/* VIEW 1: CART & CHECKOUT DEDICATED FULL-PAGE TAB */}
-        {activeTab === 'cart' ? (
-          <CartView
-            items={cartItems}
-            onUpdateQuantity={handleUpdateCartQuantity}
-            onRemoveItem={handleRemoveCartItem}
-            onClearCart={handleClearCart}
-            currentArea={currentArea}
-            activeAddress={activeSavedAddress}
-            onOpenLocationModal={() => setIsLocationModalOpen(true)}
-            userPhone={userPhone}
-            onOrderPlaced={(newOrder) => {
-              setLatestPlacedOrder(newOrder);
-            }}
-            onContinueShopping={() => {
-              setActiveTab('home');
-              setActiveCategory('all');
-            }}
+      {/* Main App Content View with Routes */}
+      <main className="flex-1">
+        <Routes>
+          {/* FLIPKART-STYLE ELECTRICAL LISTING PAGE */}
+          <Route
+            path="/electrical"
+            element={
+              <ElectricalListingPage
+                onAddToCart={handleAddToCart}
+                cartItems={cartItems}
+                onOpenCart={() => navigate('/cart')}
+              />
+            }
           />
-        ) : activeTab === 'profile' ? (
-          // VIEW 2: SWIGGY-STYLE PROFILE FULL PAGE
-          <ProfileView
-            userProfile={userProfile}
-            orders={orders}
-            savedAddresses={savedAddresses}
-            onBack={() => setActiveTab('home')}
-            onOpenLocationModal={() => setIsLocationModalOpen(true)}
-            onSelectAddress={(addr) => {
-              setActiveSavedAddress(addr);
-              setCurrentArea(addr.area);
-            }}
-            onAddToCart={handleAddToCart}
-            onReorder={(reorderItems) => {
-              reorderItems.forEach((item) => {
-                handleAddToCart(item.product);
-              });
-              setActiveTab('cart');
-            }}
-            onOpenShop={() => {
-              setActiveTab('home');
-              setActiveCategory('all');
-            }}
-            onOpenServices={() => setActiveTab('services')}
-            onProfileUpdated={(updated) => {
-              setUserProfile(updated);
-              setUserPhone(updated.phone || null);
-              setUserName(updated.name || '');
-            }}
-            onLogout={() => {
-              setUserProfile(null);
-              setUserPhone(null);
-              setUserName('');
-              setActiveTab('home');
-            }}
-          />
-        ) : activeTab === 'services' ? (
-          // VIEW 3: WIRING SERVICES DEDICATED TAB
-          <WiringServices
-            currentArea={currentArea}
-            onBookService={(booking: WiringServiceBooking) => {
-              console.log('Wiring service booked', booking);
-            }}
-            userPhone={userPhone}
-            onBack={() => setActiveTab('home')}
-          />
-        ) : activeTab === 'orders' ? (
-          // VIEW 4: ORDERS HISTORY VIEW
-          <OrderHistoryView
-            orders={orders}
-            onOpenOrderModal={(ord) => setLatestPlacedOrder(ord)}
-            onOpenShop={() => {
-              setActiveTab('home');
-              setActiveCategory('all');
-            }}
-          />
-        ) : activeTab === 'privacy' ? (
-          // VIEW 5: PRIVACY POLICY PAGE
-          <LegalView onBack={() => setActiveTab('home')} type="privacy" />
-        ) : activeTab === 'terms' ? (
-          // VIEW 6: TERMS OF SERVICE PAGE
-          <LegalView onBack={() => setActiveTab('home')} type="terms" />
-        ) : (
-          // VIEW 7: HOME / QUICK-COMMERCE CATALOG
-          <div className="max-w-7xl mx-auto px-3 sm:px-6 py-6 space-y-6">
-            {activeTab === 'home' && activeCategory === 'all' && !searchQuery ? (
-              <div className="text-center py-20">
-                <h2 className="text-2xl font-medium text-slate-800 mb-2">Home Page Coming Soon</h2>
-                <p className="text-slate-500">We are currently designing our new home page. Please browse our categories above.</p>
-              </div>
-            ) : activeTab === 'home' && activeCategory === 'construction' && !searchQuery ? (
-              <div className="text-center py-20">
-                <h2 className="text-2xl sm:text-3xl font-medium text-black mb-2">Coming Soon</h2>
-                <p className="text-slate-500">Construction materials and catalog are launching soon.</p>
-              </div>
-            ) : filteredProducts.length > 0 ? (
-              <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-5">
-                {filteredProducts.map((product) => {
-                  const cartItem = cartItems.find((i) => i.product.id === product.id);
-                  return (
-                    <ProductCard
-                      key={product.id}
-                      product={product}
-                      quantityInCart={cartItem ? cartItem.quantity : 0}
-                      onAddToCart={handleAddToCart}
-                      onUpdateQuantity={handleUpdateCartQuantity}
-                      onOpenQuickView={setSelectedProductQuickView}
-                    />
-                  );
-                })}
-              </div>
-            ) : (
-              <div className="text-center py-20">
-                <p className="text-slate-500">No products found matching "{searchQuery}".</p>
-                <button
-                  onClick={() => setSearchQuery('')}
-                  className="mt-3 px-4 py-1.5 text-xs font-semibold text-slate-800 bg-slate-100 hover:bg-slate-200 rounded-full cursor-pointer transition-colors"
-                >
-                  Clear search
-                </button>
-              </div>
-            )}
-          </div>
-        )}
 
+          {/* FLIPKART-STYLE ELECTRICAL PRODUCT DETAIL PAGE */}
+          <Route
+            path="/electrical/product/:id"
+            element={
+              <ProductDetailPage
+                onAddToCart={handleAddToCart}
+                cartItems={cartItems}
+                onOpenCart={() => navigate('/cart')}
+                userProfile={userProfile}
+                onOpenAuth={() => setIsAuthModalOpen(true)}
+              />
+            }
+          />
+
+          {/* CART VIEW */}
+          <Route
+            path="/cart"
+            element={
+              <CartView
+                items={cartItems}
+                onUpdateQuantity={handleUpdateCartQuantity}
+                onRemoveItem={handleRemoveCartItem}
+                onClearCart={handleClearCart}
+                currentArea={currentArea}
+                activeAddress={activeSavedAddress}
+                onOpenLocationModal={() => setIsLocationModalOpen(true)}
+                userPhone={userPhone}
+                onOrderPlaced={(newOrder) => {
+                  setLatestPlacedOrder(newOrder);
+                }}
+                onContinueShopping={() => navigate('/electrical')}
+              />
+            }
+          />
+
+          {/* PROFILE VIEW */}
+          <Route
+            path="/profile"
+            element={
+              <ProfileView
+                userProfile={userProfile}
+                orders={orders}
+                savedAddresses={savedAddresses}
+                onBack={() => navigate('/')}
+                onOpenLocationModal={() => setIsLocationModalOpen(true)}
+                onSelectAddress={(addr) => {
+                  setActiveSavedAddress(addr);
+                  setCurrentArea(addr.area);
+                }}
+                onAddToCart={handleAddToCart}
+                onReorder={(reorderItems) => {
+                  reorderItems.forEach((item) => {
+                    handleAddToCart(item.product);
+                  });
+                  navigate('/cart');
+                }}
+                onOpenShop={() => navigate('/electrical')}
+                onOpenServices={() => navigate('/services')}
+                onProfileUpdated={(updated) => {
+                  setUserProfile(updated);
+                  setUserPhone(updated.phone || null);
+                  setUserName(updated.name || '');
+                }}
+                onLogout={() => {
+                  setUserProfile(null);
+                  setUserPhone(null);
+                  setUserName('');
+                  navigate('/');
+                }}
+              />
+            }
+          />
+
+          {/* SERVICES VIEW */}
+          <Route
+            path="/services"
+            element={
+              <WiringServices
+                currentArea={currentArea}
+                onBookService={(booking: WiringServiceBooking) => {
+                  console.log('Wiring service booked', booking);
+                }}
+                userPhone={userPhone}
+                onBack={() => navigate('/')}
+              />
+            }
+          />
+
+          {/* ORDERS VIEW */}
+          <Route
+            path="/orders"
+            element={
+              <OrderHistoryView
+                orders={orders}
+                onOpenOrderModal={(ord) => setLatestPlacedOrder(ord)}
+                onOpenShop={() => navigate('/electrical')}
+              />
+            }
+          />
+
+          {/* LEGAL VIEWS */}
+          <Route path="/privacy" element={<LegalView onBack={() => navigate('/')} type="privacy" />} />
+          <Route path="/privacy-policy" element={<LegalView onBack={() => navigate('/')} type="privacy" />} />
+          <Route path="/terms" element={<LegalView onBack={() => navigate('/')} type="terms" />} />
+          <Route path="/terms-of-service" element={<LegalView onBack={() => navigate('/')} type="terms" />} />
+
+          {/* HOME / DEFAULT ROUTE */}
+          <Route
+            path="/"
+            element={
+              activeCategory === 'construction' ? (
+                <div className="text-center py-20">
+                  <h2 className="text-2xl sm:text-3xl font-medium text-black mb-2">Coming Soon</h2>
+                  <p className="text-slate-500">Construction materials and catalog are launching soon.</p>
+                </div>
+              ) : (
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 py-12 text-center space-y-5">
+                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-50 border border-amber-200 text-amber-900 text-xs font-bold">
+                    <Zap className="w-3.5 h-3.5 fill-amber-500 text-amber-500" />
+                    Central Ezra Street Kolkata Wholesale Supply
+                  </div>
+                  <h2 className="text-2xl sm:text-4xl font-black text-slate-900 tracking-tight">
+                    Kolkata's 60-Minute Electrical &amp; Wire Hub
+                  </h2>
+                  <p className="text-slate-500 max-w-xl mx-auto text-xs sm:text-sm leading-relaxed">
+                    Direct wholesale dispatch from Ezra Street. High-grade RR Kabel, Havells, Polycab copper wires, switches, MCBs, and certified electrical supplies.
+                  </p>
+                  <div className="pt-3">
+                    <button
+                      onClick={() => {
+                        setActiveCategory('electrical');
+                        navigate('/electrical');
+                      }}
+                      className="px-6 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-black text-xs sm:text-sm shadow-md transition-all cursor-pointer inline-flex items-center gap-2"
+                    >
+                      <Zap className="w-4 h-4 fill-white" />
+                      Browse Electrical Store
+                    </button>
+                  </div>
+                </div>
+              )
+            }
+          />
+        </Routes>
       </main>
 
-      {/* Small Clean Footer (Only rendered on the main landing homepage, not on catalog or category browsing) */}
-      {activeTab === 'home' && activeCategory === 'all' && !searchQuery && (
+      {/* Small Clean Footer (Rendered on Home or Legal pages) */}
+      {(location.pathname === '/' || location.pathname.startsWith('/privacy') || location.pathname.startsWith('/terms')) && (
         <Footer
-          onOpenPrivacy={() => setActiveTab('privacy')}
-          onOpenTerms={() => setActiveTab('terms')}
+          onOpenPrivacy={() => navigate('/privacy')}
+          onOpenTerms={() => navigate('/terms')}
         />
       )}
 
@@ -549,8 +508,8 @@ export default function App() {
       <AuthModal
         isOpen={isAuthModalOpen}
         onClose={() => setIsAuthModalOpen(false)}
-        onOpenTerms={() => setActiveTab('terms')}
-        onOpenPrivacy={() => setActiveTab('privacy')}
+        onOpenTerms={() => navigate('/terms')}
+        onOpenPrivacy={() => navigate('/privacy')}
         onAuthSuccess={(phone, name, email) => {
           const photo = safeGetItem('giriraj_user_photo') || undefined;
           const prof: UserProfile = {
@@ -565,7 +524,7 @@ export default function App() {
           setUserProfile(prof);
           setUserPhone(phone || null);
           setUserName(name || '');
-          setActiveTab('profile');
+          navigate('/profile');
         }}
       />
 
@@ -585,7 +544,7 @@ export default function App() {
         order={latestPlacedOrder}
         onClose={() => setLatestPlacedOrder(null)}
         onViewAllOrders={() => {
-          setActiveTab('orders');
+          navigate('/orders');
           setLatestPlacedOrder(null);
         }}
       />

@@ -95,26 +95,28 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                 {product.name}
               </h2>
 
-              {/* Rating Only Display */}
-              <div className="flex items-center gap-1.5 mb-3 text-xs">
-                <div className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-amber-50 border border-amber-200 text-amber-900 font-extrabold">
-                  <div className="flex items-center text-amber-500">
-                    {[...Array(5)].map((_, i) => (
-                      <Star
-                        key={i}
-                        className={`w-3.5 h-3.5 ${
-                          i < Math.floor(product.rating)
-                            ? 'fill-amber-400 text-amber-500'
-                            : i < product.rating
-                            ? 'fill-amber-300 text-amber-400'
-                            : 'text-slate-300 fill-slate-100'
-                        }`}
-                      />
-                    ))}
+              {/* Rating Display (if rated) */}
+              {product.rating > 0 && (
+                <div className="flex items-center gap-1.5 mb-3 text-xs">
+                  <div className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-amber-50 border border-amber-200 text-amber-900 font-extrabold">
+                    <div className="flex items-center text-amber-500">
+                      {[...Array(5)].map((_, i) => (
+                        <Star
+                          key={i}
+                          className={`w-3.5 h-3.5 ${
+                            i < Math.floor(product.rating)
+                              ? 'fill-amber-400 text-amber-500'
+                              : i < product.rating
+                              ? 'fill-amber-300 text-amber-400'
+                              : 'text-slate-300 fill-slate-100'
+                          }`}
+                        />
+                      ))}
+                    </div>
+                    <span className="ml-1 text-xs">{product.rating.toFixed(1)} / 5.0</span>
                   </div>
-                  <span className="ml-1 text-xs">{product.rating.toFixed(1)} / 5.0</span>
                 </div>
-              </div>
+              )}
 
               {/* Price */}
               <div className="p-3.5 rounded-xl bg-yellow-50/70 border border-yellow-200 mb-4">
@@ -177,16 +179,16 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
               {quantityInCart === 0 ? (
                 <button
                   onClick={() => onAddToCart(product)}
-                  className="flex-1 py-3 px-6 rounded-xl bg-green-600 hover:bg-green-700 text-white font-extrabold text-sm transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer"
+                  className="flex-1 py-3 px-6 rounded-xl bg-yellow-400 hover:bg-yellow-500 text-slate-950 font-black text-sm transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer border border-yellow-500/30"
                 >
                   <Plus className="w-4 h-4 stroke-[3]" />
                   <span>Add to Cart • ₹{product.price}</span>
                 </button>
               ) : (
-                <div className="flex items-center gap-3 bg-green-700 text-white rounded-xl px-4 py-2 shadow-md">
+                <div className="flex items-center gap-3 bg-yellow-400 text-slate-950 font-black rounded-xl px-4 py-2 shadow-md border border-yellow-500/40">
                   <button
                     onClick={() => onUpdateQuantity(product.id, -1)}
-                    className="p-1 hover:bg-green-800 rounded transition-colors"
+                    className="p-1 hover:bg-yellow-500 rounded transition-colors cursor-pointer"
                   >
                     <Minus className="w-4 h-4 stroke-[3]" />
                   </button>
@@ -195,7 +197,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                   </span>
                   <button
                     onClick={() => onUpdateQuantity(product.id, 1)}
-                    className="p-1 hover:bg-green-800 rounded transition-colors"
+                    className="p-1 hover:bg-yellow-500 rounded transition-colors cursor-pointer"
                   >
                     <Plus className="w-4 h-4 stroke-[3]" />
                   </button>
