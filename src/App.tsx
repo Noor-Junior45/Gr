@@ -46,12 +46,15 @@ import {
   ACTIVE_SAVED_ADDRESS_KEY,
   onAuthStateChange,
   getInitialAuthSession,
+  syncAllProductsToSupabase,
+  fetchProductsFromSupabase,
   safeGetItem
 } from './services/supabaseService';
 
 export default function App() {
   // State Management
   const [isAuthLoading, setIsAuthLoading] = useState(true);
+  const [products, setProducts] = useState<Product[]>(INITIAL_PRODUCTS);
   const [currentArea, setCurrentArea] = useState<KolkataArea>(KOLKATA_AREAS[3]); // Default: Salt Lake Sector V
   const [activeSavedAddress, setActiveSavedAddress] = useState<SavedAddress | null>(() => {
     try {
@@ -64,7 +67,35 @@ export default function App() {
     }
     return null;
   });
-  const [activeTab, setActiveTab] = useState<'home' | 'catalog' | 'services' | 'orders' | 'profile' | 'cart' | 'privacy' | 'terms'>('home');
+  const getInitialTab = (): 'home' | 'catalog' | 'services' | 'orders' | 'profile' | 'cart' | 'privacy' | 'terms' => {
+    if (typeof window !== 'undefined') {
+      const path = window.location.pathname.toLowerCase();
+      const search = new URLSearchParams(window.location.search);
+      const hash = window.location.hash.toLowerCase();
+      
+      if (path === '/privacy' || path === '/privacy-policy' || search.get('page') === 'privacy' || hash === '#privacy') {
+        return 'privacy';
+      }
+      if (path === '/terms' || path === '/terms-of-service' || path === '/tos' || search.get('page') === 'terms' || hash === '#terms') {
+        return 'terms';
+      }
+      if (path === '/services' || hash === '#services') {
+        return 'services';
+      }
+      if (path === '/orders' || hash === '#orders') {
+        return 'orders';
+      }
+      if (path === '/profile' || hash === '#profile') {
+        return 'profile';
+      }
+      if (path === '/cart' || hash === '#cart') {
+        return 'cart';
+      }
+    }
+    return 'home';
+  };
+
+  const [activeTab, setActiveTab] = useState<'home' | 'catalog' | 'services' | 'orders' | 'profile' | 'cart' | 'privacy' | 'terms'>(getInitialTab);
   const [activeCategory, setActiveCategory] = useState<string>('all');
   const [subCategoryFilter, setSubCategoryFilter] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -197,6 +228,11 @@ export default function App() {
       setSavedAddresses(allAddrs);
     });
 
+    // Auto-sync products to Supabase and load live catalog
+    syncAllProductsToSupabase().then(() => {
+      fetchProductsFromSupabase().then(setProducts).catch(console.warn);
+    }).catch(console.warn);
+
     return () => {
       unsubAuth();
       window.removeEventListener('giriraj_user_logged_out', handleLogoutEvent);
@@ -205,10 +241,38 @@ export default function App() {
     };
   }, []);
 
-  // Global Scroll Reset: Whenever activeTab or activeCategory changes, reset window scroll to top
+  // Global Scroll Reset & URL History Sync: Whenever activeTab or activeCategory changes, reset window scroll to top
   useEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+    
+    // Sync browser URL path for direct linking and Google Console compliance
+    if (typeof window !== 'undefined') {
+      let targetPath = '/';
+      if (activeTab === 'privacy') targetPath = '/privacy';
+      else if (activeTab === 'terms') targetPath = '/terms';
+      else if (activeTab === 'services') targetPath = '/services';
+      else if (activeTab === 'orders') targetPath = '/orders';
+      else if (activeTab === 'profile') targetPath = '/profile';
+      else if (activeTab === 'cart') targetPath = '/cart';
+
+      if (window.location.pathname !== targetPath && !window.location.search && !window.location.hash) {
+        try {
+          window.history.pushState({ tab: activeTab }, '', targetPath);
+        } catch {
+          // ignore
+        }
+      }
+    }
   }, [activeTab, activeCategory]);
+
+  // Listen to browser Back/Forward navigation
+  useEffect(() => {
+    const handlePopState = () => {
+      setActiveTab(getInitialTab());
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
 
   // Cart Helpers
   const cartCount = cartItems.reduce((acc, item) => acc + item.quantity, 0);
@@ -249,7 +313,7 @@ export default function App() {
   };
 
   // Product Filtering logic
-  const filteredProducts = INITIAL_PRODUCTS.filter((product) => {
+  const filteredProducts = products.filter((product) => {
     // Search query filter
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase().trim();
@@ -280,8 +344,8 @@ export default function App() {
     return true;
   });
 
-  const emergencyProducts = INITIAL_PRODUCTS.filter((p) => p.isEmergency);
-  const bestSellerProducts = INITIAL_PRODUCTS.filter((p) => p.isBestSeller);
+  const emergencyProducts = products.filter((p) => p.isEmergency);
+  const bestSellerProducts = products.filter((p) => p.isBestSeller);
 
   return (
     <div className="min-h-screen bg-white flex flex-col text-slate-900 selection:bg-yellow-400 selection:text-black">

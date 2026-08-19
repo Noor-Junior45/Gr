@@ -18,7 +18,12 @@ import {
   Send
 } from 'lucide-react';
 import { Order, OrderStatus } from '../types';
-import { subscribeToOrders, updateOrderStatusInFirestore } from '../services/supabaseService';
+import {
+  subscribeToOrders,
+  updateOrderStatusInFirestore,
+  clearAllOrdersFromSupabase,
+  syncAllProductsToSupabase
+} from '../services/supabaseService';
 import { soundService } from '../services/sound';
 import { getEmailServiceStatus, sendOrderConfirmationEmail, sendTestEmail, EmailServiceStatus } from '../services/emailService';
 
@@ -103,6 +108,27 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ isOpen, onClose }) => 
     }
   };
 
+  const handleClearAllOrders = async () => {
+    if (!window.confirm('Are you sure you want to permanently clear/delete all customer orders from Supabase & local caches?')) {
+      return;
+    }
+    const res = await clearAllOrdersFromSupabase();
+    if (res.success) {
+      alert('✅ All order histories have been successfully deleted from Supabase.');
+    } else {
+      alert(`❌ Error clearing orders: ${res.error}`);
+    }
+  };
+
+  const handleSyncProducts = async () => {
+    const res = await syncAllProductsToSupabase();
+    if (res.success) {
+      alert(`✅ Successfully synced ${res.count} products to your Supabase products table!`);
+    } else {
+      alert(`❌ Products sync notice: ${res.error}`);
+    }
+  };
+
   return (
     <div className="fixed inset-0 z-50 overflow-hidden bg-black/70 backdrop-blur-xs animate-in fade-in flex items-center justify-center p-3 sm:p-6">
       <div className="bg-slate-950 text-white rounded-3xl max-w-5xl w-full h-[90vh] flex flex-col border border-yellow-400/30 shadow-2xl overflow-hidden">
@@ -119,7 +145,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ isOpen, onClose }) => 
                   Single-Supplier Dispatch &amp; Order Command
                 </h2>
                 <span className="px-2 py-0.5 rounded-full bg-green-500/20 text-green-400 border border-green-500/30 text-[10px] font-extrabold uppercase animate-pulse">
-                  Live Firestore Active
+                  Live Supabase Active
                 </span>
               </div>
               <p className="text-xs text-slate-400">
@@ -129,6 +155,25 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ isOpen, onClose }) => 
           </div>
 
           <div className="flex items-center gap-2">
+            {/* Sync Products */}
+            <button
+              onClick={handleSyncProducts}
+              className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-yellow-300 text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
+              title="Save/sync all catalog products into Supabase"
+            >
+              <Package className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Sync Products</span>
+            </button>
+
+            {/* Clear Orders */}
+            <button
+              onClick={handleClearAllOrders}
+              className="px-3 py-1.5 rounded-xl bg-red-950/80 hover:bg-red-900 text-red-300 border border-red-800/40 text-xs font-bold transition-colors cursor-pointer"
+              title="Clear all orders history"
+            >
+              Clear Orders
+            </button>
+
             {/* Audio Alarm Toggle */}
             <button
               onClick={() => {

@@ -263,7 +263,19 @@ export const LegalView: React.FC<LegalViewProps> = ({ onBack, type }) => {
             <h4 className="text-xs font-black uppercase tracking-wider text-slate-900">
               Corporate &amp; Grievance Redressal Office
             </h4>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+            <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 text-xs">
+              <div className="flex items-start gap-2.5">
+                <Globe className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-bold text-slate-900">Official Website</p>
+                  <p className="text-[11px] text-slate-600 leading-tight">
+                    <a href="https://www.girirajpower.in" target="_blank" rel="noreferrer" className="text-amber-700 hover:underline">
+                      https://www.girirajpower.in
+                    </a>
+                  </p>
+                </div>
+              </div>
+
               <div className="flex items-start gap-2.5">
                 <MapPin className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
                 <div>
@@ -291,7 +303,8 @@ export const LegalView: React.FC<LegalViewProps> = ({ onBack, type }) => {
                 <div>
                   <p className="font-bold text-slate-900">Email Inquiries</p>
                   <p className="text-[11px] text-slate-600 leading-tight">
-                    support@girirajpower.com
+                    support@girirajpower.in<br />
+                    mdhassan1738@gmail.com
                   </p>
                 </div>
               </div>

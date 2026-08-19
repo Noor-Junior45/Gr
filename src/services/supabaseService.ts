@@ -1,6 +1,7 @@
 import { supabase } from '../lib/supabaseClient';
 import { User, Session, AuthChangeEvent } from '@supabase/supabase-js';
-import { Order, OrderStatus, WiringServiceBooking, SavedAddress, UserProfile } from '../types';
+import { Order, OrderStatus, WiringServiceBooking, SavedAddress, UserProfile, Product } from '../types';
+import { INITIAL_PRODUCTS } from '../data/products';
 import { soundService } from './sound';
 
 // Local storage key constants
@@ -159,11 +160,14 @@ export async function resetPasswordForEmail(
  */
 export async function signInWithGoogle(): Promise<{ error: Error | null; url?: string | null }> {
   try {
+    const isIframe = typeof window !== 'undefined' && window.self !== window.top;
     const redirectTo = typeof window !== 'undefined' ? window.location.origin : undefined;
+
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
         redirectTo,
+        skipBrowserRedirect: isIframe,
         queryParams: {
           access_type: 'offline',
           prompt: 'consent'
@@ -175,6 +179,15 @@ export async function signInWithGoogle(): Promise<{ error: Error | null; url?: s
       console.error('Supabase Google OAuth error:', error);
       return { error };
     }
+
+    if (isIframe && data?.url) {
+      // In an iframe preview (like AI Studio canvas), open in a new window to bypass iframe 403 security blocks
+      const authWindow = window.open(data.url, '_blank');
+      if (!authWindow) {
+        window.location.href = data.url;
+      }
+    }
+
     return { error: null, url: data.url };
   } catch (err: unknown) {
     const error = err instanceof Error ? err : new Error(String(err));
@@ -473,9 +486,39 @@ export function getStoredOrders(): Order[] {
 export function clearAllStoredOrders(): void {
   try {
     localStorage.removeItem(ORDERS_STORAGE_KEY);
+    localStorage.removeItem('giriraj_customer_orders');
+    localStorage.removeItem('giriraj_orders_cache');
     notifyOrderListeners([]);
   } catch (e) {
     console.error('Failed clearing orders', e);
+  }
+}
+
+/**
+ * Deletes / clears all order history from Supabase table and local caches for all users
+ */
+export async function clearAllOrdersFromSupabase(): Promise<{ success: boolean; error?: string }> {
+  try {
+    // Clear local caches
+    clearAllStoredOrders();
+
+    // Delete all records from Supabase `orders` table
+    const { error } = await supabase
+      .from('orders')
+      .delete()
+      .gte('id', '');
+
+    if (error) {
+      console.warn('Supabase orders delete note:', error.message);
+      return { success: false, error: error.message };
+    }
+
+    notifyOrderListeners([]);
+    return { success: true };
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error('Error clearing orders from Supabase:', msg);
+    return { success: false, error: msg };
   }
 }
 
@@ -489,18 +532,25 @@ function notifyOrderListeners(orders: Order[]) {
   });
 }
 
-// Global fetch helper for orders
+// Global fetch helper for orders - strictly isolates per authenticated user
 async function fetchUserOrders() {
   try {
     const { data: userData } = await supabase.auth.getUser();
-    let query = supabase.from('orders').select('*').order('created_at', { ascending: false }).limit(50);
     
-    // If user is logged in, RLS automatically isolates rows for auth.uid() = user_id
-    if (userData?.user?.id) {
-      query = query.eq('user_id', userData.user.id);
+    // If not logged in, user has no authenticated orders
+    if (!userData?.user?.id) {
+      localStorage.setItem(ORDERS_STORAGE_KEY, JSON.stringify([]));
+      notifyOrderListeners([]);
+      return;
     }
 
-    const { data, error } = await query;
+    const { data, error } = await supabase
+      .from('orders')
+      .select('*')
+      .eq('user_id', userData.user.id)
+      .order('created_at', { ascending: false })
+      .limit(50);
+
     if (!error && data) {
       const liveOrders: Order[] = data.map((row) => ({
         id: row.id,
@@ -937,3 +987,97 @@ export async function deleteUpiFromFirestore(upiId: string): Promise<void> {
     console.warn('Supabase delete upi error:', err);
   }
 }
+
+// ============================================================================
+// TASK: SUPABASE PRODUCTS CATALOG SYNC & MANAGEMENT
+// ============================================================================
+
+/**
+ * Saves/syncs all catalog products into Supabase `products` table
+ */
+export async function syncAllProductsToSupabase(
+  customProducts?: Product[]
+): Promise<{ success: boolean; count: number; error?: string }> {
+  try {
+    const productsToSync = customProducts || INITIAL_PRODUCTS;
+    const rows = productsToSync.map((p) => ({
+      id: p.id,
+      name: p.name,
+      brand: p.brand,
+      category: p.category,
+      sub_category: p.subCategory,
+      price: p.price,
+      original_price: p.originalPrice,
+      discount_percentage: p.discountPercentage,
+      unit: p.unit,
+      rating: p.rating,
+      reviews_count: p.reviewsCount,
+      delivery_minutes: p.deliveryMinutes,
+      image: p.image,
+      in_stock: p.inStock,
+      stock_count: p.stockCount,
+      tags: p.tags,
+      is_emergency: p.isEmergency,
+      is_best_seller: !!p.isBestSeller,
+      specs: p.specs,
+      description: p.description,
+      updated_at: new Date().toISOString()
+    }));
+
+    const { error } = await supabase
+      .from('products')
+      .upsert(rows, { onConflict: 'id' });
+
+    if (error) {
+      console.warn('Supabase products upsert notice:', error.message);
+      return { success: false, count: 0, error: error.message };
+    }
+
+    return { success: true, count: rows.length };
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.warn('Error syncing products to Supabase:', msg);
+    return { success: false, count: 0, error: msg };
+  }
+}
+
+/**
+ * Fetches live products from Supabase `products` table with fallback to INITIAL_PRODUCTS
+ */
+export async function fetchProductsFromSupabase(): Promise<Product[]> {
+  try {
+    const { data, error } = await supabase
+      .from('products')
+      .select('*')
+      .order('id', { ascending: true });
+
+    if (!error && data && data.length > 0) {
+      return data.map((row) => ({
+        id: row.id,
+        name: row.name,
+        brand: row.brand,
+        category: row.category || 'electrical',
+        subCategory: row.sub_category || row.subCategory || 'General',
+        price: Number(row.price || 0),
+        originalPrice: Number(row.original_price || row.originalPrice || row.price || 0),
+        discountPercentage: Number(row.discount_percentage || row.discountPercentage || 0),
+        unit: row.unit || '1 pc',
+        rating: Number(row.rating || 4.8),
+        reviewsCount: Number(row.reviews_count || row.reviewsCount || 50),
+        deliveryMinutes: Number(row.delivery_minutes || row.deliveryMinutes || 30),
+        image: row.image || '',
+        inStock: row.in_stock ?? row.inStock ?? true,
+        stockCount: Number(row.stock_count || row.stockCount || 50),
+        tags: row.tags || [],
+        isEmergency: !!(row.is_emergency ?? row.isEmergency),
+        isBestSeller: !!(row.is_best_seller ?? row.isBestSeller),
+        specs: row.specs || {},
+        description: row.description || ''
+      }));
+    }
+  } catch (err) {
+    console.warn('Supabase products fetch fallback:', err);
+  }
+  return INITIAL_PRODUCTS;
+}
+
