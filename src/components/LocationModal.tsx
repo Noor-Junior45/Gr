@@ -27,7 +27,7 @@ import {
   deleteAddressFromFirestore,
   subscribeToAddresses,
   ACTIVE_SAVED_ADDRESS_KEY
-} from '../services/firebaseConfig';
+} from '../services/supabaseService';
 
 interface LocationModalProps {
   isOpen: boolean;

@@ -18,7 +18,7 @@ import {
   Banknote
 } from 'lucide-react';
 import { CartItem, KolkataArea, Order, SavedAddress } from '../types';
-import { createFirestoreOrder } from '../services/firebaseConfig';
+import { createFirestoreOrder } from '../services/supabaseService';
 import { sendOrderConfirmationEmail } from '../services/emailService';
 import confetti from 'canvas-confetti';
 

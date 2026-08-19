@@ -47,7 +47,7 @@ import {
   subscribeToUpiIds,
   saveUpiToFirestore,
   deleteUpiFromFirestore
-} from '../services/firebaseConfig';
+} from '../services/supabaseService';
 import { WIRING_SERVICES } from '../data/services';
 import { INITIAL_PRODUCTS } from '../data/products';
 import { getFavoriteProductIds, toggleProductFavorite, clearAllFavorites } from '../services/favorites';

@@ -44,10 +44,9 @@ import {
   subscribeToOrders,
   subscribeToAddresses,
   ACTIVE_SAVED_ADDRESS_KEY,
-  auth
-} from './services/firebaseConfig';
-import { onAuthStateChanged } from 'firebase/auth';
-import { safeGetItem, safeSetItem, safeRemoveItem } from "./services/firebaseConfig";
+  onAuthStateChange,
+  safeGetItem
+} from './services/supabaseService';
 
 export default function App() {
   // State Management
@@ -95,20 +94,28 @@ export default function App() {
       setUserName(saved.name || '');
     }
 
-    const unsubAuth = onAuthStateChanged(auth, (fbUser) => {
-      if (fbUser) {
+    const unsubAuth = onAuthStateChange((event, session, sbUser) => {
+      if (event === 'SIGNED_OUT' || (!session && !sbUser && event !== 'INITIAL_SESSION')) {
+        setUserProfile(null);
+        setUserPhone(null);
+        setUserName('');
+        return;
+      }
+
+      if (sbUser) {
         const local = getSavedUserProfile();
-        const phone = fbUser.phoneNumber || local?.phone || safeGetItem('giriraj_user_phone') || '';
-        const name = fbUser.displayName || local?.name || safeGetItem('giriraj_user_name') || 'Customer';
-        const email = fbUser.email || local?.email || safeGetItem('giriraj_user_email') || '';
-        const photoURL = fbUser.photoURL || local?.photoURL || safeGetItem('giriraj_user_photo') || undefined;
+        const userMeta = sbUser.user_metadata || {};
+        const phone = sbUser.phone || userMeta.phone || local?.phone || safeGetItem('giriraj_user_phone') || '';
+        const name = userMeta.full_name || userMeta.name || local?.name || safeGetItem('giriraj_user_name') || 'Customer';
+        const email = sbUser.email || local?.email || safeGetItem('giriraj_user_email') || '';
+        const photoURL = userMeta.avatar_url || userMeta.picture || local?.photoURL || safeGetItem('giriraj_user_photo') || undefined;
         const dob = local?.dob || safeGetItem('giriraj_user_dob') || '';
         const prof: UserProfile = {
-          id: fbUser.uid,
+          id: sbUser.id,
           phone,
           name,
           email,
-          emailVerified: fbUser.emailVerified || local?.emailVerified || true,
+          emailVerified: !!sbUser.email_confirmed_at || !!sbUser.confirmed_at || local?.emailVerified || true,
           photoURL,
           dob,
           walletBalance: local?.walletBalance || 0,
@@ -132,9 +139,20 @@ export default function App() {
           setUserProfile(local);
           setUserPhone(local.phone || null);
           setUserName(local.name || '');
+        } else {
+          setUserProfile(null);
+          setUserPhone(null);
+          setUserName('');
         }
       }
     });
+
+    const handleLogoutEvent = () => {
+      setUserProfile(null);
+      setUserPhone(null);
+      setUserName('');
+    };
+    window.addEventListener('giriraj_user_logged_out', handleLogoutEvent);
 
     const unsubscribeOrders = subscribeToOrders((allOrders) => {
       setOrders(allOrders);
@@ -146,6 +164,7 @@ export default function App() {
 
     return () => {
       unsubAuth();
+      window.removeEventListener('giriraj_user_logged_out', handleLogoutEvent);
       unsubscribeOrders();
       unsubscribeAddresses();
     };
@@ -434,9 +453,9 @@ export default function App() {
         onOpenTerms={() => setActiveTab('terms')}
         onOpenPrivacy={() => setActiveTab('privacy')}
         onAuthSuccess={(phone, name, email) => {
-          const photo = auth.currentUser?.photoURL || safeGetItem('giriraj_user_photo') || undefined;
+          const photo = safeGetItem('giriraj_user_photo') || undefined;
           const prof: UserProfile = {
-            id: auth.currentUser?.uid,
+            id: userProfile?.id,
             phone: phone || '',
             name: name || '',
             email: email || '',

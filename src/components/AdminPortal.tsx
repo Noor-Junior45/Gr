@@ -18,7 +18,7 @@ import {
   Send
 } from 'lucide-react';
 import { Order, OrderStatus } from '../types';
-import { subscribeToOrders, updateOrderStatusInFirestore } from '../services/firebaseConfig';
+import { subscribeToOrders, updateOrderStatusInFirestore } from '../services/supabaseService';
 import { soundService } from '../services/sound';
 import { getEmailServiceStatus, sendOrderConfirmationEmail, sendTestEmail, EmailServiceStatus } from '../services/emailService';
 
