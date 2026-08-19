@@ -272,8 +272,22 @@ export async function signOutUser(): Promise<void> {
 }
 
 /**
- * 5. Global Auth State Listener
+ * 5. Global Auth State Listener & Initial Session Getter
  */
+export async function getInitialAuthSession(): Promise<{ session: Session | null; user: User | null }> {
+  try {
+    const { data, error } = await supabase.auth.getSession();
+    if (error) {
+      console.warn('Initial session notice:', error.message);
+      return { session: null, user: null };
+    }
+    return { session: data.session, user: data.session?.user || null };
+  } catch (err) {
+    console.warn('Session fetch error:', err);
+    return { session: null, user: null };
+  }
+}
+
 export function onAuthStateChange(
   callback: (event: AuthChangeEvent, session: Session | null, user: User | null) => void
 ) {

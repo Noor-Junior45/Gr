@@ -45,11 +45,13 @@ import {
   subscribeToAddresses,
   ACTIVE_SAVED_ADDRESS_KEY,
   onAuthStateChange,
+  getInitialAuthSession,
   safeGetItem
 } from './services/supabaseService';
 
 export default function App() {
   // State Management
+  const [isAuthLoading, setIsAuthLoading] = useState(true);
   const [currentArea, setCurrentArea] = useState<KolkataArea>(KOLKATA_AREAS[3]); // Default: Salt Lake Sector V
   const [activeSavedAddress, setActiveSavedAddress] = useState<SavedAddress | null>(() => {
     try {
@@ -87,14 +89,46 @@ export default function App() {
 
   // Initialize stored user profile, auth listener, live orders & saved addresses
   useEffect(() => {
-    const saved = getSavedUserProfile();
-    if (saved) {
-      setUserProfile(saved);
-      setUserPhone(saved.phone || null);
-      setUserName(saved.name || '');
-    }
+    // Initial session check
+    getInitialAuthSession().then(({ session, user }) => {
+      if (user) {
+        const local = getSavedUserProfile();
+        const userMeta = user.user_metadata || {};
+        const phone = user.phone || userMeta.phone || local?.phone || safeGetItem('giriraj_user_phone') || '';
+        const name = userMeta.full_name || userMeta.name || local?.name || safeGetItem('giriraj_user_name') || 'Customer';
+        const email = user.email || local?.email || safeGetItem('giriraj_user_email') || '';
+        const photoURL = userMeta.avatar_url || userMeta.picture || local?.photoURL || safeGetItem('giriraj_user_photo') || undefined;
+        const dob = local?.dob || safeGetItem('giriraj_user_dob') || '';
+        const prof: UserProfile = {
+          id: user.id,
+          phone,
+          name,
+          email,
+          emailVerified: !!user.email_confirmed_at || !!user.confirmed_at || local?.emailVerified || true,
+          photoURL,
+          dob,
+          walletBalance: local?.walletBalance || 0,
+          refundBalance: local?.refundBalance || 0,
+          cashbackBalance: local?.cashbackBalance || 0
+        };
+        setUserProfile(prof);
+        setUserPhone(phone || null);
+        setUserName(name);
+      }
+    }).finally(() => {
+      setIsAuthLoading(false);
+      // Clean up OAuth tokens from URL if returning from Supabase redirect
+      if (typeof window !== 'undefined' && (window.location.hash.includes('access_token') || window.location.search.includes('code='))) {
+        try {
+          window.history.replaceState({}, document.title, window.location.pathname);
+        } catch {
+          // ignore
+        }
+      }
+    });
 
     const unsubAuth = onAuthStateChange((event, session, sbUser) => {
+      setIsAuthLoading(false);
       if (event === 'SIGNED_OUT' || (!session && !sbUser && event !== 'INITIAL_SESSION')) {
         setUserProfile(null);
         setUserPhone(null);
@@ -125,6 +159,7 @@ export default function App() {
         setUserProfile(prof);
         setUserPhone(phone || null);
         setUserName(name);
+        setIsAuthModalOpen(false);
         saveUserProfile({
           phone,
           name,

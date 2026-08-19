@@ -62,7 +62,7 @@ export const LegalView: React.FC<LegalViewProps> = ({ onBack, type }) => {
           </div>
           <p className="text-xs text-white/90 leading-relaxed mt-2">
             {isPrivacy
-              ? 'This Privacy Policy explains how Giriraj Power collects, protects, uses, and discloses your information when using our application, authentication services (including Google OAuth and Firebase Auth), and quick delivery infrastructure.'
+              ? 'This Privacy Policy explains how Giriraj Power collects, protects, uses, and discloses your information when using our application, authentication services (including Google OAuth and Supabase Auth), and quick delivery infrastructure.'
               : 'These Terms of Service govern your use of the Giriraj Power quick-commerce electrical materials catalog, 60-minute express delivery services, certified electrician appointments, and digital payments.'}
           </p>
         </div>
@@ -157,7 +157,7 @@ export const LegalView: React.FC<LegalViewProps> = ({ onBack, type }) => {
                   4. Data Security &amp; Cloud Storage
                 </h3>
                 <p>
-                  All database communications use SSL/TLS 256-bit encryption. Payment identifiers (UPI handles) and customer records are secured within Firestore cloud databases with role-based security rules. We do not store raw card numbers or banking passwords.
+                  All database communications use SSL/TLS 256-bit encryption. Payment identifiers (UPI handles) and customer records are secured within Supabase cloud PostgreSQL databases with role-based security rules (RLS). We do not store raw card numbers or banking passwords.
                 </p>
               </section>
 

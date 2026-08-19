@@ -1,14 +1,12 @@
+/// <reference types="vite/client" />
 import { createClient } from '@supabase/supabase-js';
 
-// Supabase configuration from Vite environment variables or defaults
-const env = (import.meta as unknown as { env: Record<string, string> }).env || {};
-
-const supabaseUrl =
-  env.VITE_SUPABASE_URL ||
+const supabaseUrl: string =
+  (import.meta.env?.VITE_SUPABASE_URL as string) ||
   'https://iffdkhzctkbglmvaayeh.supabase.co';
 
-const supabaseAnonKey =
-  env.VITE_SUPABASE_ANON_KEY ||
+const supabaseAnonKey: string =
+  (import.meta.env?.VITE_SUPABASE_ANON_KEY as string) ||
   'sb_publishable_C7DzW73hItwOaxr9R4Z2dw_HtjCqHaS';
 
 /**
