@@ -74,7 +74,7 @@ export const LocationModal: React.FC<LocationModalProps> = ({
   const [addressTag, setAddressTag] = useState<'home' | 'work' | 'hotel' | 'other'>('home');
   const [customTagLabel, setCustomTagLabel] = useState('');
   const [receiverName, setReceiverName] = useState(() => localStorage.getItem('giriraj_user_name') || 'Customer');
-  const [receiverPhone, setReceiverPhone] = useState(() => localStorage.getItem('giriraj_user_phone') || '9830012345');
+  const [receiverPhone, setReceiverPhone] = useState(() => localStorage.getItem('giriraj_user_phone') || '8777400280');
   const [formError, setFormError] = useState<string | null>(null);
 
   // Leaflet Map Refs

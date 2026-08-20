@@ -140,7 +140,7 @@ function generateOrderEmailHtml(order: any, customerName: string): string {
         <strong style="color: #0f172a;">Shipping Address:</strong><br>
         ${order.address || 'Address on file'}, ${order.area || 'Kolkata'} ${order.landmark ? `(Landmark: ${order.landmark})` : ''}<br>
         <strong>Phone:</strong> ${order.phone || '+91'}<br><br>
-        <strong>Central Hub Dispatch:</strong> Ezra Street Central Warehouse, Kolkata 700001
+        <strong>Central Hub Dispatch:</strong> Giriraj Power, Bediadanga 1st Ln, Nator Park, Kasba, Kolkata 700039
       </div>
     </div>
 
@@ -150,7 +150,7 @@ function generateOrderEmailHtml(order: any, customerName: string): string {
         Giriraj Power & Construction Supplies Kolkata
       </p>
       <p style="margin: 0 0 8px 0;">
-        Need assistance with your delivery or electrical installation? Call 24x7 Support: +91 98305 77889
+        Business WP: +91 87774 00280 | Contractor Helpline: +91 90071 68561 | Email: noorpos.alert@gmail.com
       </p>
       <p style="margin: 0; color: #64748b;">
         Automated invoice generated via Resend Transactional Mail Service.
@@ -222,7 +222,7 @@ function generateWiringBookingEmailHtml(booking: any, customerName: string): str
     </div>
 
     <div style="background-color: #0f172a; color: #94a3b8; padding: 16px; text-align: center; font-size: 11px;">
-      Giriraj Power Services • Kolkata Engineering Division • Helpline: +91 98305 77889
+      Giriraj Power Services • Kolkata Engineering Division • Helpline: +91 87774 00280 | Contractor: +91 90071 68561
     </div>
   </div>
 </body>
@@ -264,7 +264,7 @@ function generateTestEmailHtml(customerName: string): string {
       <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; font-size: 12px; color: #64748b; text-align: left;">
         <strong>Service:</strong> Resend Transactional Mailer<br>
         <strong>Time:</strong> ${new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })} (IST)<br>
-        <strong>Hub:</strong> Kolkata Central Dispatch, Ezra Street
+        <strong>Hub:</strong> Giriraj Power Kasba Central Dispatch, Kolkata 700039
       </div>
     </div>
 
@@ -276,6 +276,59 @@ function generateTestEmailHtml(customerName: string): string {
 </html>
   `;
 }
+
+// Official Organization Email
+const OFFICIAL_EMAIL = "team@girirajpower.in";
+
+// In-Memory Storage for Received Inbound Emails (Resend Webhook & Contact Form Inquiries)
+interface ReceivedEmailRecord {
+  id: string;
+  from: string;
+  fromName?: string;
+  to: string;
+  subject: string;
+  text?: string;
+  html?: string;
+  receivedAt: string;
+  status: 'unread' | 'read' | 'replied' | 'archived';
+  category: 'quote' | 'support' | 'contractor' | 'inbound_webhook' | 'general';
+  phone?: string;
+  orderId?: string;
+  headers?: Record<string, string>;
+  attachmentsCount?: number;
+  replySent?: {
+    subject: string;
+    sentAt: string;
+    text: string;
+  };
+}
+
+let receivedEmailsStore: ReceivedEmailRecord[] = [
+  {
+    id: "inbound-sample-1",
+    from: "subhojit.contractor@gmail.com",
+    fromName: "Subhojit Bannerjee (Kasba Project)",
+    to: OFFICIAL_EMAIL,
+    subject: "Bulk Quote Request: 200 Coils 2.5mm Polycab Wire & 50 Switch Plates",
+    text: "Hello Giriraj Power Team,\n\nWe have a 4-storey residential wiring project commencing at Kasba Bosepukur. Need best bulk rates for:\n- 200 Coils Polycab FR-LSH 2.5 sq mm\n- 100 Coils 1.5 sq mm\n- 50 Schneider Opale 8-Module plates\n\nCan you deliver via 60-min express dispatch to Kasba site? GST invoice required.\n\nRegards,\nSubhojit (+91 98301 22456)",
+    receivedAt: new Date(Date.now() - 3600000 * 2).toISOString(),
+    status: "unread",
+    category: "quote",
+    phone: "+91 98301 22456"
+  },
+  {
+    id: "inbound-sample-2",
+    from: "priya.ghosh@outlook.com",
+    fromName: "Priya Ghosh",
+    to: OFFICIAL_EMAIL,
+    subject: "Inquiry: Electrician Technician Visit for DB Box Short Circuit",
+    text: "Hi Team,\n\nOur main MCB distribution board tripped in our Salt Lake Sector 2 apartment this morning. Can a certified electrician visit today between 3 PM - 5 PM?\n\nContact: +91 98310 99881",
+    receivedAt: new Date(Date.now() - 3600000 * 5).toISOString(),
+    status: "read",
+    category: "support",
+    phone: "+91 98310 99881"
+  }
+];
 
 async function startServer() {
   const app = express();
@@ -292,11 +345,16 @@ async function startServer() {
   app.get("/api/email-status", (req, res) => {
     const apiKey = process.env.RESEND_API_KEY;
     const isConfigured = Boolean(apiKey && apiKey !== "MY_RESEND_API_KEY" && apiKey.trim() !== "");
-    const fromEmail = process.env.RESEND_FROM_EMAIL || "Giriraj Power <onboarding@resend.dev>";
+    const fromEmail = process.env.RESEND_FROM_EMAIL || `Giriraj Power <${OFFICIAL_EMAIL}>`;
+    const unreadCount = receivedEmailsStore.filter((m) => m.status === "unread").length;
 
     res.json({
       configured: isConfigured,
       fromEmail,
+      officialEmail: OFFICIAL_EMAIL,
+      inboundWebhookUrl: "/api/resend/inbound",
+      receivedCount: receivedEmailsStore.length,
+      unreadCount,
       service: "Resend"
     });
   });
@@ -372,9 +430,9 @@ async function startServer() {
       }
 
       // Check and sanitize 'from' email format
-      let fromEmail = (process.env.RESEND_FROM_EMAIL || "Giriraj Power <onboarding@resend.dev>").trim();
+      let fromEmail = (process.env.RESEND_FROM_EMAIL || `Giriraj Power <${OFFICIAL_EMAIL}>`).trim();
       if (!fromEmail.includes("@")) {
-        fromEmail = "Giriraj Power <onboarding@resend.dev>";
+        fromEmail = `Giriraj Power <${OFFICIAL_EMAIL}>`;
       }
 
       // Live Send via Resend SDK
@@ -445,6 +503,331 @@ async function startServer() {
     }
   });
 
+  // =========================================================================
+  // RESEND RECEIVING EMAIL & INBOUND WEBHOOK ENDPOINTS
+  // =========================================================================
+
+  // 1. Get all received inbound emails & contact inquiries
+  app.get("/api/received-emails", (req, res) => {
+    const unreadCount = receivedEmailsStore.filter((m) => m.status === "unread").length;
+    res.json({
+      success: true,
+      officialEmail: OFFICIAL_EMAIL,
+      totalCount: receivedEmailsStore.length,
+      unreadCount,
+      emails: [...receivedEmailsStore].sort(
+        (a, b) => new Date(b.receivedAt).getTime() - new Date(a.receivedAt).getTime()
+      )
+    });
+  });
+
+  // 2. Resend Inbound Webhook Receiver (supports Resend Inbound Webhook event format & standard POST)
+  app.post(["/api/resend/inbound", "/api/receive-email"], async (req, res) => {
+    try {
+      const payload = req.body || {};
+      console.log("[Resend Inbound Webhook Received]:", JSON.stringify(payload).substring(0, 300));
+
+      // Resend webhook format can wrap in payload.data or top-level properties
+      const emailData = payload.data || payload;
+      const fromRaw = emailData.from || emailData.sender || "inbound-sender@example.com";
+      const toRaw = emailData.to || OFFICIAL_EMAIL;
+      const subject = emailData.subject || "Incoming Message to team@girirajpower.in";
+      const text = emailData.text || emailData.body || "";
+      const html = emailData.html || "";
+      const headers = emailData.headers || {};
+      const attachments = emailData.attachments || [];
+
+      // Parse sender name & email
+      let fromEmail = fromRaw;
+      let fromName = "Customer / Contractor";
+      if (typeof fromRaw === "string" && fromRaw.includes("<") && fromRaw.includes(">")) {
+        const match = fromRaw.match(/(.*)<(.*)>/);
+        if (match) {
+          fromName = match[1].trim();
+          fromEmail = match[2].trim();
+        }
+      } else if (typeof fromRaw === "string") {
+        fromEmail = fromRaw.trim();
+        fromName = fromEmail.split("@")[0];
+      }
+
+      // Auto-categorize
+      const lowerSub = subject.toLowerCase() + " " + (text || "").toLowerCase();
+      let category: 'quote' | 'support' | 'contractor' | 'inbound_webhook' | 'general' = 'inbound_webhook';
+      if (lowerSub.includes("quote") || lowerSub.includes("price") || lowerSub.includes("rate") || lowerSub.includes("bulk")) {
+        category = "quote";
+      } else if (lowerSub.includes("contractor") || lowerSub.includes("electrician") || lowerSub.includes("wiring") || lowerSub.includes("technician")) {
+        category = "contractor";
+      } else if (lowerSub.includes("support") || lowerSub.includes("complaint") || lowerSub.includes("order") || lowerSub.includes("help") || lowerSub.includes("invoice")) {
+        category = "support";
+      }
+
+      const newRecord: ReceivedEmailRecord = {
+        id: `inbound-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+        from: fromEmail,
+        fromName,
+        to: Array.isArray(toRaw) ? toRaw.join(", ") : String(toRaw),
+        subject,
+        text: text || "No text content provided.",
+        html: html || undefined,
+        receivedAt: new Date().toISOString(),
+        status: "unread",
+        category,
+        headers,
+        attachmentsCount: Array.isArray(attachments) ? attachments.length : 0
+      };
+
+      receivedEmailsStore.unshift(newRecord);
+
+      return res.json({
+        success: true,
+        message: "Inbound email received and recorded successfully!",
+        emailId: newRecord.id,
+        to: newRecord.to
+      });
+    } catch (err: any) {
+      console.error("Error processing inbound email webhook:", err);
+      return res.status(500).json({
+        success: false,
+        message: "Failed to process inbound email webhook.",
+        error: String(err)
+      });
+    }
+  });
+
+  // 3. Contact Form / Inbound Inquiry Submission to team@girirajpower.in
+  app.post("/api/contact-inquiry", async (req, res) => {
+    try {
+      const {
+        name,
+        email,
+        phone,
+        subject: rawSubject,
+        message,
+        category = "general",
+        orderId
+      } = req.body;
+
+      if (!email || !email.includes("@")) {
+        return res.status(400).json({
+          success: false,
+          message: "Please provide a valid sender email address."
+        });
+      }
+
+      if (!message || message.trim().length === 0) {
+        return res.status(400).json({
+          success: false,
+          message: "Please include a message or inquiry details."
+        });
+      }
+
+      const subject = rawSubject?.trim() || `Inquiry from ${name || email} for Giriraj Power`;
+      const senderName = name?.trim() || email.split("@")[0];
+
+      // Save to received emails inbox
+      const newRecord: ReceivedEmailRecord = {
+        id: `inquiry-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+        from: email.trim().toLowerCase(),
+        fromName: senderName,
+        to: OFFICIAL_EMAIL,
+        subject,
+        text: message.trim(),
+        receivedAt: new Date().toISOString(),
+        status: "unread",
+        category: (["quote", "support", "contractor", "general"].includes(category) ? category : "general") as any,
+        phone: phone?.trim(),
+        orderId: orderId?.trim()
+      };
+
+      receivedEmailsStore.unshift(newRecord);
+
+      // Attempt sending automated acknowledgment via Resend if configured
+      const resend = getResend();
+      let alertSent = false;
+      let ackSent = false;
+
+      if (resend) {
+        try {
+          // 1. Send receipt acknowledgement to customer
+          const fromEmail = (process.env.RESEND_FROM_EMAIL || `Giriraj Power <${OFFICIAL_EMAIL}>`).trim();
+          await resend.emails.send({
+            from: fromEmail.includes("@") ? fromEmail : `Giriraj Power <${OFFICIAL_EMAIL}>`,
+            to: [email.trim().toLowerCase()],
+            subject: `✓ Received: ${subject} - Giriraj Power Kasba`,
+            html: `
+              <div style="font-family: sans-serif; max-width: 540px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden;">
+                <div style="background-color: #0f172a; padding: 20px; text-align: center;">
+                  <h2 style="color: #facc15; margin: 0; font-size: 18px;">⚡ GIRIRAJ POWER</h2>
+                  <p style="color: #94a3b8; margin: 4px 0 0 0; font-size: 12px;">Kasba Central Hub, Kolkata</p>
+                </div>
+                <div style="padding: 24px;">
+                  <h3 style="color: #0f172a; margin: 0 0 12px 0;">Thank you for contacting us, ${senderName}!</h3>
+                  <p style="color: #475569; font-size: 14px; line-height: 1.5; margin: 0 0 16px 0;">
+                    We have received your message at <strong>${OFFICIAL_EMAIL}</strong>. Our Kasba engineering and wholesale desk will get back to you shortly.
+                  </p>
+                  <div style="background-color: #f8fafc; border-left: 4px solid #facc15; padding: 12px; margin: 16px 0; font-size: 13px; color: #334155;">
+                    <strong>Your Message:</strong><br>${message.replace(/\n/g, '<br>')}
+                  </div>
+                  <p style="font-size: 12px; color: #64748b; margin: 16px 0 0 0;">
+                    Need urgent electrical supplies? Call our 60-min dispatch desk: <strong>+91 87774 00280</strong> | Contractor: <strong>+91 90071 68561</strong>
+                  </p>
+                </div>
+              </div>
+            `
+          });
+          ackSent = true;
+        } catch (resendErr) {
+          console.warn("[Resend Inbound Auto-Reply Notice]:", resendErr);
+        }
+      }
+
+      return res.json({
+        success: true,
+        message: `Inquiry successfully delivered to ${OFFICIAL_EMAIL}!`,
+        emailId: newRecord.id,
+        ackSent,
+        alertSent
+      });
+    } catch (err: any) {
+      console.error("Error creating contact inquiry:", err);
+      return res.status(500).json({
+        success: false,
+        message: "Failed to submit inquiry.",
+        error: String(err)
+      });
+    }
+  });
+
+  // 4. Send a reply to a received email
+  app.post("/api/received-emails/:id/reply", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { replyText, subject: customSubject } = req.body;
+
+      const recordIndex = receivedEmailsStore.findIndex((m) => m.id === id);
+      if (recordIndex === -1) {
+        return res.status(404).json({ success: false, message: "Received email record not found." });
+      }
+
+      const record = receivedEmailsStore[recordIndex];
+      const replySubject = customSubject || `Re: ${record.subject}`;
+      const resend = getResend();
+
+      let sendResult: any = null;
+      let fromEmail = (process.env.RESEND_FROM_EMAIL || `Giriraj Power <${OFFICIAL_EMAIL}>`).trim();
+      if (!fromEmail.includes("@")) {
+        fromEmail = `Giriraj Power <${OFFICIAL_EMAIL}>`;
+      }
+
+      if (resend) {
+        try {
+          sendResult = await resend.emails.send({
+            from: fromEmail,
+            to: [record.from],
+            subject: replySubject,
+            text: replyText,
+            html: `
+              <div style="font-family: sans-serif; max-width: 560px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden;">
+                <div style="background-color: #0f172a; padding: 18px 24px; border-bottom: 3px solid #facc15;">
+                  <h2 style="color: #facc15; margin: 0; font-size: 16px;">⚡ GIRIRAJ POWER RESPONSE</h2>
+                  <p style="color: #94a3b8; margin: 4px 0 0 0; font-size: 11px;">Official Reply from ${OFFICIAL_EMAIL}</p>
+                </div>
+                <div style="padding: 24px; font-size: 14px; color: #1e293b; line-height: 1.6;">
+                  <p style="margin: 0 0 16px 0;">Dear <strong>${record.fromName || 'Customer'}</strong>,</p>
+                  <p style="margin: 0 0 20px 0; white-space: pre-line;">${replyText}</p>
+                  
+                  <div style="border-top: 1px solid #e2e8f0; padding-top: 16px; margin-top: 20px; font-size: 12px; color: #64748b;">
+                    <strong>Giriraj Power Support & Wholesale Desk</strong><br>
+                    Kasba Central Warehouse, Kolkata 700039<br>
+                    WhatsApp: +91 87774 00280 | Phone: +91 90071 68561 | Email: ${OFFICIAL_EMAIL}
+                  </div>
+                </div>
+              </div>
+            `
+          });
+        } catch (sdkErr: any) {
+          console.warn("[Resend Reply SDK error]:", sdkErr);
+        }
+      }
+
+      // Update record status to replied
+      receivedEmailsStore[recordIndex] = {
+        ...record,
+        status: "replied",
+        replySent: {
+          subject: replySubject,
+          sentAt: new Date().toISOString(),
+          text: replyText
+        }
+      };
+
+      return res.json({
+        success: true,
+        message: `Reply sent successfully to ${record.from}!`,
+        replyId: sendResult?.data?.id,
+        record: receivedEmailsStore[recordIndex]
+      });
+    } catch (err: any) {
+      console.error("Error replying to email:", err);
+      return res.status(500).json({
+        success: false,
+        message: "Failed to send email reply.",
+        error: String(err)
+      });
+    }
+  });
+
+  // 5. Update received email status (read, unread, archived)
+  app.patch("/api/received-emails/:id", (req, res) => {
+    const { id } = req.params;
+    const { status } = req.body;
+
+    const recordIndex = receivedEmailsStore.findIndex((m) => m.id === id);
+    if (recordIndex === -1) {
+      return res.status(404).json({ success: false, message: "Email not found." });
+    }
+
+    if (["unread", "read", "replied", "archived"].includes(status)) {
+      receivedEmailsStore[recordIndex].status = status;
+    }
+
+    res.json({
+      success: true,
+      email: receivedEmailsStore[recordIndex]
+    });
+  });
+
+  // 6. Delete a received email
+  app.delete("/api/received-emails/:id", (req, res) => {
+    const { id } = req.params;
+    receivedEmailsStore = receivedEmailsStore.filter((m) => m.id !== id);
+    res.json({ success: true, message: "Email removed from inbound inbox." });
+  });
+
+  // 7. Simulate an incoming inbound email (for quick testing)
+  app.post("/api/received-emails/simulate-inbound", (req, res) => {
+    const { from, fromName, subject, text, category } = req.body;
+    const newRecord: ReceivedEmailRecord = {
+      id: `inbound-test-${Date.now()}`,
+      from: from || "kolkata.builder@gmail.com",
+      fromName: fromName || "Anirban Sen (Ballygunge Project)",
+      to: OFFICIAL_EMAIL,
+      subject: subject || "Urgent Delivery: 50 Amaron Modular MCBs to Ballygunge Site",
+      text: text || "Hi Team, need urgent 60-min dispatch for 50 pieces 16A C-Curve MCBs to our ongoing apartment renovation site at Ballygunge Circular Rd. Please confirm dispatch.",
+      receivedAt: new Date().toISOString(),
+      status: "unread",
+      category: category || "contractor"
+    };
+
+    receivedEmailsStore.unshift(newRecord);
+    res.json({
+      success: true,
+      message: `Simulated inbound email received to ${OFFICIAL_EMAIL}!`,
+      email: newRecord
+    });
+  });
+
   // Server-side AI Assistant endpoint with Google Maps Grounding for Kolkata electrical & hardware hubs
   app.post("/api/ai-assistant", async (req, res) => {
     try {
@@ -454,15 +837,15 @@ async function startServer() {
       if (!apiKey) {
         // Provide intelligent electrical fallback if key is not configured
         return res.json({
-          text: `For ${userArea || 'Kolkata'} (PIN: ${pincode || '700001'}):
+          text: `For ${userArea || 'Kolkata'} (PIN: ${pincode || '700039'}):
 • 1.5 sq mm Wires (Polycab/Havells): Recommended for lighting circuits & 6A switchboards (10A MCB protection).
 • 2.5 sq mm Wires: Recommended for Air Conditioners (up to 1.5 Ton), geysers, and kitchen power plugs (16A/20A MCB).
 • 4.0 sq mm Wires: Mains sub-meter feeder & heavy induction loads.
-• Construction: UltraTech Cement & Tata Tiscon 550D TMT bars are in stock for 60-min delivery from Ezra Street Central Hub.`,
+• Construction: UltraTech Cement & Tata Tiscon 550D TMT bars are in stock for 60-min delivery from Giriraj Power Kasba Central Hub.`,
           mapsSources: [
             {
-              uri: "https://share.google/iOCruA9J5kluj6PDN",
-              title: "Giriraj Power Ezra Street Central Hub, Kolkata"
+              uri: "https://share.google/EWHvo68Oi2DsChWWV",
+              title: "Giriraj Power Kasba Hub, Kolkata"
             }
           ]
         });
@@ -478,8 +861,8 @@ async function startServer() {
       });
 
       const systemPrompt = `You are the expert Electrical Engineer, Construction Estimator & Store Advisor for Giriraj Power in Kolkata, India.
-Customer is located in ${userArea || 'Kolkata Metropolitan Area'} (PIN: ${pincode || '700001'}).
-Provide concise, practical electrical advice (wire gauges, MCB ratings, CESC/WBSEDCL standards, conduit sizing, cement and TMT recommendations) and reference Kolkata locations like Ezra Street electrical market, Salt Lake Sector V, New Town, Park Street, or Gariahat where relevant.`;
+Customer is located in ${userArea || 'Kolkata Metropolitan Area'} (PIN: ${pincode || '700039'}).
+Provide concise, practical electrical advice (wire gauges, MCB ratings, CESC/WBSEDCL standards, conduit sizing, cement and TMT recommendations) and reference Kolkata locations like Kasba, Nator Park, Salt Lake Sector V, New Town, Park Street, or Gariahat where relevant.`;
 
       // Call Gemini 3.7 Flash with Google Maps tool
       const response = await ai.models.generateContent({
@@ -490,8 +873,8 @@ Provide concise, practical electrical advice (wire gauges, MCB ratings, CESC/WBS
           toolConfig: {
             retrievalConfig: {
               latLng: {
-                latitude: 22.5726, // Kolkata coordinates
-                longitude: 88.3639
+                latitude: 22.5145, // Kasba Kolkata coordinates
+                longitude: 88.3882
               }
             }
           }
@@ -521,8 +904,8 @@ Provide concise, practical electrical advice (wire gauges, MCB ratings, CESC/WBS
       // Always ensure Google Business link is provided
       if (mapsSources.length === 0) {
         mapsSources.push({
-          uri: "https://share.google/iOCruA9J5kluj6PDN",
-          title: "Giriraj Power Ezra Street Central Hub, Kolkata"
+          uri: "https://share.google/EWHvo68Oi2DsChWWV",
+          title: "Giriraj Power Kasba Hub, Kolkata"
         });
       }
 
@@ -540,8 +923,8 @@ Provide concise, practical electrical advice (wire gauges, MCB ratings, CESC/WBS
 Express delivery is available across Kolkata within ~60 minutes!`,
         mapsSources: [
           {
-            uri: "https://share.google/iOCruA9J5kluj6PDN",
-            title: "Giriraj Power Ezra Street Central Hub, Kolkata"
+            uri: "https://share.google/EWHvo68Oi2DsChWWV",
+            title: "Giriraj Power Kasba Hub, Kolkata"
           }
         ]
       });

@@ -150,3 +150,25 @@ export interface UserProfile {
   createdAt?: string;
   updatedAt?: string;
 }
+
+export interface ReceivedEmail {
+  id: string;
+  from: string;
+  fromName?: string;
+  to: string;
+  subject: string;
+  text?: string;
+  html?: string;
+  receivedAt: string;
+  status: 'unread' | 'read' | 'replied' | 'archived';
+  category: 'quote' | 'support' | 'contractor' | 'inbound_webhook' | 'general';
+  phone?: string;
+  orderId?: string;
+  headers?: Record<string, string>;
+  attachmentsCount?: number;
+  replySent?: {
+    subject: string;
+    sentAt: string;
+    text: string;
+  };
+}

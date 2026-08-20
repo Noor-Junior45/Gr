@@ -42,6 +42,7 @@ import { ResetPassword } from './components/ResetPassword';
 import { ElectricalListingPage } from './components/electrical/ElectricalListingPage';
 import { ProductDetailPage } from './components/electrical/ProductDetailPage';
 import { ConstructionPage } from './components/ConstructionPage';
+import { HomePage } from './components/HomePage';
 import {
   getSavedUserProfile,
   saveUserProfile,
@@ -528,51 +529,50 @@ export default function App() {
             }
           />
 
-          {/* HOME / DEFAULT ROUTE */}
+          {/* HOME / DEFAULT ROUTE - MODERN WHOLESALE B2B & B2C HOME */}
           <Route
             path="/"
             element={
-              activeCategory === 'construction' ? (
-                <div className="text-center py-20">
-                  <h2 className="text-2xl sm:text-3xl font-medium text-black mb-2">Coming Soon</h2>
-                  <p className="text-slate-500">Construction materials and catalog are launching soon.</p>
-                </div>
-              ) : (
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 py-12 text-center space-y-5">
-                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-50 border border-amber-200 text-amber-900 text-xs font-bold">
-                    <Zap className="w-3.5 h-3.5 fill-amber-500 text-amber-500" />
-                    Central Ezra Street Kolkata Wholesale Supply
-                  </div>
-                  <h2 className="text-2xl sm:text-4xl font-black text-slate-900 tracking-tight">
-                    Kolkata's 60-Minute Electrical &amp; Wire Hub
-                  </h2>
-                  <p className="text-slate-500 max-w-xl mx-auto text-xs sm:text-sm leading-relaxed">
-                    Direct wholesale dispatch from Ezra Street. High-grade RR Kabel, Havells, Polycab copper wires, switches, MCBs, and certified electrical supplies.
-                  </p>
-                  <div className="pt-3">
-                    <button
-                      onClick={() => {
-                        setActiveCategory('electrical');
-                        navigate('/electrical');
-                      }}
-                      className="px-6 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-black text-xs sm:text-sm shadow-md transition-all cursor-pointer inline-flex items-center gap-2"
-                    >
-                      <Zap className="w-4 h-4 fill-white" />
-                      Browse Electrical Store
-                    </button>
-                  </div>
-                </div>
-              )
+              <HomePage
+                onAddToCart={handleAddToCart}
+                onNavigateCategory={(categoryName) => {
+                  if (categoryName.toLowerCase().includes('wire') || categoryName.toLowerCase().includes('switch') || categoryName.toLowerCase().includes('electric')) {
+                    setActiveCategory('electrical');
+                    navigate('/electrical');
+                  } else {
+                    setActiveCategory('construction');
+                    navigate('/construction');
+                  }
+                }}
+                onOpenProductQuickView={(prod) => setSelectedProductQuickView(prod)}
+              />
             }
           />
         </Routes>
       </main>
 
-      {/* Small Clean Footer (Rendered on Home or Legal pages) */}
+      {/* Industrial Wholesaler 4-Column Footer (Rendered on Home or Legal pages) */}
       {(location.pathname === '/' || location.pathname.startsWith('/privacy') || location.pathname.startsWith('/terms')) && (
         <Footer
           onOpenPrivacy={() => navigate('/privacy')}
           onOpenTerms={() => navigate('/terms')}
+          onNavigateHome={() => navigate('/')}
+          onNavigateProducts={() => navigate('/electrical')}
+          onNavigateCalculator={() => {
+            navigate('/');
+            setTimeout(() => {
+              const el = document.getElementById('smart-cost-calculators');
+              if (el) el.scrollIntoView({ behavior: 'smooth' });
+            }, 100);
+          }}
+          onOpenBulkQuote={() => {
+            navigate('/');
+            setTimeout(() => {
+              const el = document.getElementById('smart-cost-calculators');
+              if (el) el.scrollIntoView({ behavior: 'smooth' });
+            }, 100);
+          }}
+          onOpenOrders={() => navigate('/orders')}
         />
       )}
 

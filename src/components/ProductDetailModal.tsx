@@ -349,7 +349,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                     },
                     {
                       q: 'How fast is dispatch in Kolkata?',
-                      a: 'Dispatched directly from Ezra Street electrical market within minimum 60 minutes or maximum 7 days.'
+                      a: 'Dispatched directly from Giriraj Power Kasba warehouse hub within minimum 60 minutes or maximum 7 days.'
                     },
                     {
                       q: 'Do I get a valid GST invoice?',

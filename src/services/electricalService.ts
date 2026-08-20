@@ -371,7 +371,7 @@ export async function fetchProductFaqs(productId: string, productFallback?: Elec
     },
     {
       q: 'How does delivery work for my address in Kolkata?',
-      a: 'We dispatch from our central Ezra Street electrical market hub in Kolkata with safe packaging and rapid delivery.'
+      a: 'We dispatch directly from our Giriraj Power Kasba warehouse hub in Kolkata with safe packaging and rapid delivery.'
     },
     {
       q: 'Will I receive a GST tax invoice with my order?',

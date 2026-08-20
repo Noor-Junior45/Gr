@@ -74,7 +74,7 @@ export const MapsGroundingAssistant: React.FC<MapsGroundingAssistantProps> = ({
 • Lighting circuits: Use 1.5 sq mm Polycab/Havells FR-LSH wire with 10A C-Curve MCB.
 • Power & Air Conditioners: Use 2.5 sq mm wire with 16A/20A MCB.
 • Main Meter to Distribution Board: Use 4.0 sq mm or 6.0 sq mm wire with 32A DP Isolator.
-• Central Ezra Street & Salt Lake Sector V Hubs have 45-minute dispatch ready for these materials!`;
+• Giriraj Power Kasba Hub has fast 60-minute dispatch ready for these materials!`;
 
       if (query.toLowerCase().includes('ac') || query.toLowerCase().includes('air conditioner')) {
         fallbackText = `For a 1.5 Ton Inverter AC in Kolkata:
@@ -90,7 +90,7 @@ All items are in stock for fast delivery (60 Mins – 7 Days) to ${currentArea.n
           role: 'assistant',
           content: fallbackText,
           mapsSources: [
-            { uri: 'https://share.google/iOCruA9J5kluj6PDN', title: 'Giriraj Power Ezra Street Central Hub, Kolkata' }
+            { uri: 'https://share.google/EWHvo68Oi2DsChWWV', title: 'Giriraj Power (Kasba Hub), Kolkata' }
           ]
         }
       ]);
@@ -102,7 +102,7 @@ All items are in stock for fast delivery (60 Mins – 7 Days) to ${currentArea.n
   const sampleQueries = [
     'How many wire coils for 2BHK 950 sq ft flat in Kolkata?',
     'What MCB rating for 1.5 ton inverter AC?',
-    'Where is the Ezra Street electrical hub in Kolkata?',
+    'Where is Giriraj Power Kasba hub located in Kolkata?',
     'Difference between 1.5mm and 2.5mm Polycab wire?'
   ];
 

@@ -126,7 +126,7 @@ export const LegalView: React.FC<LegalViewProps> = ({ onBack, type }) => {
                   <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/70">
                     <p className="font-extrabold text-slate-900">⚡ 60-Min Dispatch Routing</p>
                     <p className="text-[11px] text-slate-600 mt-0.5">
-                      Assigning delivery fleet riders from Ezra Street hub to your address in real-time.
+                      Assigning delivery fleet riders from Kasba / Bediadanga central warehouse hub to your address in real-time.
                     </p>
                   </div>
                   <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/70">
@@ -168,7 +168,7 @@ export const LegalView: React.FC<LegalViewProps> = ({ onBack, type }) => {
                   5. User Rights &amp; Account Deletion
                 </h3>
                 <p>
-                  You have the right to inspect, edit, or delete your account information at any time. You can edit your name, email, phone, and saved delivery addresses directly in the Profile View or contact our support team at <a href="mailto:support@girirajpower.com" className="text-amber-700 font-bold underline">support@girirajpower.com</a> for complete account data erasure.
+                  You have the right to inspect, edit, or delete your account information at any time. You can edit your name, email, phone, and saved delivery addresses directly in the Profile View or contact our support team at <a href="mailto:team@girirajpower.in" className="text-amber-700 font-bold underline">team@girirajpower.in</a> for complete account data erasure.
                 </p>
               </section>
             </>
@@ -279,9 +279,9 @@ export const LegalView: React.FC<LegalViewProps> = ({ onBack, type }) => {
               <div className="flex items-start gap-2.5">
                 <MapPin className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
                 <div>
-                  <p className="font-bold text-slate-900">Central Hub</p>
+                  <p className="font-bold text-slate-900">Store &amp; Warehouse</p>
                   <p className="text-[11px] text-slate-600 leading-tight">
-                    55 Ezra Street, Ground Floor, Kolkata 700001, West Bengal, India
+                    Giriraj Power, Bediadanga 1st Ln, Nator Park, Kasba, Kolkata, West Bengal 700039
                   </p>
                 </div>
               </div>
@@ -291,9 +291,9 @@ export const LegalView: React.FC<LegalViewProps> = ({ onBack, type }) => {
                 <div>
                   <p className="font-bold text-slate-900">Helpline Numbers</p>
                   <p className="text-[11px] text-slate-600 leading-tight">
-                    Business: +91 87774 00280<br />
-                    Contractor: +91 90071 68561<br />
-                    Alternative: +91 98745 69712
+                    <strong className="text-slate-800">Business WP:</strong> +91 87774 00280<br />
+                    <strong className="text-slate-800">Contractor:</strong> +91 90071 68561<br />
+                    <strong className="text-slate-800">Alternative:</strong> +91 98745 69712
                   </p>
                 </div>
               </div>
@@ -303,8 +303,9 @@ export const LegalView: React.FC<LegalViewProps> = ({ onBack, type }) => {
                 <div>
                   <p className="font-bold text-slate-900">Email Inquiries</p>
                   <p className="text-[11px] text-slate-600 leading-tight">
-                    support@girirajpower.in<br />
-                    mdhassan1738@gmail.com
+                    <a href="mailto:team@girirajpower.in" className="text-blue-700 hover:underline">
+                      team@girirajpower.in
+                    </a>
                   </p>
                 </div>
               </div>

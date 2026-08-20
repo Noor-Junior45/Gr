@@ -139,13 +139,23 @@ export const ConstructionPage: React.FC<ConstructionPageProps> = ({
             <p className="text-slate-200 text-[11px]">
               Direct truckload pricing for contractors, builders, and large renovations.
             </p>
-            <a
-              href="tel:+918777400280"
-              className="mt-2 py-2 px-3 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black rounded-lg text-center flex items-center justify-center gap-1.5 transition-colors"
-            >
-              <PhoneCall className="w-3.5 h-3.5" />
-              <span>Call Construction Desk</span>
-            </a>
+            <div className="grid grid-cols-2 gap-2 mt-2">
+              <a
+                href="https://wa.me/918777400280?text=Hello%20Giriraj%20Power,%20I%20need%20a%20bulk%20construction%20materials%20quote"
+                target="_blank"
+                rel="noreferrer"
+                className="py-2 px-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg text-center flex items-center justify-center gap-1 text-[11px] transition-colors"
+              >
+                <span>WhatsApp Quote</span>
+              </a>
+              <a
+                href="tel:+919007168561"
+                className="py-2 px-2.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black rounded-lg text-center flex items-center justify-center gap-1 text-[11px] transition-colors"
+              >
+                <PhoneCall className="w-3 h-3" />
+                <span>Contractor Desk</span>
+              </a>
+            </div>
           </div>
         </div>
       </div>

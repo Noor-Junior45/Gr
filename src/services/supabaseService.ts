@@ -730,7 +730,7 @@ export async function updateOrderStatusInFirestore(orderId: string, newStatus: O
       name: 'Bikash Mondal ⚡',
       phone: '+91 87774 00280',
       vehicleNumber: 'WB 07 C 1089',
-      currentHub: 'Central Ezra Street Hub'
+      currentHub: 'Giriraj Power Kasba Hub'
     };
   }
 

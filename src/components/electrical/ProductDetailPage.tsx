@@ -445,7 +445,7 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
                         </span>
                       )}
                       <span className={`text-[11px] font-bold ${product.stock_quantity > 0 ? 'text-emerald-600' : 'text-red-600'}`}>
-                        {product.stock_quantity > 0 ? 'In Stock • Ezra St. Dispatch' : 'Out of Stock'}
+                        {product.stock_quantity > 0 ? 'In Stock • Kasba Hub Dispatch' : 'Out of Stock'}
                       </span>
                     </div>
                   </div>
@@ -686,7 +686,7 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
                 <div className="flex items-start gap-2">
                   <Tag className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
                   <span>
-                    <strong className="font-bold text-slate-900">Express Delivery:</strong> Rapid dispatch from Central Ezra Street Kolkata hub for eligible orders.
+                    <strong className="font-bold text-slate-900">Express Delivery:</strong> Rapid dispatch from Giriraj Power Kasba Kolkata warehouse hub for eligible orders.
                   </span>
                 </div>
               </div>
@@ -724,7 +724,7 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
                     Express Delivery Available (Pincode: {pincode})
                   </p>
                   <p className="text-[11px] text-slate-500 pl-5">
-                    Dispatched from Central Ezra Street Kolkata warehouse • Free delivery on orders above ₹499
+                    Dispatched from Giriraj Power Kasba Kolkata warehouse • Free delivery on orders above ₹499
                   </p>
                 </div>
               )}

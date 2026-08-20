@@ -405,7 +405,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                         </div>
                         <div>
                           <h3 className="text-sm font-black text-slate-900">
-                            Giriraj Central Ezra Street Hub
+                            Giriraj Power Kasba Hub
                           </h3>
                           <p className="text-xs text-slate-500 font-medium">
                             {order.area} • Order #{order.id.slice(-6).toUpperCase()}
@@ -1039,7 +1039,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
               </div>
               <div className="flex items-center gap-2.5 p-3 rounded-xl bg-slate-50">
                 <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                <span>Direct priority dispatch from Ezra Street central distribution hub</span>
+                <span>Direct priority dispatch from Giriraj Power Kasba central distribution hub</span>
               </div>
               <div className="flex items-center gap-2.5 p-3 rounded-xl bg-slate-50">
                 <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
@@ -1072,7 +1072,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
         <div className="max-w-2xl mx-auto p-4 sm:p-6 space-y-4">
           <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-2xs space-y-4">
             <div>
-              <h3 className="text-sm font-extrabold text-slate-900">Kolkata Central Support Desk</h3>
+              <h3 className="text-sm font-extrabold text-slate-900">Giriraj Power Kasba Support Desk</h3>
               <p className="text-xs text-slate-600 mt-0.5">
                 Need assistance with your 60-min express delivery, wire measurements, GST tax invoices, contractor requests, or technician bookings?
               </p>
@@ -1081,7 +1081,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {/* 1. Business WhatsApp Support */}
               <a
-                href="https://wa.me/message/COQKKO7B7UOVM1"
+                href="https://wa.me/918777400280"
                 target="_blank"
                 rel="noreferrer"
                 className="flex items-center gap-3 p-3.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-slate-900 transition-colors"
@@ -1090,50 +1090,50 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                   <MessageSquare className="w-4 h-4" />
                 </div>
                 <div>
-                  <p className="text-xs font-black text-emerald-950">Chat on WhatsApp</p>
+                  <p className="text-xs font-black text-emerald-950">Business WhatsApp</p>
                   <p className="text-[11px] text-emerald-700 font-semibold">+91 87774 00280 (Instant)</p>
                 </div>
               </a>
 
-              {/* 2. Business Support Phone */}
+              {/* 2. Contractor & Wholesale Helpline */}
               <a
-                href="tel:+918777400280"
+                href="tel:+919007168561"
                 className="flex items-center gap-3 p-3.5 rounded-xl bg-amber-50 hover:bg-amber-100 border border-amber-200 text-slate-900 transition-colors"
               >
                 <div className="w-9 h-9 rounded-lg bg-amber-400 text-black flex items-center justify-center shrink-0 shadow-2xs">
                   <Phone className="w-4 h-4" />
                 </div>
                 <div>
-                  <p className="text-xs font-black text-slate-900">Business Help Center</p>
-                  <p className="text-[11px] text-slate-600 font-semibold">+91 87774 00280</p>
+                  <p className="text-xs font-black text-slate-900">Contractor Helpline</p>
+                  <p className="text-[11px] text-amber-800 font-semibold">+91 90071 68561</p>
                 </div>
               </a>
 
-              {/* 3. Contractor & Technician Helpline */}
+              {/* 3. Alternative Support Line */}
               <a
-                href="tel:+919007168561"
+                href="tel:+919874569712"
                 className="flex items-center gap-3 p-3.5 rounded-xl bg-blue-50 hover:bg-blue-100 border border-blue-200 text-slate-900 transition-colors"
               >
                 <div className="w-9 h-9 rounded-lg bg-blue-600 text-white flex items-center justify-center shrink-0 shadow-2xs">
                   <Phone className="w-4 h-4" />
                 </div>
                 <div>
-                  <p className="text-xs font-black text-slate-900">Contractor Helpline</p>
-                  <p className="text-[11px] text-blue-700 font-semibold">+91 90071 68561</p>
+                  <p className="text-xs font-black text-slate-900">Alternative Support</p>
+                  <p className="text-[11px] text-blue-700 font-semibold">+91 98745 69712</p>
                 </div>
               </a>
 
-              {/* 4. Alternative Support Line */}
+              {/* 4. Official Email Support */}
               <a
-                href="tel:+919874569712"
+                href="mailto:team@girirajpower.in"
                 className="flex items-center gap-3 p-3.5 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-900 transition-colors"
               >
                 <div className="w-9 h-9 rounded-lg bg-slate-700 text-white flex items-center justify-center shrink-0 shadow-2xs">
-                  <Phone className="w-4 h-4" />
+                  <Mail className="w-4 h-4" />
                 </div>
                 <div>
-                  <p className="text-xs font-black text-slate-900">Alternative Support</p>
-                  <p className="text-[11px] text-slate-600 font-semibold">+91 98745 69712</p>
+                  <p className="text-xs font-black text-slate-900">Official Email</p>
+                  <p className="text-[11px] text-slate-600 font-semibold">team@girirajpower.in</p>
                 </div>
               </a>
             </div>
@@ -1145,7 +1145,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
               <div className="border-b border-slate-100 pb-2.5">
                 <p className="font-bold text-slate-900">How fast is the express delivery?</p>
                 <p className="text-slate-600 mt-1">
-                  We deliver in 60 minutes across Salt Lake, New Town, Ezra Street, Park Street, Ballygunge, and all covered Kolkata zones.
+                  We deliver in 60 minutes across Kasba, Nator Park, Salt Lake, New Town, Park Street, Ballygunge, Gariahat, and all covered Kolkata zones directly from our Kasba warehouse.
                 </p>
               </div>
               <div className="border-b border-slate-100 pb-2.5">

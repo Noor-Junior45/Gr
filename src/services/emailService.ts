@@ -1,4 +1,4 @@
-import { Order, WiringServiceBooking } from '../types';
+import { Order, WiringServiceBooking, ReceivedEmail } from '../types';
 
 export interface EmailSendResult {
   success: boolean;
@@ -6,12 +6,27 @@ export interface EmailSendResult {
   messageId?: string;
   message: string;
   error?: string;
+  emailId?: string;
+  ackSent?: boolean;
+  alertSent?: boolean;
 }
 
 export interface EmailServiceStatus {
   configured: boolean;
   fromEmail: string;
+  officialEmail?: string;
+  inboundWebhookUrl?: string;
+  receivedCount?: number;
+  unreadCount?: number;
   service: string;
+}
+
+export interface ReceivedEmailsResponse {
+  success: boolean;
+  officialEmail: string;
+  totalCount: number;
+  unreadCount: number;
+  emails: ReceivedEmail[];
 }
 
 /**
@@ -21,12 +36,152 @@ export async function getEmailServiceStatus(): Promise<EmailServiceStatus> {
   try {
     const res = await fetch('/api/email-status');
     if (!res.ok) {
-      return { configured: false, fromEmail: 'onboarding@resend.dev', service: 'Resend' };
+      return {
+        configured: false,
+        fromEmail: 'Giriraj Power <team@girirajpower.in>',
+        officialEmail: 'team@girirajpower.in',
+        service: 'Resend'
+      };
     }
     return await res.json();
   } catch (err) {
     console.warn('Failed to check email service status:', err);
-    return { configured: false, fromEmail: 'onboarding@resend.dev', service: 'Resend' };
+    return {
+      configured: false,
+      fromEmail: 'Giriraj Power <team@girirajpower.in>',
+      officialEmail: 'team@girirajpower.in',
+      service: 'Resend'
+    };
+  }
+}
+
+/**
+ * Fetches all received inbound emails and customer contact inquiries
+ */
+export async function getReceivedEmails(): Promise<ReceivedEmailsResponse> {
+  try {
+    const res = await fetch('/api/received-emails');
+    if (!res.ok) {
+      throw new Error(`HTTP error ${res.status}`);
+    }
+    return await res.json();
+  } catch (err) {
+    console.warn('Failed to fetch received emails:', err);
+    return {
+      success: false,
+      officialEmail: 'team@girirajpower.in',
+      totalCount: 0,
+      unreadCount: 0,
+      emails: []
+    };
+  }
+}
+
+/**
+ * Submits a contact / quote inquiry email to team@girirajpower.in
+ */
+export async function sendContactInquiry(params: {
+  name: string;
+  email: string;
+  phone?: string;
+  subject?: string;
+  message: string;
+  category?: 'quote' | 'support' | 'contractor' | 'general';
+  orderId?: string;
+}): Promise<EmailSendResult> {
+  try {
+    const res = await fetch('/api/contact-inquiry', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(params)
+    });
+    return await res.json();
+  } catch (err) {
+    const errorMessage = err instanceof Error ? err.message : 'Network error';
+    return {
+      success: false,
+      message: `Failed to submit inquiry: ${errorMessage}`,
+      error: errorMessage
+    };
+  }
+}
+
+/**
+ * Replies to a received email using Resend
+ */
+export async function replyToReceivedEmail(
+  id: string,
+  replyText: string,
+  customSubject?: string
+): Promise<{ success: boolean; message: string; record?: ReceivedEmail }> {
+  try {
+    const res = await fetch(`/api/received-emails/${id}/reply`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ replyText, subject: customSubject })
+    });
+    return await res.json();
+  } catch (err) {
+    const errorMessage = err instanceof Error ? err.message : 'Network error';
+    return {
+      success: false,
+      message: `Failed to send reply: ${errorMessage}`
+    };
+  }
+}
+
+/**
+ * Updates status of a received email (unread, read, archived)
+ */
+export async function updateReceivedEmailStatus(
+  id: string,
+  status: 'unread' | 'read' | 'archived'
+): Promise<{ success: boolean; email?: ReceivedEmail }> {
+  try {
+    const res = await fetch(`/api/received-emails/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status })
+    });
+    return await res.json();
+  } catch (err) {
+    return { success: false };
+  }
+}
+
+/**
+ * Deletes a received email from the inbound inbox
+ */
+export async function deleteReceivedEmail(id: string): Promise<{ success: boolean }> {
+  try {
+    const res = await fetch(`/api/received-emails/${id}`, {
+      method: 'DELETE'
+    });
+    return await res.json();
+  } catch (err) {
+    return { success: false };
+  }
+}
+
+/**
+ * Triggers a simulated inbound email for testing receiving functionality
+ */
+export async function simulateInboundEmail(params?: {
+  from?: string;
+  fromName?: string;
+  subject?: string;
+  text?: string;
+  category?: 'quote' | 'support' | 'contractor' | 'general';
+}): Promise<{ success: boolean; message: string; email?: ReceivedEmail }> {
+  try {
+    const res = await fetch('/api/received-emails/simulate-inbound', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(params || {})
+    });
+    return await res.json();
+  } catch (err) {
+    return { success: false, message: 'Failed to simulate inbound email' };
   }
 }
 
