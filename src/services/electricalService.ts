@@ -85,7 +85,7 @@ export function transformToElectricalProduct(item: any): ElectricalProduct {
 }
 
 /**
- * Fetch electrical products with STRICT Supabase query (Strict Database Mode)
+ * Fetch electrical products with Supabase query and fallback to INITIAL_PRODUCTS
  */
 export async function fetchElectricalProducts(
   filters?: FilterState,
@@ -97,79 +97,107 @@ export async function fetchElectricalProducts(
       .from('products')
       .select('*');
 
-    if (!error && data) {
-      let productsList = data
+    let productsList: ElectricalProduct[] = [];
+
+    if (!error && data && data.length > 0) {
+      productsList = data
         .filter((row) => {
           const cat = (row.category || '').toLowerCase();
-          return !cat || cat.includes('electrical') || cat.includes('wire') || cat.includes('cable') || cat.includes('switch');
+          return !cat || cat.includes('electrical') || cat.includes('wire') || cat.includes('cable') || cat.includes('switch') || cat.includes('fan') || cat.includes('light');
         })
         .map(transformToElectricalProduct);
-
-      // Apply filters
-      if (filters?.subcategories && filters.subcategories.length > 0) {
-        productsList = productsList.filter((p) => filters.subcategories.includes(p.subcategory));
-      }
-
-      if (filters?.brands && filters.brands.length > 0) {
-        productsList = productsList.filter((p) => filters.brands.includes(p.brand));
-      }
-
-      if (filters?.minPrice !== undefined && filters.minPrice > 0) {
-        productsList = productsList.filter((p) => p.price >= filters.minPrice!);
-      }
-
-      if (filters?.maxPrice !== undefined && filters.maxPrice > 0) {
-        productsList = productsList.filter((p) => p.price <= filters.maxPrice!);
-      }
-
-      if (filters?.minRating !== undefined && filters.minRating > 0) {
-        productsList = productsList.filter((p) => p.rating_avg >= filters.minRating!);
-      }
-
-      if (filters?.minDiscount !== undefined && filters.minDiscount > 0) {
-        productsList = productsList.filter((p) => p.discount_percent >= filters.minDiscount!);
-      }
-
-      if (filters?.inStockOnly) {
-        productsList = productsList.filter((p) => p.stock_quantity > 0);
-      }
-
-      if (searchQuery.trim()) {
-        const q = searchQuery.toLowerCase().trim();
-        productsList = productsList.filter((p) =>
-          p.name.toLowerCase().includes(q) ||
-          p.brand.toLowerCase().includes(q) ||
-          p.subcategory.toLowerCase().includes(q)
-        );
-      }
-
-      // Sort order
-      switch (sort) {
-        case 'price_asc':
-          productsList.sort((a, b) => a.price - b.price);
-          break;
-        case 'price_desc':
-          productsList.sort((a, b) => b.price - a.price);
-          break;
-        case 'newest':
-          productsList.sort((a, b) => (b.created_at || '').localeCompare(a.created_at || ''));
-          break;
-        case 'rating':
-          productsList.sort((a, b) => b.rating_avg - a.rating_avg);
-          break;
-        case 'popularity':
-        default:
-          productsList.sort((a, b) => b.rating_count - a.rating_count);
-          break;
-      }
-
-      return { products: productsList, total: productsList.length };
+    } else {
+      // Fallback to INITIAL_PRODUCTS for electrical
+      const initialElectrical = INITIAL_PRODUCTS.filter((p) => p.category === 'electrical');
+      productsList = initialElectrical.map(transformToElectricalProduct);
     }
+
+    // Apply filters
+    if (filters?.subcategories && filters.subcategories.length > 0) {
+      productsList = productsList.filter((p) => {
+        const pSub = (p.subcategory || '').toLowerCase();
+        const pName = (p.name || '').toLowerCase();
+        return filters.subcategories.some((sub) => {
+          const s = sub.toLowerCase();
+          return (
+            pSub.includes(s) ||
+            s.includes(pSub) ||
+            (s.includes('fan') && (pName.includes('fan') || pSub.includes('fan'))) ||
+            ((s.includes('wire') || s.includes('wiring') || s.includes('mcb')) && (pName.includes('wire') || pName.includes('cable') || pName.includes('mcb') || pName.includes('db') || pSub.includes('wire') || pSub.includes('wiring') || pSub.includes('mcb'))) ||
+            ((s.includes('switch') || s.includes('socket')) && (pName.includes('switch') || pName.includes('socket') || pSub.includes('switch'))) ||
+            (s.includes('light') && (pName.includes('light') || pName.includes('led') || pName.includes('bulb') || pSub.includes('light'))) ||
+            ((s.includes('conduit') || s.includes('pvc') || s.includes('box')) && (pName.includes('pipe') || pName.includes('conduit') || pName.includes('box') || pSub.includes('pvc'))) ||
+            ((s.includes('cctv') || s.includes('surveillance')) && (pName.includes('camera') || pName.includes('cctv') || pName.includes('dvr') || pSub.includes('cctv'))) ||
+            ((s.includes('appliance') || s.includes('backup') || s.includes('geyser') || s.includes('inverter')) && (pName.includes('geyser') || pName.includes('inverter') || pName.includes('heater') || pSub.includes('appliance')))
+          );
+        });
+      });
+    }
+
+    if (filters?.brands && filters.brands.length > 0) {
+      productsList = productsList.filter((p) => {
+        const pBrand = p.brand.toLowerCase();
+        return filters.brands.some((b) => pBrand.includes(b.toLowerCase()) || b.toLowerCase().includes(pBrand));
+      });
+    }
+
+    if (filters?.minPrice !== undefined && filters.minPrice > 0) {
+      productsList = productsList.filter((p) => p.price >= filters.minPrice!);
+    }
+
+    if (filters?.maxPrice !== undefined && filters.maxPrice > 0) {
+      productsList = productsList.filter((p) => p.price <= filters.maxPrice!);
+    }
+
+    if (filters?.minRating !== undefined && filters.minRating > 0) {
+      productsList = productsList.filter((p) => p.rating_avg >= filters.minRating!);
+    }
+
+    if (filters?.minDiscount !== undefined && filters.minDiscount > 0) {
+      productsList = productsList.filter((p) => p.discount_percent >= filters.minDiscount!);
+    }
+
+    if (filters?.inStockOnly) {
+      productsList = productsList.filter((p) => p.stock_quantity > 0);
+    }
+
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase().trim();
+      productsList = productsList.filter((p) =>
+        p.name.toLowerCase().includes(q) ||
+        p.brand.toLowerCase().includes(q) ||
+        p.subcategory.toLowerCase().includes(q)
+      );
+    }
+
+    // Sort order
+    switch (sort) {
+      case 'price_asc':
+        productsList.sort((a, b) => a.price - b.price);
+        break;
+      case 'price_desc':
+        productsList.sort((a, b) => b.price - a.price);
+        break;
+      case 'newest':
+        productsList.sort((a, b) => (b.created_at || '').localeCompare(a.created_at || ''));
+        break;
+      case 'rating':
+        productsList.sort((a, b) => b.rating_avg - a.rating_avg);
+        break;
+      case 'popularity':
+      default:
+        productsList.sort((a, b) => b.rating_count - a.rating_count);
+        break;
+    }
+
+    return { products: productsList, total: productsList.length };
   } catch (err) {
     console.warn('Supabase electrical products query error:', err);
+    // Fallback on error
+    const initialElectrical = INITIAL_PRODUCTS.filter((p) => p.category === 'electrical');
+    const fallback = initialElectrical.map(transformToElectricalProduct);
+    return { products: fallback, total: fallback.length };
   }
-
-  return { products: [], total: 0 };
 }
 
 /**

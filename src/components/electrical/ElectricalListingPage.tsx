@@ -24,8 +24,17 @@ interface ElectricalListingPageProps {
   onOpenCart?: () => void;
 }
 
-const ALL_SUBCATEGORIES = ['Fans', 'Wiring', 'Switches', 'MCBs', 'Lights', 'PVC Items'];
-const ALL_BRANDS = ['RR Kabel', 'Polycab', 'Havells', 'Schneider', 'Philips', 'Anchor'];
+const ALL_SUBCATEGORIES = [
+  'Fans',
+  'Wiring',
+  'Switches',
+  'MCBs',
+  'Lights',
+  'PVC Items',
+  'CCTV & Surveillance',
+  'Home Appliances'
+];
+const ALL_BRANDS = ['RR Kabel', 'Polycab', 'Havells', 'Schneider', 'Philips', 'Anchor', 'Crompton', 'Atomberg', 'Hikvision', 'Luminous', 'Finolex', 'Wipro', 'Legrand'];
 const RATING_OPTIONS = [
   { label: '4★ & above', min: 4.0 },
   { label: '3★ & above', min: 3.0 },

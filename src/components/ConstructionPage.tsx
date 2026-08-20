@@ -1,39 +1,147 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { useSearchParams, Link } from 'react-router-dom';
 import {
+  SlidersHorizontal,
+  ChevronDown,
+  ShoppingCart,
+  Plus,
+  Minus,
+  RefreshCw,
+  X,
+  Search,
+  Check,
   Building2,
   HardHat,
-  Search,
-  SlidersHorizontal,
-  Star,
-  Zap,
-  ShoppingCart,
-  Check,
-  RotateCcw,
-  Sparkles,
+  MessageSquare,
   PhoneCall,
-  Clock
+  Clock,
+  ShieldCheck,
+  Truck,
+  Sparkles
 } from 'lucide-react';
-import { supabase } from '../lib/supabaseClient';
 import { Product } from '../types';
-import { transformToElectricalProduct } from '../services/electricalService';
-import { Link } from 'react-router-dom';
+import { supabase } from '../lib/supabaseClient';
+import { INITIAL_PRODUCTS } from '../data/products';
 
 interface ConstructionPageProps {
-  onAddToCart: (product: any) => void;
-  cartItems?: any[];
+  onAddToCart: (product: Product) => void;
+  onUpdateQuantity?: (productId: string, delta: number) => void;
+  cartItems?: { product: Product; quantity: number }[];
   onOpenCart?: () => void;
 }
 
+export type SortOption = 'popularity' | 'price_asc' | 'price_desc' | 'rating' | 'newest';
+
+export interface ConstructionFilterState {
+  subcategories: string[];
+  brands: string[];
+  minPrice?: number;
+  maxPrice?: number;
+  minRating?: number;
+  minDiscount?: number;
+  inStockOnly: boolean;
+}
+
+const ALL_CONSTRUCTION_SUBCATEGORIES = [
+  'Cement & Concrete',
+  'TMT & Steel',
+  'Tiling & Adhesives',
+  'Paints & Putty',
+  'Waterproofing',
+  'Plywood & Boards',
+  'Adhesives & Fevicol',
+  'Kitchen Sinks & Faucets',
+  'Sanitary & Bath Fittings',
+  'Hinges & Hardware',
+  'Kitchen Systems & Accessories',
+  'Wardrobe & Bed Fittings',
+  'Door Locks & Hardware',
+  'Plumbing & Pipes',
+  'Power Tools',
+  'General Hardware & Tools'
+];
+
+const ALL_CONSTRUCTION_BRANDS = [
+  'UltraTech',
+  'ACC',
+  'Ambuja',
+  'Tata Tiscon',
+  'Roff',
+  'Asian Paints',
+  'Dr. Fixit',
+  'CenturyPly',
+  'Action TESA',
+  'Fevicol',
+  'Giriraj Genuine',
+  'Jaquar',
+  'Hindware',
+  'Geberit',
+  'Hettich',
+  'Godrej',
+  'Astral',
+  'Supreme',
+  'Bosch'
+];
+
+const RATING_OPTIONS = [
+  { label: '4★ & above', min: 4.0 },
+  { label: '3★ & above', min: 3.0 },
+  { label: '2★ & above', min: 2.0 }
+];
+
+const SORT_LABELS: Record<SortOption, string> = {
+  popularity: 'Relevance',
+  price_asc: 'Price: Low to High',
+  price_desc: 'Price: High to Low',
+  rating: 'Customer Rating',
+  newest: 'Newest First'
+};
+
 export const ConstructionPage: React.FC<ConstructionPageProps> = ({
   onAddToCart,
+  onUpdateQuantity,
   cartItems = [],
   onOpenCart
 }) => {
-  const [products, setProducts] = useState<Product[]>([]);
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  // URL Query Sync
+  const initialSubcategory = searchParams.get('subcategory');
+  const initialSearch = searchParams.get('q') || '';
+
+  const [rawProducts, setRawProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedSubcategory, setSelectedSubcategory] = useState<string>('All');
-  const [copiedNotification, setCopiedNotification] = useState<string | null>(null);
+
+  // Filters State
+  const [filters, setFilters] = useState<ConstructionFilterState>({
+    subcategories: initialSubcategory ? [initialSubcategory] : [],
+    brands: [],
+    minPrice: undefined,
+    maxPrice: undefined,
+    minRating: undefined,
+    minDiscount: undefined,
+    inStockOnly: false
+  });
+
+  const [sortOption, setSortOption] = useState<SortOption>('popularity');
+  const [searchQuery, setSearchQuery] = useState(initialSearch);
+  const [isSideFilterOpen, setIsSideFilterOpen] = useState(false);
+  const [activeDropdown, setActiveDropdown] = useState<'sort' | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 16;
+
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Close dropdown on click outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setActiveDropdown(null);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   // Fetch Construction Products directly from Supabase
   const loadConstructionProducts = async () => {
@@ -41,39 +149,77 @@ export const ConstructionPage: React.FC<ConstructionPageProps> = ({
       setLoading(true);
       const { data, error } = await supabase
         .from('products')
-        .select('*')
-        .ilike('category', '%construction%')
-        .order('id', { ascending: true });
+        .select('*');
 
       if (!error && data && data.length > 0) {
-        const parsed: Product[] = data.map((row) => ({
-          id: String(row.id),
-          name: row.name || 'Construction Material',
-          brand: row.brand || 'Giriraj Build',
-          category: 'construction',
-          subCategory: row.sub_category || row.subcategory || 'General Materials',
-          price: Number(row.price || 0),
-          originalPrice: Number(row.original_price || row.originalPrice || row.mrp || (row.price ? row.price * 1.1 : 0)),
-          discountPercentage: Number(row.discount_percentage || row.discountPercentage || 0),
-          unit: row.unit || '1 Unit',
-          rating: Number(row.rating || row.rating_avg || 4.8),
-          reviewsCount: Number(row.reviews_count || row.rating_count || 24),
-          deliveryMinutes: Number(row.delivery_minutes || 60),
-          image: row.image || (Array.isArray(row.image_urls) ? row.image_urls[0] : 'https://images.unsplash.com/photo-1541888946425-d0fbb18086f6?q=80&w=800&auto=format&fit=crop'),
-          inStock: row.in_stock ?? true,
-          stockCount: Number(row.stock_count || row.stock_quantity || 100),
-          tags: row.tags || ['construction', 'building materials'],
-          isEmergency: false,
-          specs: typeof row.specs === 'object' ? row.specs : (typeof row.specifications === 'object' ? row.specifications : {}),
-          description: row.description || 'Premium grade certified construction supplies delivered direct to site in Kolkata.'
-        }));
-        setProducts(parsed);
+        // Filter rows that belong to construction category
+        const constructionRows = data.filter((row) => {
+          const cat = (row.category || '').toLowerCase();
+          const sub = (row.subcategory || row.sub_category || '').toLowerCase();
+          const name = (row.name || '').toLowerCase();
+          return (
+            cat.includes('construction') ||
+            cat.includes('cement') ||
+            cat.includes('plumbing') ||
+            cat.includes('paint') ||
+            cat.includes('hardware') ||
+            cat.includes('building') ||
+            sub.includes('cement') ||
+            sub.includes('tmt') ||
+            sub.includes('pipe') ||
+            sub.includes('waterproof')
+          );
+        });
+
+        const parsed: Product[] = constructionRows.map((row) => {
+          const price = Number(row.price || 0);
+          const originalPrice = Number(row.original_price || row.originalPrice || row.mrp || (price ? price * 1.15 : 0));
+          const discountPercentage = Number(
+            row.discount_percentage ||
+            row.discountPercentage ||
+            row.discount_percent ||
+            (originalPrice > price ? Math.round(((originalPrice - price) / originalPrice) * 100) : 0)
+          );
+
+          let imageUrl = 'https://images.unsplash.com/photo-1541888946425-d0fbb18086f6?q=80&w=800&auto=format&fit=crop';
+          if (Array.isArray(row.image_urls) && row.image_urls.length > 0) {
+            imageUrl = row.image_urls[0];
+          } else if (row.image) {
+            imageUrl = row.image;
+          }
+
+          return {
+            id: String(row.id),
+            name: row.name || 'Construction Material',
+            brand: row.brand || 'Giriraj Genuine',
+            category: 'construction',
+            subCategory: row.subcategory || row.sub_category || 'General Materials',
+            price,
+            originalPrice,
+            discountPercentage,
+            unit: row.unit || '1 Unit',
+            rating: Number(row.rating_avg || row.rating || 4.8),
+            reviewsCount: Number(row.rating_count || row.reviewsCount || 18),
+            deliveryMinutes: Number(row.delivery_minutes || 60),
+            image: imageUrl,
+            inStock: (row.stock_quantity ?? row.stockCount ?? 10) > 0,
+            stockCount: Number(row.stock_quantity ?? row.stockCount ?? 10),
+            tags: row.tags || [row.brand || 'Giriraj', 'Construction'],
+            isEmergency: false,
+            specs: typeof row.specifications === 'object' ? row.specifications : (typeof row.specs === 'object' ? row.specs : {}),
+            description: row.description || 'Premium grade certified construction supplies delivered direct to site in Kolkata.'
+          };
+        });
+
+        setRawProducts(parsed);
       } else {
-        setProducts([]);
+        const fallback = INITIAL_PRODUCTS.filter((p) => p.category === 'construction');
+        setRawProducts(fallback);
       }
     } catch (err) {
       console.warn('Error loading construction products:', err);
-      setProducts([]);
+      const fallback = INITIAL_PRODUCTS.filter((p) => p.category === 'construction');
+      setRawProducts(fallback);
     } finally {
       setLoading(false);
     }
@@ -82,8 +228,8 @@ export const ConstructionPage: React.FC<ConstructionPageProps> = ({
   useEffect(() => {
     loadConstructionProducts();
 
-    // Supabase Real-time listener for products table
-    const subscription = supabase
+    // Supabase Real-time listener: Auto-update catalog when products change in Supabase
+    const channel = supabase
       .channel('construction_products_realtime')
       .on(
         'postgres_changes',
@@ -95,253 +241,740 @@ export const ConstructionPage: React.FC<ConstructionPageProps> = ({
       .subscribe();
 
     return () => {
-      supabase.removeChannel(subscription);
+      supabase.removeChannel(channel);
     };
   }, []);
 
-  const subcategories = ['All', ...Array.from(new Set(products.map((p) => p.subCategory).filter(Boolean)))];
+  // Sync subcategory filter if URL param changes
+  useEffect(() => {
+    const sub = searchParams.get('subcategory');
+    if (sub && !filters.subcategories.includes(sub)) {
+      setFilters((prev) => ({ ...prev, subcategories: [sub] }));
+    }
+  }, [searchParams]);
 
-  const filteredProducts = products.filter((p) => {
-    const matchesSearch =
-      !searchQuery.trim() ||
-      p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      p.brand.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      p.subCategory.toLowerCase().includes(searchQuery.toLowerCase());
+  // Filter Handlers
+  const handleToggleSubcategory = (sub: string) => {
+    setFilters((prev) => {
+      const exists = prev.subcategories.includes(sub);
+      const nextSubs = exists
+        ? prev.subcategories.filter((s) => s !== sub)
+        : [...prev.subcategories, sub];
+      return { ...prev, subcategories: nextSubs };
+    });
+    setCurrentPage(1);
+  };
 
-    const matchesSub = selectedSubcategory === 'All' || p.subCategory === selectedSubcategory;
-    return matchesSearch && matchesSub;
-  });
+  const handleToggleBrand = (brand: string) => {
+    setFilters((prev) => {
+      const exists = prev.brands.includes(brand);
+      const nextBrands = exists
+        ? prev.brands.filter((b) => b !== brand)
+        : [...prev.brands, brand];
+      return { ...prev, brands: nextBrands };
+    });
+    setCurrentPage(1);
+  };
+
+  const handleClearAllFilters = () => {
+    setFilters({
+      subcategories: [],
+      brands: [],
+      minPrice: undefined,
+      maxPrice: undefined,
+      minRating: undefined,
+      minDiscount: undefined,
+      inStockOnly: false
+    });
+    setSearchQuery('');
+    setSearchParams({});
+    setCurrentPage(1);
+    setActiveDropdown(null);
+  };
+
+  const hasActiveFilters = useMemo(() => {
+    return (
+      filters.subcategories.length > 0 ||
+      filters.brands.length > 0 ||
+      filters.minPrice !== undefined ||
+      filters.maxPrice !== undefined ||
+      filters.minRating !== undefined ||
+      filters.minDiscount !== undefined ||
+      filters.inStockOnly ||
+      searchQuery.trim() !== ''
+    );
+  }, [filters, searchQuery]);
+
+  const activeFilterCount = useMemo(() => {
+    let count = 0;
+    count += filters.subcategories.length;
+    count += filters.brands.length;
+    if (filters.minPrice !== undefined || filters.maxPrice !== undefined) count += 1;
+    if (filters.minRating !== undefined) count += 1;
+    if (filters.minDiscount !== undefined) count += 1;
+    if (filters.inStockOnly) count += 1;
+    return count;
+  }, [filters]);
+
+  // Filter and Sort raw products
+  const filteredAndSortedProducts = useMemo(() => {
+    let list = [...rawProducts];
+
+    // Filter subcategories
+    if (filters.subcategories.length > 0) {
+      list = list.filter((p) => {
+        const pSub = (p.subCategory || '').toLowerCase();
+        const pName = (p.name || '').toLowerCase();
+        return filters.subcategories.some((sub) => {
+          const s = sub.toLowerCase();
+          return (
+            pSub.includes(s) ||
+            s.includes(pSub) ||
+            (s.includes('cement') && (pName.includes('cement') || pSub.includes('cement'))) ||
+            (s.includes('tiling') && (pName.includes('tile') || pSub.includes('tile') || pName.includes('grout') || pSub.includes('tiling'))) ||
+            (s.includes('paint') && (pName.includes('paint') || pName.includes('putty') || pSub.includes('paint'))) ||
+            (s.includes('waterproof') && (pName.includes('fixit') || pName.includes('waterproof') || pSub.includes('waterproof') || pName.includes('damp'))) ||
+            ((s.includes('plywood') || s.includes('mdf')) && (pName.includes('plywood') || pName.includes('hdhmr') || pName.includes('board') || pSub.includes('plywood'))) ||
+            ((s.includes('fevicol') || s.includes('adhesive')) && (pName.includes('fevicol') || pName.includes('adhesive') || pSub.includes('adhesive'))) ||
+            (s.includes('sink') && (pName.includes('sink') || pName.includes('faucet') || pSub.includes('sink'))) ||
+            (s.includes('sanitary') && (pName.includes('commode') || pName.includes('cistern') || pName.includes('toilet') || pSub.includes('sanitary'))) ||
+            ((s.includes('hinge') || s.includes('channel') || s.includes('handle')) && (pName.includes('hinge') || pName.includes('channel') || pName.includes('slide') || pName.includes('handle') || pSub.includes('hinge'))) ||
+            ((s.includes('kitchen system') || s.includes('kitchen accessory')) && (pName.includes('spice') || pName.includes('basket') || pName.includes('tandem') || pSub.includes('kitchen'))) ||
+            ((s.includes('wardrobe') || s.includes('bed')) && (pName.includes('bed') || pName.includes('hydraulic') || pName.includes('wardrobe') || pSub.includes('bed'))) ||
+            (s.includes('lock') && (pName.includes('lock') || pName.includes('padlock') || pSub.includes('lock'))) ||
+            (s.includes('pipe') && (pName.includes('pipe') || pName.includes('tank') || pSub.includes('pipe') || pSub.includes('plumbing'))) ||
+            (s.includes('tool') && (pName.includes('drill') || pName.includes('grinder') || pName.includes('tool') || pSub.includes('tool'))) ||
+            (s.includes('general hardware') && (pName.includes('ladder') || pName.includes('tarpaulin') || pName.includes('hammer') || pSub.includes('general')))
+          );
+        });
+      });
+    }
+
+    // Filter brands
+    if (filters.brands.length > 0) {
+      list = list.filter((p) =>
+        filters.brands.some((b) => p.brand.toLowerCase().includes(b.toLowerCase()))
+      );
+    }
+
+    // Min Price
+    if (filters.minPrice !== undefined && filters.minPrice > 0) {
+      list = list.filter((p) => p.price >= filters.minPrice!);
+    }
+
+    // Max Price
+    if (filters.maxPrice !== undefined && filters.maxPrice > 0) {
+      list = list.filter((p) => p.price <= filters.maxPrice!);
+    }
+
+    // Min Rating
+    if (filters.minRating !== undefined && filters.minRating > 0) {
+      list = list.filter((p) => (p.rating || 0) >= filters.minRating!);
+    }
+
+    // In Stock Only
+    if (filters.inStockOnly) {
+      list = list.filter((p) => p.inStock);
+    }
+
+    // Search Query
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase().trim();
+      list = list.filter(
+        (p) =>
+          p.name.toLowerCase().includes(q) ||
+          p.brand.toLowerCase().includes(q) ||
+          p.subCategory.toLowerCase().includes(q)
+      );
+    }
+
+    // Sort order
+    switch (sortOption) {
+      case 'price_asc':
+        list.sort((a, b) => a.price - b.price);
+        break;
+      case 'price_desc':
+        list.sort((a, b) => b.price - a.price);
+        break;
+      case 'newest':
+        list.sort((a, b) => String(b.id).localeCompare(String(a.id)));
+        break;
+      case 'rating':
+        list.sort((a, b) => (b.rating || 0) - (a.rating || 0));
+        break;
+      case 'popularity':
+      default:
+        list.sort((a, b) => (b.reviewsCount || 0) - (a.reviewsCount || 0));
+        break;
+    }
+
+    return list;
+  }, [rawProducts, filters, sortOption, searchQuery]);
+
+  // Paginated slices
+  const paginatedProducts = useMemo(() => {
+    const start = (currentPage - 1) * itemsPerPage;
+    return filteredAndSortedProducts.slice(start, start + itemsPerPage);
+  }, [filteredAndSortedProducts, currentPage]);
+
+  const totalCount = filteredAndSortedProducts.length;
+
+  // Helper to check cart quantity
+  const getProductCartQty = (productId: string) => {
+    const match = cartItems.find((i) => String(i.product.id) === String(productId));
+    return match ? match.quantity : 0;
+  };
+
+  const hasBackendProducts = rawProducts.length > 0;
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 pb-24 font-sans">
+    <div className="min-h-screen bg-white text-slate-900 pb-20 font-sans">
       
-      {/* Top Banner */}
-      <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-amber-950 text-white py-8 sm:py-12 px-4 sm:px-6">
-        <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
-          <div className="space-y-3 max-w-2xl">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/20 border border-amber-500/30 text-amber-300 text-xs font-bold">
-              <HardHat className="w-3.5 h-3.5" />
-              <span>Giriraj Direct Site Dispatch • Kolkata &amp; Bengal</span>
-            </div>
-            <h1 className="text-2xl sm:text-4xl font-black tracking-tight">
-              Construction &amp; Building Materials
-            </h1>
-            <p className="text-slate-300 text-xs sm:text-sm leading-relaxed">
-              Wholesale cement, TMT rebars, plumbing PVC, electrical conduits, waterproofing, and structural hardware with scheduled on-site delivery.
-            </p>
+      {/* 1. FILTER & SORT BAR (Matches Electrical Page Structure) */}
+      <div ref={dropdownRef} className="max-w-7xl mx-auto px-4 sm:px-6 pt-3 pb-2 sm:pt-4 sm:pb-3 mb-3 relative">
+        <div className="flex items-center justify-between gap-2 sm:gap-3 border-b border-slate-100 pb-3 sm:pb-3.5">
+          
+          {/* Left: Main All Filters Button & Active Filter Controls */}
+          <div className="flex items-center gap-2 overflow-x-auto scrollbar-none py-0.5">
+            <button
+              id="construction-filter-drawer-pill-btn"
+              onClick={() => setIsSideFilterOpen(true)}
+              className={`inline-flex items-center gap-1.5 px-3.5 sm:px-4 py-1.5 rounded-full border text-xs font-bold transition-all cursor-pointer shrink-0 shadow-2xs ${
+                hasActiveFilters
+                  ? 'bg-amber-50 border-amber-400 text-amber-900'
+                  : 'bg-white border-slate-200 hover:border-slate-300 text-slate-800'
+              }`}
+            >
+              <SlidersHorizontal className="w-3.5 h-3.5 text-amber-600" />
+              <span>All Filters {activeFilterCount > 0 ? `(${activeFilterCount})` : ''}</span>
+            </button>
+
+            {/* Clear All / Reset pill badge if any filter active */}
+            {hasActiveFilters && (
+              <button
+                onClick={handleClearAllFilters}
+                className="inline-flex items-center gap-1 px-2.5 sm:px-3 py-1.5 rounded-full text-xs font-bold text-red-600 hover:bg-red-50 transition-colors cursor-pointer shrink-0"
+              >
+                <X className="w-3 h-3" />
+                <span className="hidden sm:inline">Clear All</span>
+                <span className="sm:hidden">Reset</span>
+              </button>
+            )}
           </div>
 
-          <div className="bg-white/10 backdrop-blur-md border border-white/10 rounded-2xl p-4 sm:p-5 flex flex-col gap-2 min-w-[260px] text-xs">
-            <div className="flex items-center gap-2 text-amber-400 font-bold">
-              <Sparkles className="w-4 h-4" />
-              <span>Bulk Project Supply</span>
-            </div>
-            <p className="text-slate-200 text-[11px]">
-              Direct truckload pricing for contractors, builders, and large renovations.
-            </p>
-            <div className="grid grid-cols-2 gap-2 mt-2">
-              <a
-                href="https://wa.me/918777400280?text=Hello%20Giriraj%20Power,%20I%20need%20a%20bulk%20construction%20materials%20quote"
-                target="_blank"
-                rel="noreferrer"
-                className="py-2 px-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg text-center flex items-center justify-center gap-1 text-[11px] transition-colors"
+          {/* Right: Product Count & Pill Sort By Dropdown */}
+          <div className="flex items-center gap-2 sm:gap-4 shrink-0">
+            {hasBackendProducts && (
+              <span className="hidden xs:inline text-xs font-semibold text-slate-400">
+                {totalCount} products
+              </span>
+            )}
+
+            {/* Pill Sort By Dropdown */}
+            <div className="relative">
+              <button
+                id="construction-sort-by-pill-btn"
+                onClick={() => setActiveDropdown(activeDropdown === 'sort' ? null : 'sort')}
+                className="inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-3.5 py-1.5 rounded-full border border-slate-200 bg-white hover:border-slate-300 text-xs font-semibold text-slate-800 transition-all cursor-pointer shadow-2xs shrink-0"
               >
-                <span>WhatsApp Quote</span>
-              </a>
-              <a
-                href="tel:+919007168561"
-                className="py-2 px-2.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black rounded-lg text-center flex items-center justify-center gap-1 text-[11px] transition-colors"
-              >
-                <PhoneCall className="w-3 h-3" />
-                <span>Contractor Desk</span>
-              </a>
+                <span className="text-slate-400 font-normal hidden sm:inline">Sort by:</span>
+                <span className="font-bold text-slate-900">{SORT_LABELS[sortOption]}</span>
+                <ChevronDown className="w-3 h-3 text-slate-500" />
+              </button>
+
+              {activeDropdown === 'sort' && (
+                <div className="absolute top-full right-0 mt-2 w-52 bg-white rounded-xl shadow-xl border border-slate-100 p-2 z-30 space-y-1 animate-in fade-in zoom-in-95">
+                  {(Object.keys(SORT_LABELS) as SortOption[]).map((key) => {
+                    const active = sortOption === key;
+                    return (
+                      <button
+                        key={key}
+                        onClick={() => {
+                          setSortOption(key);
+                          setActiveDropdown(null);
+                        }}
+                        className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs transition-colors cursor-pointer text-left ${
+                          active ? 'bg-amber-50 text-amber-950 font-black' : 'text-slate-700 hover:bg-slate-50 font-medium'
+                        }`}
+                      >
+                        <span>{SORT_LABELS[key]}</span>
+                        {active && <Check className="w-3.5 h-3.5 text-amber-600" />}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           </div>
         </div>
+
+        {/* Selected Filter Tags (Horizontal scroll row) */}
+        {hasActiveFilters && (
+          <div className="flex items-center gap-1.5 pt-2 overflow-x-auto scrollbar-none flex-nowrap">
+            {filters.subcategories.map((sub) => (
+              <button
+                key={sub}
+                onClick={() => handleToggleSubcategory(sub)}
+                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-amber-50 border border-amber-200 text-amber-900 text-[11px] font-bold shrink-0 hover:bg-amber-100 transition-colors cursor-pointer"
+              >
+                <span>{sub}</span>
+                <X className="w-3 h-3 text-amber-700" />
+              </button>
+            ))}
+            {filters.brands.map((b) => (
+              <button
+                key={b}
+                onClick={() => handleToggleBrand(b)}
+                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-amber-50 border border-amber-200 text-amber-900 text-[11px] font-bold shrink-0 hover:bg-amber-100 transition-colors cursor-pointer"
+              >
+                <span>{b}</span>
+                <X className="w-3 h-3 text-amber-700" />
+              </button>
+            ))}
+            {(filters.minPrice !== undefined || filters.maxPrice !== undefined) && (
+              <button
+                onClick={() => setFilters((p) => ({ ...p, minPrice: undefined, maxPrice: undefined }))}
+                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-amber-50 border border-amber-200 text-amber-900 text-[11px] font-bold shrink-0 hover:bg-amber-100 transition-colors cursor-pointer"
+              >
+                <span>
+                  ₹{filters.minPrice ?? 0} - ₹{filters.maxPrice ?? 'Any'}
+                </span>
+                <X className="w-3 h-3 text-amber-700" />
+              </button>
+            )}
+            {filters.minRating !== undefined && (
+              <button
+                onClick={() => setFilters((p) => ({ ...p, minRating: undefined }))}
+                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-amber-50 border border-amber-200 text-amber-900 text-[11px] font-bold shrink-0 hover:bg-amber-100 transition-colors cursor-pointer"
+              >
+                <span>★ {filters.minRating}+</span>
+                <X className="w-3 h-3 text-amber-700" />
+              </button>
+            )}
+            {searchQuery.trim() && (
+              <button
+                onClick={() => {
+                  setSearchQuery('');
+                  setSearchParams({});
+                }}
+                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-amber-50 border border-amber-200 text-amber-900 text-[11px] font-bold shrink-0 hover:bg-amber-100 transition-colors cursor-pointer"
+              >
+                <span>Search: "{searchQuery}"</span>
+                <X className="w-3 h-3 text-amber-700" />
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
-      {/* Main Container */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-6">
-        
-        {/* Search & Subcategory Bar */}
-        <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4 mb-6">
-          <div className="relative flex-1 max-w-md">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search cement, TMT, pipes, waterproofing..."
-              className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-xs sm:text-sm focus:outline-none focus:border-amber-500 shadow-2xs"
-            />
-          </div>
-
-          {subcategories.length > 1 && (
-            <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
-              {subcategories.map((sub) => (
-                <button
-                  key={sub}
-                  onClick={() => setSelectedSubcategory(sub)}
-                  className={`px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer ${
-                    selectedSubcategory === sub
-                      ? 'bg-amber-500 text-slate-950 shadow-xs'
-                      : 'bg-white text-slate-700 border border-slate-200 hover:border-slate-300'
-                  }`}
-                >
-                  {sub}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Product Grid / Empty State */}
+      {/* 2. PRODUCT CATALOG LOCATION */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6">
         {loading ? (
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6 py-12">
-            {[...Array(4)].map((_, i) => (
-              <div key={i} className="bg-white rounded-2xl p-4 border border-slate-200 animate-pulse space-y-3">
-                <div className="h-40 bg-slate-100 rounded-xl" />
-                <div className="h-4 bg-slate-100 rounded w-3/4" />
-                <div className="h-3 bg-slate-100 rounded w-1/2" />
-                <div className="h-8 bg-slate-100 rounded-xl mt-4" />
-              </div>
-            ))}
+          <div className="py-24 text-center">
+            <RefreshCw className="w-8 h-8 text-amber-500 animate-spin mx-auto mb-3" />
+            <p className="text-sm font-bold text-slate-600">Loading construction catalog...</p>
           </div>
-        ) : filteredProducts.length > 0 ? (
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
-            {filteredProducts.map((prod) => {
-              const qtyInCart = cartItems.find((ci: any) => ci.product.id === prod.id)?.quantity || 0;
+        ) : !hasBackendProducts ? (
+          /* =========================================================================
+             COMING SOON STATE AT PRODUCT LOCATION (When backend has no products data)
+             ========================================================================= */
+          <div className="py-12 sm:py-16">
+            <div className="max-w-3xl mx-auto bg-slate-50/70 border border-slate-200/80 rounded-3xl p-8 sm:p-12 text-center shadow-xs space-y-6">
+              
+              {/* Icon Illustration */}
+              <div className="relative inline-flex items-center justify-center">
+                <div className="w-20 h-20 rounded-2xl bg-amber-100/80 border border-amber-300/60 text-amber-700 flex items-center justify-center shadow-xs">
+                  <Building2 className="w-10 h-10 stroke-[1.8]" />
+                </div>
+                <div className="absolute -bottom-1.5 -right-1.5 w-7 h-7 rounded-full bg-amber-500 text-slate-950 flex items-center justify-center shadow-xs">
+                  <Clock className="w-4 h-4" />
+                </div>
+              </div>
+
+              {/* Header & Description */}
+              <div className="space-y-2.5 max-w-lg mx-auto">
+                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-800 text-[11px] font-black uppercase tracking-wider">
+                  <HardHat className="w-3.5 h-3.5 text-amber-700" />
+                  <span>Kasba Central Depot • Kolkata</span>
+                </div>
+                
+                <h2 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
+                  Construction Materials Coming Soon
+                </h2>
+
+                <p className="text-xs sm:text-sm text-slate-600 font-medium leading-relaxed">
+                  We are currently onboarding our full wholesale catalog of UltraTech cement, Tata Tiscon TMT rebars, Astral CPVC pipes, Dr. Fixit waterproofing, and structural hardware.
+                </p>
+              </div>
+
+              {/* Brands Anticipation Grid */}
+              <div className="pt-2 pb-1">
+                <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-3">
+                  Upcoming Wholesale Authorized Brands
+                </p>
+                <div className="flex flex-wrap items-center justify-center gap-2 max-w-xl mx-auto">
+                  {ALL_CONSTRUCTION_BRANDS.map((brand) => (
+                    <span
+                      key={brand}
+                      className="px-3 py-1.5 rounded-xl bg-white border border-slate-200 text-slate-700 text-xs font-bold shadow-2xs"
+                    >
+                      {brand}
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              {/* Trust Indicators */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 max-w-xl mx-auto text-left">
+                <div className="p-3 bg-white rounded-xl border border-slate-200/80 flex items-center gap-2.5">
+                  <Truck className="w-5 h-5 text-amber-600 shrink-0" />
+                  <div>
+                    <div className="text-xs font-bold text-slate-900">Direct Site Trucks</div>
+                    <div className="text-[10px] text-slate-500">Unloaded at site</div>
+                  </div>
+                </div>
+                <div className="p-3 bg-white rounded-xl border border-slate-200/80 flex items-center gap-2.5">
+                  <ShieldCheck className="w-5 h-5 text-emerald-600 shrink-0" />
+                  <div>
+                    <div className="text-xs font-bold text-slate-900">100% Genuine</div>
+                    <div className="text-[10px] text-slate-500">Manufacturer seals</div>
+                  </div>
+                </div>
+                <div className="p-3 bg-white rounded-xl border border-slate-200/80 flex items-center gap-2.5">
+                  <Sparkles className="w-5 h-5 text-amber-600 shrink-0" />
+                  <div>
+                    <div className="text-xs font-bold text-slate-900">GST Invoices</div>
+                    <div className="text-[10px] text-slate-500">Official project bills</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Action Buttons for Direct Inquiry */}
+              <div className="flex flex-wrap items-center justify-center gap-3 pt-3">
+                <a
+                  href="https://wa.me/918777400280?text=Hello%20Giriraj%20Power,%20I%20need%20a%20wholesale%20quote%20for%20construction%20materials."
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center gap-2 shadow-xs transition-all cursor-pointer"
+                >
+                  <MessageSquare className="w-3.5 h-3.5" />
+                  <span>Request Instant WhatsApp Quote</span>
+                </a>
+
+                <a
+                  href="tel:+918777400280"
+                  className="px-5 py-2.5 rounded-xl bg-yellow-400 hover:bg-yellow-500 text-slate-950 font-bold text-xs flex items-center gap-2 shadow-xs transition-all cursor-pointer"
+                >
+                  <PhoneCall className="w-3.5 h-3.5" />
+                  <span>Call Contractor Desk</span>
+                </a>
+
+                <Link
+                  to="/electrical"
+                  className="px-5 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs transition-all cursor-pointer"
+                >
+                  <span>Browse Electrical Store</span>
+                </Link>
+              </div>
+
+            </div>
+          </div>
+        ) : paginatedProducts.length === 0 ? (
+          /* When backend has products, but current filters/search return 0 */
+          <div className="py-20 text-center space-y-3">
+            <div className="w-14 h-14 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center mx-auto">
+              <Search className="w-6 h-6" />
+            </div>
+            <h3 className="text-base font-bold text-slate-900">No products found</h3>
+            <p className="text-xs text-slate-500 max-w-sm mx-auto">
+              Try adjusting your filter pills or search terms.
+            </p>
+            <button
+              onClick={handleClearAllFilters}
+              className="px-5 py-2 rounded-full bg-amber-400 text-slate-950 font-bold text-xs hover:bg-amber-500 cursor-pointer shadow-2xs transition-all"
+            >
+              Reset Filters
+            </button>
+          </div>
+        ) : (
+          /* =========================================================================
+             PRODUCT CATALOG GRID (Identical to Electrical Page: 4 columns, clean card)
+             ========================================================================= */
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-x-4 sm:gap-x-6 gap-y-6 sm:gap-y-8">
+            {paginatedProducts.map((product) => {
+              const cartQty = getProductCartQty(product.id);
+              const primaryImage = product.image;
+
               return (
                 <div
-                  key={prod.id}
-                  className="bg-white rounded-2xl border border-slate-200/90 shadow-2xs hover:shadow-md transition-all flex flex-col justify-between overflow-hidden group"
+                  key={product.id}
+                  className="group flex flex-col justify-between transition-all duration-200 border-0 p-1"
                 >
-                  <div className="p-3 sm:p-4">
-                    <div className="relative aspect-square rounded-xl overflow-hidden bg-slate-50 mb-3 border border-slate-100">
-                      <img
-                        src={prod.image}
-                        alt={prod.name}
-                        className="w-full h-full object-contain p-2 group-hover:scale-105 transition-transform duration-300"
-                        loading="lazy"
-                      />
-                      {prod.discountPercentage > 0 && (
-                        <span className="absolute top-2 left-2 bg-emerald-600 text-white text-[10px] font-black px-2 py-0.5 rounded-md">
-                          {prod.discountPercentage}% OFF
-                        </span>
-                      )}
-                    </div>
+                  {/* Clean Product Image with Floating Discount Tag */}
+                  <div
+                    className="block aspect-square overflow-hidden rounded-xl bg-slate-50/60 p-3 sm:p-4 mb-2.5 flex items-center justify-center relative"
+                  >
+                    {/* Floating discount text */}
+                    {product.discountPercentage > 0 && (
+                      <span className="absolute top-2 left-2.5 sm:top-2.5 sm:left-3 text-red-600 font-black text-[11px] sm:text-xs tracking-tight z-10 select-none drop-shadow-2xs">
+                        {product.discountPercentage}% OFF
+                      </span>
+                    )}
 
-                    <p className="text-[11px] font-bold text-amber-600 uppercase tracking-wider mb-1">
-                      {prod.brand} • {prod.subCategory}
-                    </p>
-                    <h3 className="font-bold text-xs sm:text-sm text-slate-900 line-clamp-2 leading-snug">
-                      {prod.name}
-                    </h3>
+                    <img
+                      src={primaryImage}
+                      alt={product.name}
+                      referrerPolicy="no-referrer"
+                      className="max-h-full max-w-full object-contain group-hover:scale-105 transition-transform duration-300 drop-shadow-2xs"
+                      loading="lazy"
+                    />
                   </div>
 
-                  <div className="p-3 sm:p-4 pt-0">
-                    <div className="flex items-baseline gap-2 mb-3">
-                      <span className="font-black text-sm sm:text-base text-slate-950">
-                        ₹{prod.price.toLocaleString('en-IN')}
-                      </span>
-                      {prod.originalPrice > prod.price && (
-                        <span className="text-xs text-slate-400 line-through">
-                          ₹{prod.originalPrice.toLocaleString('en-IN')}
+                  {/* Product Details */}
+                  <div className="space-y-1.5 flex-1 flex flex-col justify-between">
+                    <div>
+                      <h3
+                        className="text-xs sm:text-sm font-bold text-slate-900 hover:text-amber-600 transition-colors line-clamp-2 leading-snug block mb-1"
+                        title={product.name}
+                      >
+                        {product.name}
+                      </h3>
+
+                      {/* Price & MRP */}
+                      <div className="flex items-baseline gap-2 pt-0.5">
+                        <span className="text-base font-black text-slate-950">
+                          ₹{product.price.toLocaleString('en-IN')}
                         </span>
-                      )}
-                      <span className="text-[10px] text-slate-500 font-medium ml-auto">
-                        /{prod.unit}
-                      </span>
+                        {product.originalPrice > product.price && (
+                          <span className="text-xs text-slate-400 line-through font-medium">
+                            ₹{product.originalPrice.toLocaleString('en-IN')}
+                          </span>
+                        )}
+                      </div>
                     </div>
 
-                    <button
-                      onClick={() => {
-                        onAddToCart(prod);
-                        setCopiedNotification(prod.id);
-                        setTimeout(() => setCopiedNotification(null), 1500);
-                      }}
-                      className={`w-full py-2.5 px-3 rounded-xl font-black text-xs uppercase tracking-wide flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
-                        qtyInCart > 0
-                          ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
-                          : 'bg-amber-500 hover:bg-amber-400 text-slate-950 shadow-xs'
-                      }`}
-                    >
-                      {qtyInCart > 0 ? (
-                        <>
-                          <Check className="w-3.5 h-3.5" />
-                          <span>Added ({qtyInCart})</span>
-                        </>
+                    {/* Add to Cart / Quick Quantity Controls */}
+                    <div className="pt-1.5">
+                      {cartQty > 0 ? (
+                        <div className="flex items-center justify-between bg-yellow-400 text-slate-950 font-black rounded-lg px-2.5 py-1.5 shadow-xs border border-yellow-500/30">
+                          <button
+                            onClick={(e) => {
+                              e.preventDefault();
+                              if (onUpdateQuantity) {
+                                onUpdateQuantity(product.id, -1);
+                              }
+                            }}
+                            className="p-1 hover:bg-yellow-500 rounded cursor-pointer transition-colors active:scale-95"
+                            title="Decrease quantity"
+                          >
+                            <Minus className="w-3.5 h-3.5 stroke-[2.5]" />
+                          </button>
+                          <span className="text-xs font-black px-2">{cartQty} in cart</span>
+                          <button
+                            onClick={(e) => {
+                              e.preventDefault();
+                              if (cartQty < 100) {
+                                if (onUpdateQuantity) {
+                                  onUpdateQuantity(product.id, 1);
+                                } else {
+                                  onAddToCart(product);
+                                }
+                              }
+                            }}
+                            disabled={cartQty >= 100}
+                            className="p-1 hover:bg-yellow-500 rounded cursor-pointer transition-colors active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                            title={cartQty >= 100 ? 'Maximum limit of 100 reached' : 'Increase quantity'}
+                          >
+                            <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
+                          </button>
+                        </div>
                       ) : (
-                        <>
+                        <button
+                          onClick={(e) => {
+                            e.preventDefault();
+                            onAddToCart(product);
+                          }}
+                          className="w-full py-2 px-3 rounded-lg bg-yellow-400 hover:bg-yellow-500 text-slate-950 font-black text-xs transition-all cursor-pointer flex items-center justify-center gap-1.5 active:scale-98 shadow-xs border border-yellow-500/20"
+                        >
                           <ShoppingCart className="w-3.5 h-3.5" />
                           <span>Add to Cart</span>
-                        </>
+                        </button>
                       )}
-                    </button>
+                    </div>
                   </div>
                 </div>
               );
             })}
           </div>
-        ) : (
-          /* Realtime Supabase Template Banner when no construction products yet */
-          <div className="bg-white border border-slate-200/90 rounded-3xl p-8 sm:p-12 text-center max-w-3xl mx-auto my-8 shadow-2xs space-y-6">
-            <div className="w-16 h-16 rounded-2xl bg-amber-100 border border-amber-200 text-amber-700 flex items-center justify-center mx-auto shadow-inner">
-              <Building2 className="w-8 h-8" />
-            </div>
+        )}
+      </div>
 
-            <div className="space-y-2">
-              <h2 className="text-xl sm:text-2xl font-black text-slate-900">
-                Construction Materials Catalog Ready
-              </h2>
-              <p className="text-slate-500 text-xs sm:text-sm max-w-lg mx-auto leading-relaxed">
-                Add any product directly into your Supabase <code className="bg-slate-100 text-amber-700 font-mono px-1.5 py-0.5 rounded text-xs font-bold">products</code> table with <code className="bg-slate-100 text-amber-700 font-mono px-1.5 py-0.5 rounded text-xs font-bold">category = 'construction'</code>, and it will instantly populate live on this page in real-time.
-              </p>
-            </div>
+      {/* 3. SIDE-TAB FILTER DRAWER (Matches Electrical Page) */}
+      {isSideFilterOpen && (
+        <div className="fixed inset-0 z-50 flex justify-end">
+          {/* Backdrop */}
+          <div
+            onClick={() => setIsSideFilterOpen(false)}
+            className="fixed inset-0 bg-black/40 backdrop-blur-xs transition-opacity"
+          />
 
-            <div className="bg-slate-50 rounded-2xl p-4 sm:p-5 border border-slate-200 text-left text-xs space-y-2 font-mono text-slate-700">
-              <div className="flex items-center justify-between text-slate-400 pb-1 border-b border-slate-200 text-[11px] font-sans">
-                <span className="font-bold uppercase tracking-wider">Sample SQL Insert for Supabase</span>
-                <span>Real-Time Sync Active</span>
+          {/* Drawer Panel */}
+          <div className="relative w-full max-w-md bg-white h-full shadow-2xl z-10 flex flex-col p-6 overflow-y-auto animate-in slide-in-from-right duration-200">
+            <div className="flex items-center justify-between pb-4 border-b border-slate-100">
+              <div className="flex items-center gap-2">
+                <SlidersHorizontal className="w-5 h-5 text-amber-600" />
+                <h2 className="text-lg font-black text-slate-900">Construction Filters</h2>
               </div>
-              <pre className="overflow-x-auto text-[11px] text-slate-800 leading-relaxed scrollbar-none py-1">
-{`INSERT INTO products (
-  id, name, brand, category, subcategory, price, mrp, 
-  discount_percent, image_urls, stock_quantity, description
-) VALUES (
-  'c1', 
-  'UltraTech Super Cement (50 KG Bag)', 
-  'UltraTech', 
-  'construction', 
-  'Cement', 
-  410, 
-  440, 
-  7, 
-  ARRAY['https://images.unsplash.com/photo-1541888946425-d0fbb18086f6?q=80&w=800&auto=format&fit=crop'], 
-  200, 
-  'High-strength Portland Pozzolana Cement for structural casting and masonry.'
-);`}
-              </pre>
+              <button
+                onClick={() => setIsSideFilterOpen(false)}
+                className="p-2 text-slate-400 hover:text-slate-700 rounded-full hover:bg-slate-100 cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
             </div>
 
-            <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
-              <Link
-                to="/electrical"
-                className="px-5 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs transition-colors"
+            <div className="py-4 space-y-6 flex-1">
+              {/* Subcategories */}
+              <div className="space-y-2.5">
+                <h3 className="text-xs font-black uppercase tracking-wider text-slate-400">
+                  Categories
+                </h3>
+                <div className="grid grid-cols-2 gap-2">
+                  {ALL_CONSTRUCTION_SUBCATEGORIES.map((sub) => {
+                    const checked = filters.subcategories.includes(sub);
+                    return (
+                      <button
+                        key={sub}
+                        onClick={() => handleToggleSubcategory(sub)}
+                        className={`px-3 py-2 rounded-xl text-xs font-bold border transition-all text-left flex items-center justify-between cursor-pointer ${
+                          checked
+                            ? 'bg-amber-50 border-amber-400 text-amber-950'
+                            : 'border-slate-200 text-slate-700 hover:border-slate-300'
+                        }`}
+                      >
+                        <span className="truncate">{sub}</span>
+                        {checked && <Check className="w-3.5 h-3.5 text-amber-600 shrink-0" />}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Brands */}
+              <div className="space-y-2.5">
+                <h3 className="text-xs font-black uppercase tracking-wider text-slate-400">
+                  Brands
+                </h3>
+                <div className="grid grid-cols-2 gap-2">
+                  {ALL_CONSTRUCTION_BRANDS.map((brand) => {
+                    const checked = filters.brands.includes(brand);
+                    return (
+                      <button
+                        key={brand}
+                        onClick={() => handleToggleBrand(brand)}
+                        className={`px-3 py-2 rounded-xl text-xs font-bold border transition-all text-left flex items-center justify-between cursor-pointer ${
+                          checked
+                            ? 'bg-amber-50 border-amber-400 text-amber-950'
+                            : 'border-slate-200 text-slate-700 hover:border-slate-300'
+                        }`}
+                      >
+                        <span>{brand}</span>
+                        {checked && <Check className="w-3.5 h-3.5 text-amber-600 shrink-0" />}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Price Range */}
+              <div className="space-y-2.5">
+                <h3 className="text-xs font-black uppercase tracking-wider text-slate-400">
+                  Price (₹)
+                </h3>
+                <div className="grid grid-cols-2 gap-3 text-xs">
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-500 block mb-1">Min Price</label>
+                    <input
+                      type="number"
+                      placeholder="₹ Min"
+                      value={filters.minPrice ?? ''}
+                      onChange={(e) =>
+                        setFilters((p) => ({
+                          ...p,
+                          minPrice: e.target.value ? Number(e.target.value) : undefined
+                        }))
+                      }
+                      className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-bold focus:border-amber-500 outline-hidden"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-bold text-slate-500 block mb-1">Max Price</label>
+                    <input
+                      type="number"
+                      placeholder="₹ Max"
+                      value={filters.maxPrice ?? ''}
+                      onChange={(e) =>
+                        setFilters((p) => ({
+                          ...p,
+                          maxPrice: e.target.value ? Number(e.target.value) : undefined
+                        }))
+                      }
+                      className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-bold focus:border-amber-500 outline-hidden"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Rating */}
+              <div className="space-y-2.5">
+                <h3 className="text-xs font-black uppercase tracking-wider text-slate-400">
+                  Customer Rating
+                </h3>
+                <div className="flex gap-2 flex-wrap">
+                  {RATING_OPTIONS.map((item) => {
+                    const isSelected = filters.minRating === item.min;
+                    return (
+                      <button
+                        key={item.label}
+                        onClick={() =>
+                          setFilters((p) => ({
+                            ...p,
+                            minRating: isSelected ? undefined : item.min
+                          }))
+                        }
+                        className={`px-3.5 py-1.5 rounded-full text-xs font-bold border transition-all cursor-pointer ${
+                          isSelected
+                            ? 'bg-emerald-50 border-emerald-500 text-emerald-900'
+                            : 'border-slate-200 text-slate-700 hover:border-slate-300'
+                        }`}
+                      >
+                        {item.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+
+            {/* Bottom Actions */}
+            <div className="pt-4 border-t border-slate-100 flex items-center justify-between gap-3">
+              <button
+                onClick={handleClearAllFilters}
+                className="px-4 py-2.5 text-xs font-bold text-slate-600 hover:text-slate-900 cursor-pointer"
               >
-                Browse Electrical Store
-              </Link>
-              <a
-                href="tel:+918777400280"
-                className="px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs transition-colors"
+                Clear All
+              </button>
+              <button
+                onClick={() => setIsSideFilterOpen(false)}
+                className="flex-1 py-2.5 px-4 rounded-xl bg-amber-400 hover:bg-amber-500 text-slate-950 font-black text-xs shadow-md transition-all cursor-pointer text-center"
               >
-                Direct Wholesale Inquiry
-              </a>
+                View {hasBackendProducts ? `${totalCount} Products` : 'Results'}
+              </button>
             </div>
           </div>
-        )}
+        </div>
+      )}
 
-      </div>
     </div>
   );
 };

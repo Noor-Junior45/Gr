@@ -235,68 +235,68 @@ export const Header: React.FC<HeaderProps> = ({
       {/* Navigation Tabs (Scrollable, with left margin on mobile) */}
       <div className="border-t border-slate-100 bg-white">
         <div className="flex items-center justify-start sm:justify-center gap-4 sm:gap-8 px-4 sm:px-6 overflow-x-auto no-scrollbar scroll-smooth">
-           <button
-             id="nav-tab-home"
-             onClick={() => {
-               onTabChange('home');
-               onSelectCategory('all');
-             }}
-             className={`flex items-center gap-2 py-3 px-3 sm:px-4 whitespace-nowrap transition-all cursor-pointer border-b-2 font-bold shrink-0 text-sm ${
-               (activeTab === 'home' || activeTab === 'catalog') && activeCategory === 'all'
-                 ? 'border-amber-500 text-amber-600'
-                 : 'border-transparent text-slate-600 hover:text-slate-900 hover:border-slate-300'
-             }`}
-           >
-             <Home className={`w-4 h-4 ${(activeTab === 'home' || activeTab === 'catalog') && activeCategory === 'all' ? 'text-amber-600' : ''}`} />
-             <span>Home</span>
-           </button>
+          <button
+            id="nav-tab-home"
+            onClick={() => {
+              onTabChange('home');
+              onSelectCategory('all');
+            }}
+            className={`flex items-center gap-2 py-3 px-3 sm:px-4 whitespace-nowrap transition-all cursor-pointer border-b-2 font-bold shrink-0 text-sm ${
+              activeTab === 'home' || (activeTab === 'catalog' && activeCategory === 'all')
+                ? 'border-amber-500 text-amber-600'
+                : 'border-transparent text-slate-600 hover:text-slate-900 hover:border-slate-300'
+            }`}
+          >
+            <Home className={`w-4 h-4 ${activeTab === 'home' || (activeTab === 'catalog' && activeCategory === 'all') ? 'text-amber-600' : ''}`} />
+            <span>Home</span>
+          </button>
 
-           <button
-             id="nav-tab-electrical"
-             onClick={() => {
-               onTabChange('electrical');
-               onSelectCategory('electrical');
-             }}
-             className={`flex items-center gap-2 py-3 px-3 sm:px-4 whitespace-nowrap transition-all cursor-pointer border-b-2 font-bold shrink-0 text-sm ${
-               activeTab === 'electrical' || activeCategory === 'electrical'
-                 ? 'border-amber-500 text-amber-600'
-                 : 'border-transparent text-slate-600 hover:text-slate-900 hover:border-slate-300'
-             }`}
-           >
-             <Zap className={`w-4 h-4 ${activeTab === 'electrical' || activeCategory === 'electrical' ? 'text-amber-600 fill-amber-500/20' : ''}`} />
-             <span>Electrical</span>
-           </button>
+          <button
+            id="nav-tab-electrical"
+            onClick={() => {
+              onTabChange('electrical');
+              onSelectCategory('electrical');
+            }}
+            className={`flex items-center gap-2 py-3 px-3 sm:px-4 whitespace-nowrap transition-all cursor-pointer border-b-2 font-bold shrink-0 text-sm ${
+              activeTab === 'electrical'
+                ? 'border-amber-500 text-amber-600'
+                : 'border-transparent text-slate-600 hover:text-slate-900 hover:border-slate-300'
+            }`}
+          >
+            <Zap className={`w-4 h-4 ${activeTab === 'electrical' ? 'text-amber-600 fill-amber-500/20' : ''}`} />
+            <span>Electrical</span>
+          </button>
 
-           <button
-             id="nav-tab-construction"
-             onClick={() => {
-               onTabChange('construction');
-               onSelectCategory('construction');
-             }}
-             className={`flex items-center gap-2 py-3 px-3 sm:px-4 whitespace-nowrap transition-all cursor-pointer border-b-2 font-bold shrink-0 text-sm ${
-               activeTab === 'construction' || activeCategory === 'construction'
-                 ? 'border-amber-500 text-amber-600'
-                 : 'border-transparent text-slate-600 hover:text-slate-900 hover:border-slate-300'
-             }`}
-           >
-             <Building2 className={`w-4 h-4 ${activeTab === 'construction' || activeCategory === 'construction' ? 'text-amber-600' : ''}`} />
-             <span>Construction</span>
-           </button>
+          <button
+            id="nav-tab-construction"
+            onClick={() => {
+              onTabChange('construction');
+              onSelectCategory('construction');
+            }}
+            className={`flex items-center gap-2 py-3 px-3 sm:px-4 whitespace-nowrap transition-all cursor-pointer border-b-2 font-bold shrink-0 text-sm ${
+              activeTab === 'construction'
+                ? 'border-amber-500 text-amber-600'
+                : 'border-transparent text-slate-600 hover:text-slate-900 hover:border-slate-300'
+            }`}
+          >
+            <Building2 className={`w-4 h-4 ${activeTab === 'construction' ? 'text-amber-600' : ''}`} />
+            <span>Construction</span>
+          </button>
 
-           <button
-             id="nav-tab-wiring"
-             onClick={() => {
-               onTabChange('services');
-             }}
-             className={`flex items-center gap-2 py-3 px-3 sm:px-4 whitespace-nowrap transition-all cursor-pointer border-b-2 font-bold shrink-0 text-sm ${
-               activeTab === 'services'
-                 ? 'border-amber-500 text-amber-600'
-                 : 'border-transparent text-slate-600 hover:text-slate-900 hover:border-slate-300'
-             }`}
-           >
-             <Wrench className={`w-4 h-4 ${activeTab === 'services' ? 'text-amber-600' : ''}`} />
-             <span>Wiring</span>
-           </button>
+          <button
+            id="nav-tab-wiring"
+            onClick={() => {
+              onTabChange('services');
+            }}
+            className={`flex items-center gap-2 py-3 px-3 sm:px-4 whitespace-nowrap transition-all cursor-pointer border-b-2 font-bold shrink-0 text-sm ${
+              activeTab === 'services'
+                ? 'border-amber-500 text-amber-600'
+                : 'border-transparent text-slate-600 hover:text-slate-900 hover:border-slate-300'
+            }`}
+          >
+            <Wrench className={`w-4 h-4 ${activeTab === 'services' ? 'text-amber-600' : ''}`} />
+            <span>Wiring</span>
+          </button>
         </div>
       </div>
     </header>

@@ -77,9 +77,10 @@ export default function App() {
     return null;
   });
 
-  const getActiveTabFromLocation = (): 'home' | 'catalog' | 'services' | 'orders' | 'profile' | 'cart' | 'privacy' | 'terms' | 'electrical' => {
+  const getActiveTabFromLocation = (): 'home' | 'catalog' | 'services' | 'orders' | 'profile' | 'cart' | 'privacy' | 'terms' | 'electrical' | 'construction' => {
     const path = location.pathname.toLowerCase();
     if (path.startsWith('/electrical')) return 'electrical';
+    if (path.startsWith('/construction')) return 'construction';
     if (path === '/privacy' || path === '/privacy-policy') return 'privacy';
     if (path === '/terms' || path === '/terms-of-service') return 'terms';
     if (path === '/services') return 'services';
@@ -92,6 +93,7 @@ export default function App() {
   const activeTab = getActiveTabFromLocation();
   const [activeCategory, setActiveCategory] = useState<string>(() => {
     if (location.pathname.startsWith('/electrical')) return 'electrical';
+    if (location.pathname.startsWith('/construction')) return 'construction';
     return 'all';
   });
   const [searchQuery, setSearchQuery] = useState('');
@@ -380,6 +382,7 @@ export default function App() {
             element={
               <ConstructionPage
                 onAddToCart={handleAddToCart}
+                onUpdateQuantity={handleUpdateCartQuantity}
                 cartItems={cartItems}
                 onOpenCart={() => navigate('/cart')}
               />
@@ -472,7 +475,15 @@ export default function App() {
             }
           />
 
-          {/* LEGAL VIEWS */}
+          {/* LEGAL & COMPANY VIEWS */}
+          <Route path="/about" element={<LegalView onBack={() => navigate('/')} type="about" />} />
+          <Route path="/about-us" element={<LegalView onBack={() => navigate('/')} type="about" />} />
+          <Route path="/faqs" element={<LegalView onBack={() => navigate('/')} type="faqs" />} />
+          <Route path="/faq" element={<LegalView onBack={() => navigate('/')} type="faqs" />} />
+          <Route path="/refund-policy" element={<LegalView onBack={() => navigate('/')} type="refund" />} />
+          <Route path="/refunds" element={<LegalView onBack={() => navigate('/')} type="refund" />} />
+          <Route path="/shipping-policy" element={<LegalView onBack={() => navigate('/')} type="shipping" />} />
+          <Route path="/shipping" element={<LegalView onBack={() => navigate('/')} type="shipping" />} />
           <Route path="/privacy" element={<LegalView onBack={() => navigate('/')} type="privacy" />} />
           <Route path="/privacy-policy" element={<LegalView onBack={() => navigate('/')} type="privacy" />} />
           <Route path="/terms" element={<LegalView onBack={() => navigate('/')} type="terms" />} />
@@ -535,6 +546,8 @@ export default function App() {
             element={
               <HomePage
                 onAddToCart={handleAddToCart}
+                onUpdateQuantity={handleUpdateCartQuantity}
+                cartItems={cartItems}
                 onNavigateCategory={(categoryName) => {
                   if (categoryName.toLowerCase().includes('wire') || categoryName.toLowerCase().includes('switch') || categoryName.toLowerCase().includes('electric')) {
                     setActiveCategory('electrical');
@@ -551,29 +564,17 @@ export default function App() {
         </Routes>
       </main>
 
-      {/* Industrial Wholesaler 4-Column Footer (Rendered on Home or Legal pages) */}
-      {(location.pathname === '/' || location.pathname.startsWith('/privacy') || location.pathname.startsWith('/terms')) && (
-        <Footer
-          onOpenPrivacy={() => navigate('/privacy')}
-          onOpenTerms={() => navigate('/terms')}
-          onNavigateHome={() => navigate('/')}
-          onNavigateProducts={() => navigate('/electrical')}
-          onNavigateCalculator={() => {
-            navigate('/');
-            setTimeout(() => {
-              const el = document.getElementById('smart-cost-calculators');
-              if (el) el.scrollIntoView({ behavior: 'smooth' });
-            }, 100);
-          }}
-          onOpenBulkQuote={() => {
-            navigate('/');
-            setTimeout(() => {
-              const el = document.getElementById('smart-cost-calculators');
-              if (el) el.scrollIntoView({ behavior: 'smooth' });
-            }, 100);
-          }}
-          onOpenOrders={() => navigate('/orders')}
-        />
+      {/* Row 11: Company, Policy & Contact Footer */}
+      {(location.pathname === '/' ||
+        location.pathname.startsWith('/about') ||
+        location.pathname.startsWith('/faq') ||
+        location.pathname.startsWith('/refund') ||
+        location.pathname.startsWith('/shipping') ||
+        location.pathname.startsWith('/privacy') ||
+        location.pathname.startsWith('/terms') ||
+        location.pathname.startsWith('/construction') ||
+        location.pathname.startsWith('/electrical')) && (
+        <Footer />
       )}
 
       {/* Modals & Slide-Overs */}

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Minus, Zap, Star, ShieldCheck, Eye, Heart, Check } from 'lucide-react';
+import { Plus, Minus, Zap, Star, ShieldCheck, Eye, Heart, Check, ShoppingCart } from 'lucide-react';
 import { Product } from '../types';
 import { isProductFavorite, toggleProductFavorite } from '../services/favorites';
 import { INDIAN_STANDARD_WIRE_COLORS, isWireProduct } from '../data/wireColors';
@@ -205,10 +205,10 @@ export const ProductCard: React.FC<ProductCardProps> = ({
             ) : quantityInCart === 0 ? (
               <button
                 onClick={handleAdd}
-                className="px-3 sm:px-4 py-1.5 rounded-xl bg-yellow-400 hover:bg-yellow-500 active:scale-95 text-slate-950 font-black text-xs uppercase tracking-wide transition-all shadow-xs flex items-center gap-1 cursor-pointer border border-yellow-500/30"
+                className="px-3 sm:px-4 py-1.5 rounded-xl bg-yellow-400 hover:bg-yellow-500 active:scale-95 text-slate-950 font-black text-xs uppercase tracking-wide transition-all shadow-xs flex items-center gap-1.5 cursor-pointer border border-yellow-500/30"
               >
+                <ShoppingCart className="w-3.5 h-3.5" />
                 <span>ADD</span>
-                <Plus className="w-3.5 h-3.5 stroke-[3]" />
               </button>
             ) : (
               <div className="flex items-center bg-yellow-400 text-slate-950 font-black rounded-xl overflow-hidden shadow-xs border border-yellow-500/40">
