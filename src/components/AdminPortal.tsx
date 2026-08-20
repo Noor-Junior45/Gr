@@ -368,24 +368,30 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ isOpen, onClose }) => 
                       {order.landmark && (
                         <div className="text-slate-400 text-[11px]">Landmark: {order.landmark}</div>
                       )}
-                      <div className="flex gap-2 mt-2">
-                        <a
-                          href={`tel:${order.phone}`}
-                          className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-white font-bold text-[11px] flex items-center gap-1"
-                        >
-                          <Phone className="w-3 h-3 text-green-400" />
-                          <span>Call: {order.phone}</span>
-                        </a>
-                        <a
-                          href={`https://wa.me/91${order.phone.replace(/\D/g, '').slice(-10)}?text=Hello%20${encodeURIComponent(order.customerName)},%20your%20Giriraj%20Power%20order%20${order.id}%20is%20dispatched!`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="px-2.5 py-1 rounded-lg bg-green-900/60 hover:bg-green-800 text-green-200 font-bold text-[11px] flex items-center gap-1"
-                        >
-                          <MessageSquare className="w-3 h-3 text-green-400" />
-                          <span>WhatsApp</span>
-                        </a>
-                      </div>
+                      {order.phone ? (
+                        <div className="flex gap-2 mt-2">
+                          <a
+                            href={`tel:${order.phone}`}
+                            className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-white font-bold text-[11px] flex items-center gap-1"
+                          >
+                            <Phone className="w-3 h-3 text-green-400" />
+                            <span>Call: {order.phone}</span>
+                          </a>
+                          <a
+                            href={`https://wa.me/91${order.phone.replace(/\D/g, '').slice(-10)}?text=Hello%20${encodeURIComponent(order.customerName)},%20your%20Giriraj%20Power%20order%20${order.id}%20is%20dispatched!`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="px-2.5 py-1 rounded-lg bg-green-900/60 hover:bg-green-800 text-green-200 font-bold text-[11px] flex items-center gap-1"
+                          >
+                            <MessageSquare className="w-3 h-3 text-green-400" />
+                            <span>WhatsApp</span>
+                          </a>
+                        </div>
+                      ) : order.customerEmail ? (
+                        <div className="text-slate-400 text-[11px] mt-1">
+                          Email: {order.customerEmail}
+                        </div>
+                      ) : null}
                     </div>
 
                     <div>

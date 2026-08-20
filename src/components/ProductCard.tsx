@@ -53,17 +53,17 @@ export const ProductCard: React.FC<ProductCardProps> = ({
       onMouseLeave={() => setIsHovered(false)}
       className="bg-white rounded-2xl border border-slate-200 hover:border-yellow-400 hover:shadow-lg transition-all duration-200 flex flex-col justify-between overflow-hidden relative group p-3 sm:p-4"
     >
-      {/* Top Badges: Delivery Time, Discount & Favorite Heart */}
+      {/* Top Badges: Discount & Favorite Heart */}
       <div className="flex items-center justify-between gap-1 mb-2">
         <div className="flex items-center gap-1">
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-green-50 text-green-700 text-[10px] sm:text-[11px] font-extrabold border border-green-200">
-            <Zap className="w-3 h-3 text-green-600 fill-green-600" />
-            <span>60 Mins – 7 Days</span>
-          </span>
-
           {product.discountPercentage > 0 && (
             <span className="px-1.5 py-0.5 rounded bg-yellow-400 text-slate-950 text-[10px] sm:text-[11px] font-extrabold">
               {product.discountPercentage}% OFF
+            </span>
+          )}
+          {(!product.inStock || (product.stockCount !== undefined && product.stockCount <= 0)) && (
+            <span className="px-1.5 py-0.5 rounded bg-red-100 text-red-700 text-[10px] sm:text-[11px] font-extrabold border border-red-200">
+              Out of Stock
             </span>
           )}
         </div>
@@ -91,7 +91,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
         <img
           src={product.image}
           alt={product.name}
-          className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+          className="w-full h-full object-cover"
           loading="lazy"
         />
 
@@ -196,9 +196,13 @@ export const ProductCard: React.FC<ProductCardProps> = ({
             </div>
           </div>
 
-          {/* Quantity Controls */}
+          {/* Quantity Controls / Out of Stock */}
           <div>
-            {quantityInCart === 0 ? (
+            {!product.inStock || (product.stockCount !== undefined && product.stockCount <= 0) ? (
+              <span className="px-2.5 py-1 rounded-lg bg-slate-100 text-slate-500 font-bold text-[11px] border border-slate-200 cursor-not-allowed">
+                Out of Stock
+              </span>
+            ) : quantityInCart === 0 ? (
               <button
                 onClick={handleAdd}
                 className="px-3 sm:px-4 py-1.5 rounded-xl bg-yellow-400 hover:bg-yellow-500 active:scale-95 text-slate-950 font-black text-xs uppercase tracking-wide transition-all shadow-xs flex items-center gap-1 cursor-pointer border border-yellow-500/30"

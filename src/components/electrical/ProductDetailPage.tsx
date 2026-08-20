@@ -23,6 +23,7 @@ import {
   Camera,
   X,
   Share2,
+  Send,
   Check,
   HelpCircle,
   Palette
@@ -32,7 +33,8 @@ import {
   fetchElectricalProductById,
   fetchSimilarElectricalProducts,
   fetchProductReviews,
-  submitProductReview
+  submitProductReview,
+  fetchProductFaqs
 } from '../../services/electricalService';
 import { Product, UserProfile } from '../../types';
 import { supabase } from '../../lib/supabaseClient';
@@ -63,10 +65,6 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [selectedWireColor, setSelectedWireColor] = useState<string>('Red');
 
-  // Zoom on Hover State
-  const [isZooming, setIsZooming] = useState(false);
-  const [zoomPosition, setZoomPosition] = useState({ x: 0, y: 0 });
-  const imageContainerRef = useRef<HTMLDivElement>(null);
   const thumbnailContainerRef = useRef<HTMLDivElement>(null);
 
   const scrollThumbnails = (direction: 'prev' | 'next') => {
@@ -108,6 +106,7 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
 
   // FAQ Accordion State (first item open by default)
   const [openFaq, setOpenFaq] = useState<number | null>(0);
+  const [faqs, setFaqs] = useState<Array<{ q: string; a: string }>>([]);
 
   const reviewsSectionRef = useRef<HTMLDivElement>(null);
 
@@ -126,6 +125,13 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
         setLoading(false);
 
         if (data) {
+          // Fetch dynamic FAQs from Supabase or fallback
+          fetchProductFaqs(data.id, data)
+            .then((loadedFaqs) => {
+              if (isMounted) setFaqs(loadedFaqs);
+            })
+            .catch(console.warn);
+
           // Fetch similar products
           fetchSimilarElectricalProducts(data.id, data.subcategory)
             .then((sim) => {
@@ -182,14 +188,6 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
     : 0;
 
   // Zoom Handler
-  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!imageContainerRef.current) return;
-    const { left, top, width, height } = imageContainerRef.current.getBoundingClientRect();
-    const x = ((e.clientX - left) / width) * 100;
-    const y = ((e.clientY - top) / height) * 100;
-    setZoomPosition({ x: Math.max(0, Math.min(100, x)), y: Math.max(0, Math.min(100, y)) });
-  };
-
   const scrollToReviews = () => {
     reviewsSectionRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
@@ -302,64 +300,25 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
     'https://images.unsplash.com/photo-1558223616-e5d79faebdd6?q=80&w=800&auto=format&fit=crop';
 
   return (
-    <div className="min-h-screen bg-[#f1f3f6] text-slate-900 pb-32 sm:pb-36 font-sans">
+    <div className="min-h-screen bg-[#f1f3f6] text-slate-900 pb-32 sm:pb-36 font-sans relative">
       
-      {/* Breadcrumbs Bar (Starts from Electrical) with Back Arrow Button */}
-      <div className="bg-white border-b border-slate-200 shadow-2xs sticky top-0 sm:static z-30">
-        <div className="max-w-7xl mx-auto px-3 sm:px-6 py-2.5 flex items-center justify-between text-xs text-slate-500">
-          <div className="flex items-center gap-2 overflow-x-auto whitespace-nowrap scrollbar-none">
-            <button
-              onClick={() => navigate('/electrical')}
-              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-yellow-400 hover:text-slate-950 text-slate-800 font-bold transition-all cursor-pointer border border-slate-200 active:scale-95 shrink-0"
-              title="Back to all Electrical Products"
-            >
-              <ArrowLeft className="w-4 h-4 stroke-[2.5]" />
-              <span className="text-xs">Back to List</span>
-            </button>
-
-            <span className="text-slate-300">|</span>
-
-            <Link to="/electrical" className="hover:text-amber-600 font-bold text-slate-900">
-              Electrical
-            </Link>
-            <ChevronRight className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-            <Link
-              to={`/electrical?subcategory=${encodeURIComponent(product.subcategory)}`}
-              className="hover:text-amber-600 font-semibold text-slate-700"
-            >
-              {product.subcategory}
-            </Link>
-            {product.brand && (
-              <>
-                <ChevronRight className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                <Link
-                  to={`/electrical?subcategory=${encodeURIComponent(product.subcategory)}&brand=${encodeURIComponent(product.brand)}`}
-                  className="hover:text-amber-600 font-semibold text-slate-700"
-                >
-                  {product.brand}
-                </Link>
-              </>
-            )}
-            <ChevronRight className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-            <span className="font-bold text-slate-900 truncate max-w-xs">{product.name}</span>
-          </div>
-
-          <button
-            onClick={handleShareProduct}
-            className="hidden sm:flex items-center gap-1.5 text-xs font-bold text-slate-600 hover:text-amber-600 cursor-pointer"
-          >
-            {copiedLink ? <Check className="w-3.5 h-3.5 text-green-600" /> : <Share2 className="w-3.5 h-3.5" />}
-            <span>{copiedLink ? 'Link Copied' : 'Share'}</span>
-          </button>
-        </div>
-      </div>
+      {/* Floating Back Button to easily go back to Electrical catalog from anywhere */}
+      <button
+        type="button"
+        onClick={() => navigate('/electrical')}
+        className="fixed top-28 sm:top-32 left-4 sm:left-6 z-50 p-2.5 sm:p-3 rounded-full bg-white text-slate-800 hover:bg-yellow-400 hover:text-slate-950 shadow-xl hover:shadow-2xl transition-all border border-slate-300 backdrop-blur-md cursor-pointer active:scale-90 flex items-center justify-center group"
+        title="Back to Electrical Store"
+        aria-label="Back to Electrical Store"
+      >
+        <ArrowLeft className="w-5 h-5 stroke-[2.5] group-hover:-translate-x-0.5 transition-transform" />
+      </button>
 
       {/* Main Two-Column Layout */}
-      <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-6 py-4">
-        <div className="bg-white border border-slate-200 shadow-xs rounded-xl p-4 sm:p-6 lg:p-8 grid grid-cols-1 lg:grid-cols-12 gap-8">
+      <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-6 py-3 sm:py-5">
+        <div className="bg-white border border-slate-200 shadow-xs rounded-2xl p-4 sm:p-6 lg:p-8 grid grid-cols-1 lg:grid-cols-12 gap-8 relative">
           
           {/* ========================================================================= */}
-          {/* LEFT COLUMN: IMAGE GALLERY WITH ZOOM + ACTION BUTTONS */}
+          {/* LEFT COLUMN: IMAGE GALLERY WITH ZOOM + FLOATING BOTTOM ACTION BAR */}
           {/* ========================================================================= */}
           <div className="lg:col-span-5 flex flex-col gap-4 self-start lg:sticky lg:top-20">
             
@@ -449,45 +408,15 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
                 </div>
               )}
 
-              {/* Main Image with Zoom on Hover */}
+              {/* Main Product Image (Clean display without distracting hover zoom) */}
               <div
-                ref={imageContainerRef}
-                onMouseEnter={() => setIsZooming(true)}
-                onMouseLeave={() => setIsZooming(false)}
-                onMouseMove={handleMouseMove}
-                className="flex-1 aspect-square relative bg-slate-50 border border-slate-200 rounded-lg overflow-hidden flex items-center justify-center p-4 cursor-crosshair group"
+                className="flex-1 aspect-square relative bg-slate-50 border border-slate-200 rounded-xl overflow-hidden flex items-center justify-center p-4"
               >
                 <img
                   src={currentImage}
                   alt={product.name}
-                  className={`w-full h-full object-contain transition-transform duration-200 ${
-                    isZooming ? 'opacity-0' : 'opacity-100'
-                  }`}
+                  className="w-full h-full object-contain"
                 />
-
-                {/* Magnified Zoom Canvas Window */}
-                {isZooming && (
-                  <div
-                    className="absolute inset-0 bg-no-repeat pointer-events-none bg-slate-50"
-                    style={{
-                      backgroundImage: `url(${currentImage})`,
-                      backgroundPosition: `${zoomPosition.x}% ${zoomPosition.y}%`,
-                      backgroundSize: '250%'
-                    }}
-                  />
-                )}
-
-                {/* Fast Delivery Badge */}
-                <div className="absolute top-3 left-3 bg-amber-400 text-slate-950 text-[10px] font-black uppercase px-2.5 py-1 rounded shadow-xs flex items-center gap-1">
-                  <Zap className="w-3.5 h-3.5 fill-slate-950" />
-                  60-Min Kolkata Dispatch
-                </div>
-
-                {/* 100% Genuine Transparent Pill Tag */}
-                <div className="absolute top-3 right-3 bg-white/80 backdrop-blur-md border border-white/60 text-emerald-800 text-[11px] font-black px-3 py-1 rounded-full shadow-xs flex items-center gap-1.5 z-10">
-                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-                  <span>100% Genuine</span>
-                </div>
               </div>
             </div>
 
@@ -498,7 +427,7 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
                 {/* Left Product Quick Info (Shown on tablets and desktop) */}
                 <div className="hidden sm:flex items-center gap-3 min-w-0">
                   <img
-                    src={product.image}
+                    src={product.image_urls[0] || currentImage}
                     alt={product.name}
                     className="w-11 h-11 object-contain rounded-lg border border-slate-200 bg-white p-1 shrink-0"
                   />
@@ -510,38 +439,50 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
                       <span className="font-black text-sm text-slate-950">
                         ₹{product.price.toLocaleString('en-IN')}
                       </span>
-                      {product.mrp && (
+                      {product.mrp > product.price && (
                         <span className="text-[11px] text-slate-400 line-through">
                           ₹{product.mrp.toLocaleString('en-IN')}
                         </span>
                       )}
-                      <span className="text-[11px] font-bold text-emerald-600">
-                        In Stock • Free Ezra St. Dispatch
+                      <span className={`text-[11px] font-bold ${product.stock_quantity > 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                        {product.stock_quantity > 0 ? 'In Stock • Ezra St. Dispatch' : 'Out of Stock'}
                       </span>
                     </div>
                   </div>
                 </div>
 
-                {/* Floating Action Buttons */}
-                <div className="grid grid-cols-2 gap-2.5 sm:gap-3 w-full sm:w-auto sm:min-w-[360px] md:min-w-[400px]">
-                  <button
-                    onClick={() => onAddToCart(adaptToCartProduct(product))}
-                    className="py-3 px-4 rounded-xl bg-yellow-400 hover:bg-yellow-500 text-slate-950 font-black text-xs sm:text-sm uppercase tracking-wide flex items-center justify-center gap-2 shadow-sm transition-all cursor-pointer active:scale-98 border border-yellow-500/40"
-                  >
-                    <ShoppingCart className="w-4 h-4 shrink-0" />
-                    <span>Add to Cart {cartQty > 0 && `(${cartQty})`}</span>
-                  </button>
+                {/* Floating Action Buttons: Shows Add to Cart & Buy Now if in stock; Single Out of Stock button if out of stock */}
+                {product.stock_quantity > 0 ? (
+                  <div className="grid grid-cols-2 gap-2.5 sm:gap-3 w-full sm:w-auto sm:min-w-[360px] md:min-w-[400px]">
+                    <button
+                      onClick={() => onAddToCart(adaptToCartProduct(product))}
+                      className="py-3 px-4 rounded-xl bg-yellow-400 hover:bg-yellow-500 text-slate-950 font-black text-xs sm:text-sm uppercase tracking-wide flex items-center justify-center gap-2 shadow-sm transition-all cursor-pointer active:scale-98 border border-yellow-500/40"
+                    >
+                      <ShoppingCart className="w-4 h-4 shrink-0" />
+                      <span>Add to Cart {cartQty > 0 && `(${cartQty})`}</span>
+                    </button>
 
-                  <button
-                    onClick={() => {
-                      onAddToCart(adaptToCartProduct(product));
-                      onOpenCart();
-                    }}
-                    className="py-3 px-4 rounded-xl bg-[#fb641b] hover:bg-[#e85b17] text-white font-black text-xs sm:text-sm uppercase tracking-wide flex items-center justify-center shadow-sm transition-all cursor-pointer active:scale-98"
-                  >
-                    <span>Buy Now</span>
-                  </button>
-                </div>
+                    <button
+                      onClick={() => {
+                        onAddToCart(adaptToCartProduct(product));
+                        onOpenCart();
+                      }}
+                      className="py-3 px-4 rounded-xl bg-[#fb641b] hover:bg-[#e85b17] text-white font-black text-xs sm:text-sm uppercase tracking-wide flex items-center justify-center shadow-sm transition-all cursor-pointer active:scale-98"
+                    >
+                      <span>Buy Now</span>
+                    </button>
+                  </div>
+                ) : (
+                  <div className="w-full sm:w-auto sm:min-w-[360px] md:min-w-[400px]">
+                    <button
+                      disabled
+                      className="w-full py-3.5 px-6 rounded-xl bg-slate-200 text-slate-500 font-black text-xs sm:text-sm uppercase tracking-wide flex items-center justify-center gap-2 cursor-not-allowed border border-slate-300 shadow-none"
+                    >
+                      <AlertCircle className="w-4 h-4" />
+                      <span>Out of Stock</span>
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -551,16 +492,40 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
           {/* ========================================================================= */}
           <div className="lg:col-span-7 space-y-6">
             
-            {/* Title & Brand */}
+            {/* Title, Brand & Telegram-Style Share Button */}
             <div>
-              <p className="text-xs font-black text-amber-600 uppercase tracking-wider mb-1">
-                {product.brand} • {product.subcategory}
-              </p>
-              <h1 className="text-lg sm:text-2xl font-black text-slate-900 leading-tight">
-                {product.name}
-              </h1>
+              {product.brand && (
+                <p className="text-xs font-black text-amber-600 uppercase tracking-wider mb-1">
+                  {product.brand}
+                </p>
+              )}
+              
+              <div className="flex items-start justify-between gap-4">
+                <h1 className="text-lg sm:text-2xl font-black text-slate-900 leading-tight flex-1">
+                  {product.name}
+                </h1>
 
-              {/* Real Rating & Reviews Count */}
+                {/* Share Button (Earlier design positioned at the right margin on the same line) */}
+                <button
+                  type="button"
+                  onClick={handleShareProduct}
+                  className="p-2 sm:p-2.5 rounded-full bg-slate-100 hover:bg-yellow-400 hover:text-slate-950 text-slate-700 transition-all cursor-pointer shadow-xs border border-slate-200 active:scale-90 flex items-center justify-center shrink-0 relative mt-0.5"
+                  title={copiedLink ? "Link copied!" : "Share product link"}
+                >
+                  {copiedLink ? (
+                    <Check className="w-4 h-4 text-emerald-600 stroke-[2.5]" />
+                  ) : (
+                    <Share2 className="w-4 h-4 text-slate-700" />
+                  )}
+                  {copiedLink && (
+                    <span className="absolute -top-7 right-0 px-2 py-0.5 rounded bg-slate-900 text-white text-[10px] font-bold whitespace-nowrap shadow-md">
+                      Copied!
+                    </span>
+                  )}
+                </button>
+              </div>
+
+              {/* Real Rating & Reviews Count (Cleaned without Giriraj Assured tag) */}
               <div className="flex items-center gap-3 mt-2">
                 {reviews.length > 0 ? (
                   <>
@@ -583,14 +548,10 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
                     No ratings yet
                   </span>
                 )}
-                <span className="text-slate-300">•</span>
-                <span className="text-xs font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
-                  Giriraj Assured
-                </span>
               </div>
             </div>
 
-            {/* Price Block (Flipkart Style) */}
+            {/* Price Block */}
             <div className="p-4 bg-slate-50/80 rounded-xl border border-slate-200/80 space-y-1">
               <div className="flex items-baseline gap-3">
                 <span className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
@@ -693,7 +654,7 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
               </div>
             )}
 
-            {/* Available Offers - Replaced with actual Product Discounts */}
+            {/* Available Offers */}
             <div className="space-y-2">
               <h3 className="text-xs font-black uppercase tracking-wider text-slate-900">
                 Available Offers
@@ -725,7 +686,7 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
                 <div className="flex items-start gap-2">
                   <Tag className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
                   <span>
-                    <strong className="font-bold text-slate-900">Free Express Delivery:</strong> 60-Minute rapid dispatch in Kolkata for eligible orders above ₹499.
+                    <strong className="font-bold text-slate-900">Express Delivery:</strong> Rapid dispatch from Central Ezra Street Kolkata hub for eligible orders.
                   </span>
                 </div>
               </div>
@@ -760,7 +721,7 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
                 <div className="text-xs text-slate-600 space-y-1 pt-1 border-t border-slate-100">
                   <p className="flex items-center gap-1.5 text-emerald-700 font-bold">
                     <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                    Delivery within 60 minutes in Kolkata (Pincode: {pincode})
+                    Express Delivery Available (Pincode: {pincode})
                   </p>
                   <p className="text-[11px] text-slate-500 pl-5">
                     Dispatched from Central Ezra Street Kolkata warehouse • Free delivery on orders above ₹499
@@ -783,7 +744,7 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
               )}
             </div>
 
-            {/* Specifications Table (Flipkart Spec Table Style) */}
+            {/* Specifications Table - Renders Real Supabase Attributes without dummy 'Details' label */}
             <div className="border border-slate-200 rounded-xl overflow-hidden">
               <button
                 onClick={() => setIsSpecsExpanded(!isSpecsExpanded)}
@@ -794,37 +755,47 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
               </button>
 
               {isSpecsExpanded && (
-                <div className="p-4 sm:p-6 space-y-6 text-xs divide-y divide-slate-100">
-                  {Object.entries(product.specifications || {}).map(([sectionTitle, sectionValues]) => (
-                    <div key={sectionTitle} className="pt-4 first:pt-0 space-y-3">
-                      <h4 className="font-black text-slate-900 text-xs uppercase tracking-wider">
-                        {sectionTitle}
-                      </h4>
-                      <div className="space-y-2">
-                        {typeof sectionValues === 'object' && sectionValues !== null ? (
-                          Object.entries(sectionValues).map(([key, val]) => (
-                            <div key={key} className="grid grid-cols-12 gap-2">
-                              <span className="col-span-5 sm:col-span-4 text-slate-500 font-semibold">
-                                {key}
-                              </span>
-                              <span className="col-span-7 sm:col-span-8 text-slate-900 font-bold">
-                                {String(val)}
-                              </span>
+                <div className="p-4 sm:p-6 text-xs divide-y divide-slate-100">
+                  {Object.entries(product.specifications || {}).length > 0 ? (
+                    Object.entries(product.specifications).map(([key, val]) => {
+                      if (typeof val === 'object' && val !== null && !Array.isArray(val)) {
+                        return (
+                          <div key={key} className="py-3 first:pt-0 last:pb-0 space-y-2">
+                            <h4 className="font-black text-slate-900 text-xs uppercase tracking-wider">
+                              {key}
+                            </h4>
+                            <div className="space-y-1.5 pl-1">
+                              {Object.entries(val).map(([subKey, subVal]) => (
+                                <div key={subKey} className="grid grid-cols-12 gap-3 py-1 border-b border-slate-50">
+                                  <span className="col-span-5 sm:col-span-4 text-slate-500 font-semibold">
+                                    {subKey}
+                                  </span>
+                                  <span className="col-span-7 sm:col-span-8 text-slate-900 font-bold">
+                                    {String(subVal)}
+                                  </span>
+                                </div>
+                              ))}
                             </div>
-                          ))
-                        ) : (
-                          <div className="grid grid-cols-12 gap-2">
+                          </div>
+                        );
+                      } else {
+                        return (
+                          <div key={key} className="grid grid-cols-12 gap-3 py-2.5 first:pt-0 last:pb-0">
                             <span className="col-span-5 sm:col-span-4 text-slate-500 font-semibold">
-                              Details
+                              {key}
                             </span>
                             <span className="col-span-7 sm:col-span-8 text-slate-900 font-bold">
-                              {String(sectionValues)}
+                              {Array.isArray(val) ? val.join(', ') : String(val)}
                             </span>
                           </div>
-                        )}
-                      </div>
+                        );
+                      }
+                    })
+                  ) : (
+                    <div className="text-slate-500 italic py-2">
+                      Standard certified specifications as per manufacturer datasheet.
                     </div>
-                  ))}
+                  )}
                 </div>
               )}
             </div>
@@ -873,35 +844,18 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
               </div>
             </div>
 
-            {/* Frequently Asked Questions (FAQ) */}
+            {/* Frequently Asked Questions (FAQ) - Loaded Dynamically from Supabase */}
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <h3 className="text-xs font-black uppercase tracking-wider text-slate-900 flex items-center gap-1.5">
                   <HelpCircle className="w-4 h-4 text-amber-600" />
                   Frequently Asked Questions
                 </h3>
-                <span className="text-[11px] text-slate-400 font-semibold">4 Questions</span>
+                <span className="text-[11px] text-slate-400 font-semibold">{faqs.length} Questions</span>
               </div>
 
               <div className="border border-slate-200 rounded-xl divide-y divide-slate-100 overflow-hidden bg-white shadow-2xs">
-                {[
-                  {
-                    q: `Is this ${product.brand} ${product.subcategory} 100% original and certified?`,
-                    a: `Yes, all ${product.brand} products sold on Giriraj Power are 100% genuine, factory-sealed, and adhere strictly to standard ISI / BIS safety certifications. We source directly from authorized brand distributors.`
-                  },
-                  {
-                    q: 'How fast is delivery to my address in Kolkata?',
-                    a: 'We dispatch immediately from our central Ezra Street electrical market hub in Kolkata. Orders are delivered within minimum 60 minutes or maximum 7 days depending on your specific pin code and order volume.'
-                  },
-                  {
-                    q: 'Will I receive a GST tax invoice with my order?',
-                    a: 'Yes, every order includes a valid GST tax invoice with proper HSN codes and breakdown that you can use for business tax input credits (ITC) and warranty verification.'
-                  },
-                  {
-                    q: 'Can contractors and builders place bulk coil/carton orders?',
-                    a: 'Yes, you can order project-scale bulk quantities directly through the store with special wholesale benefits and site delivery across Kolkata and West Bengal.'
-                  }
-                ].map((faq, idx) => {
+                {faqs.map((faq, idx) => {
                   const isOpen = openFaq === idx;
                   return (
                     <div key={idx} className="transition-colors">

@@ -327,15 +327,18 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
   const displayPhone = rawPhone;
   const displayEmail = rawEmail;
 
-  const getInitials = (name?: string, phone?: string) => {
-    if (name && name.trim()) {
+  const getInitials = (name?: string, phone?: string, email?: string) => {
+    if (name && name !== 'Customer' && name !== 'Kolkata Customer' && name.trim()) {
       const parts = name.trim().split(' ');
       if (parts.length > 1) {
         return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
       }
       return name.slice(0, 2).toUpperCase();
     }
-    if (phone) {
+    if (email && email.trim()) {
+      return email.slice(0, 2).toUpperCase();
+    }
+    if (phone && phone.trim()) {
       return phone.replace(/\D/g, '').slice(-2);
     }
     return 'GP';
@@ -578,7 +581,8 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                     </p>
                     {addr.receiverName && (
                       <p className="text-[11px] text-slate-500">
-                        Contact: {addr.receiverName} ({addr.receiverPhone || displayPhone})
+                        Contact: {addr.receiverName}
+                        {(addr.receiverPhone || displayPhone) ? ` (${addr.receiverPhone || displayPhone})` : ''}
                       </p>
                     )}
                   </div>
@@ -1593,7 +1597,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                 />
               ) : (
                 <span className="text-sm sm:text-base font-bold tracking-tight">
-                  {getInitials(rawName, rawPhone)}
+                  {getInitials(rawName, rawPhone, rawEmail)}
                 </span>
               )}
             </div>

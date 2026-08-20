@@ -27,6 +27,43 @@ export function transformToElectricalProduct(item: any): ElectricalProduct {
     image_urls = ['https://images.unsplash.com/photo-1558223616-e5d79faebdd6?q=80&w=800&auto=format&fit=crop'];
   }
 
+  let specifications: Record<string, any> = {};
+  if (typeof item.specifications === 'object' && item.specifications !== null) {
+    specifications = item.specifications;
+  } else if (typeof item.specifications === 'string' && item.specifications.trim()) {
+    try {
+      specifications = JSON.parse(item.specifications);
+    } catch {
+      specifications = { "Description": item.specifications };
+    }
+  } else if (typeof item.specs === 'object' && item.specs !== null) {
+    specifications = item.specs;
+  } else if (typeof item.specs === 'string' && item.specs.trim()) {
+    try {
+      specifications = JSON.parse(item.specs);
+    } catch {
+      specifications = { "Specifications": item.specs };
+    }
+  }
+
+  // Parse FAQs if stored in Supabase JSON/JSONB column
+  let faqs: Array<{ question?: string; answer?: string; q?: string; a?: string }> | undefined = undefined;
+  if (Array.isArray(item.faqs)) {
+    faqs = item.faqs;
+  } else if (Array.isArray(item.faq)) {
+    faqs = item.faq;
+  } else if (typeof item.faqs === 'string') {
+    try {
+      const parsed = JSON.parse(item.faqs);
+      if (Array.isArray(parsed)) faqs = parsed;
+    } catch {}
+  } else if (typeof item.faq === 'string') {
+    try {
+      const parsed = JSON.parse(item.faq);
+      if (Array.isArray(parsed)) faqs = parsed;
+    } catch {}
+  }
+
   return {
     id: String(item.id),
     name: item.name || 'Electrical Product',
@@ -37,22 +74,8 @@ export function transformToElectricalProduct(item: any): ElectricalProduct {
     mrp,
     discount_percent,
     description: item.description || 'High-grade electrical material certified for heavy residential and commercial installations.',
-    specifications: typeof item.specifications === 'object' && item.specifications !== null 
-      ? item.specifications 
-      : {
-          "General": {
-            "Brand": item.brand || 'Giriraj Genuine',
-            "Category": item.category || 'Electrical',
-            "Sub-Category": item.subCategory || 'Electrical Supplies'
-          },
-          "Specifications": item.specs || {
-            "Quality Grade": "100% Electrolytic Pure",
-            "Certification": "IS / ISI Standard"
-          },
-          "Warranty": {
-            "Summary": "Manufacturer Genuine Replacement"
-          }
-        },
+    specifications,
+    faqs,
     stock_quantity: Number(item.stock_quantity ?? item.stockCount ?? 50),
     image_urls,
     rating_avg: Number(item.rating_avg || item.rating || 0),
@@ -289,3 +312,75 @@ export async function submitProductReview(reviewData: {
     return { success: false, error: msg };
   }
 }
+
+/**
+ * Fetch FAQs for a product dynamically from Supabase
+ * Checks `faqs` table, `product_faqs` table, or product object
+ */
+export async function fetchProductFaqs(productId: string, productFallback?: ElectricalProduct): Promise<Array<{ q: string; a: string }>> {
+  // If product already has parsed faqs from Supabase
+  if (productFallback?.faqs && Array.isArray(productFallback.faqs) && productFallback.faqs.length > 0) {
+    return productFallback.faqs.map((f) => ({
+      q: f.q || f.question || '',
+      a: f.a || f.answer || ''
+    })).filter(f => f.q && f.a);
+  }
+
+  // Try querying from a dedicated Supabase `faqs` or `product_faqs` table if created by user
+  try {
+    const { data, error } = await supabase
+      .from('product_faqs')
+      .select('*')
+      .eq('product_id', productId)
+      .order('sort_order', { ascending: true });
+
+    if (!error && Array.isArray(data) && data.length > 0) {
+      return data.map(item => ({
+        q: item.question || item.q || '',
+        a: item.answer || item.a || ''
+      })).filter(f => f.q && f.a);
+    }
+  } catch {
+    // If table does not exist, continue to fallback
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from('faqs')
+      .select('*')
+      .or(`product_id.eq.${productId},product_id.is.null`)
+      .order('created_at', { ascending: true });
+
+    if (!error && Array.isArray(data) && data.length > 0) {
+      return data.map(item => ({
+        q: item.question || item.q || '',
+        a: item.answer || item.a || ''
+      })).filter(f => f.q && f.a);
+    }
+  } catch {
+    // Continue to fallback
+  }
+
+  // Standard electrical FAQ fallback
+  const brand = productFallback?.brand || 'Giriraj Genuine';
+  const subcategory = productFallback?.subcategory || 'Product';
+  return [
+    {
+      q: `Is this ${brand} ${subcategory} 100% original and certified?`,
+      a: `Yes, all ${brand} products sold on Giriraj Power are 100% genuine, factory-sealed, and adhere strictly to standard ISI / BIS safety certifications. We source directly from authorized brand distributors.`
+    },
+    {
+      q: 'How does delivery work for my address in Kolkata?',
+      a: 'We dispatch from our central Ezra Street electrical market hub in Kolkata with safe packaging and rapid delivery.'
+    },
+    {
+      q: 'Will I receive a GST tax invoice with my order?',
+      a: 'Yes, every order includes a valid GST tax invoice with proper HSN codes and breakdown that you can use for business tax input credits (ITC) and warranty verification.'
+    },
+    {
+      q: 'Can contractors and builders place bulk coil/carton orders?',
+      a: 'Yes, you can order project-scale bulk quantities directly through the store with special wholesale benefits and site delivery across Kolkata and West Bengal.'
+    }
+  ];
+}
+

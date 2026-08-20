@@ -25,7 +25,7 @@ import { INITIAL_PRODUCTS } from './data/products';
 import { KOLKATA_AREAS } from './data/kolkataAreas';
 import { Header } from './components/Header';
 import { LocationModal } from './components/LocationModal';
-import { AuthModal } from './components/AuthModal';
+import { LoginPage } from './components/LoginPage';
 import { ProfileView } from './components/ProfileView';
 import { ProductCard } from './components/ProductCard';
 import { ProductDetailModal } from './components/ProductDetailModal';
@@ -38,6 +38,7 @@ import { MapsGroundingAssistant } from './components/MapsGroundingAssistant';
 import { OrderHistoryView } from './components/OrderHistoryView';
 import { Footer } from './components/Footer';
 import { LegalView } from './components/LegalViews';
+import { ResetPassword } from './components/ResetPassword';
 import { ElectricalListingPage } from './components/electrical/ElectricalListingPage';
 import { ProductDetailPage } from './components/electrical/ProductDetailPage';
 import { ConstructionPage } from './components/ConstructionPage';
@@ -99,7 +100,6 @@ export default function App() {
   
   // Modals & Panels
   const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
-  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [isAdminOpen, setIsAdminOpen] = useState(false);
   const [isAiAssistantOpen, setIsAiAssistantOpen] = useState(false);
   const [selectedProductQuickView, setSelectedProductQuickView] = useState<Product | null>(null);
@@ -309,8 +309,8 @@ export default function App() {
   return (
     <div className="min-h-screen bg-white flex flex-col text-slate-900 selection:bg-yellow-400 selection:text-black">
       
-      {/* Top Header - Hidden when viewing profile page */}
-      {location.pathname !== '/profile' && (
+      {/* Top Header - Hidden when viewing profile or login pages */}
+      {location.pathname !== '/profile' && location.pathname !== '/login' && location.pathname !== '/auth' && (
         <Header
           currentArea={currentArea}
           activeAddress={activeSavedAddress}
@@ -324,7 +324,7 @@ export default function App() {
           userName={userName}
           userPhoto={userProfile?.photoURL}
           userProfile={userProfile}
-          onOpenAuth={() => setIsAuthModalOpen(true)}
+          onOpenAuth={() => navigate('/login')}
           onOpenAdmin={() => setIsAdminOpen(true)}
           onOpenAiAssistant={() => setIsAiAssistantOpen(true)}
           activeTab={activeTab}
@@ -368,7 +368,7 @@ export default function App() {
                 cartItems={cartItems}
                 onOpenCart={() => navigate('/cart')}
                 userProfile={userProfile}
-                onOpenAuth={() => setIsAuthModalOpen(true)}
+                onOpenAuth={() => navigate('/login')}
               />
             }
           />
@@ -477,6 +477,57 @@ export default function App() {
           <Route path="/terms" element={<LegalView onBack={() => navigate('/')} type="terms" />} />
           <Route path="/terms-of-service" element={<LegalView onBack={() => navigate('/')} type="terms" />} />
 
+          {/* PASSWORD RESET */}
+          <Route path="/reset-password" element={<ResetPassword onOpenAuth={() => navigate('/login')} />} />
+
+          {/* DEDICATED LOGIN / AUTH PAGE */}
+          <Route
+            path="/login"
+            element={
+              <LoginPage
+                onAuthSuccess={(phone, name, email) => {
+                  const photo = safeGetItem('giriraj_user_photo') || undefined;
+                  const prof: UserProfile = {
+                    id: userProfile?.id,
+                    phone: phone || '',
+                    name: name || '',
+                    email: email || '',
+                    emailVerified: Boolean(email),
+                    photoURL: photo,
+                    dob: userProfile?.dob || safeGetItem('giriraj_user_dob') || ''
+                  };
+                  setUserProfile(prof);
+                  setUserPhone(phone || null);
+                  setUserName(name || '');
+                  navigate('/profile');
+                }}
+              />
+            }
+          />
+          <Route
+            path="/auth"
+            element={
+              <LoginPage
+                onAuthSuccess={(phone, name, email) => {
+                  const photo = safeGetItem('giriraj_user_photo') || undefined;
+                  const prof: UserProfile = {
+                    id: userProfile?.id,
+                    phone: phone || '',
+                    name: name || '',
+                    email: email || '',
+                    emailVerified: Boolean(email),
+                    photoURL: photo,
+                    dob: userProfile?.dob || safeGetItem('giriraj_user_dob') || ''
+                  };
+                  setUserProfile(prof);
+                  setUserPhone(phone || null);
+                  setUserName(name || '');
+                  navigate('/profile');
+                }}
+              />
+            }
+          />
+
           {/* HOME / DEFAULT ROUTE */}
           <Route
             path="/"
@@ -538,29 +589,6 @@ export default function App() {
           } else {
             setActiveSavedAddress(null);
           }
-        }}
-      />
-
-      <AuthModal
-        isOpen={isAuthModalOpen}
-        onClose={() => setIsAuthModalOpen(false)}
-        onOpenTerms={() => navigate('/terms')}
-        onOpenPrivacy={() => navigate('/privacy')}
-        onAuthSuccess={(phone, name, email) => {
-          const photo = safeGetItem('giriraj_user_photo') || undefined;
-          const prof: UserProfile = {
-            id: userProfile?.id,
-            phone: phone || '',
-            name: name || '',
-            email: email || '',
-            emailVerified: Boolean(email),
-            photoURL: photo,
-            dob: userProfile?.dob || safeGetItem('giriraj_user_dob') || ''
-          };
-          setUserProfile(prof);
-          setUserPhone(phone || null);
-          setUserName(name || '');
-          navigate('/profile');
         }}
       />
 

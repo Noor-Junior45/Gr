@@ -2,8 +2,6 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import {
   SlidersHorizontal,
-  Star,
-  Zap,
   ChevronDown,
   ShoppingCart,
   Plus,
@@ -11,9 +9,6 @@ import {
   RefreshCw,
   X,
   Search,
-  Truck,
-  Clock,
-  Banknote,
   Check
 } from 'lucide-react';
 import { ElectricalProduct, FilterState, SortOption } from '../../types/electrical';
@@ -240,76 +235,20 @@ export const ElectricalListingPage: React.FC<ElectricalListingPageProps> = ({
 
   const totalPages = Math.ceil(products.length / itemsPerPage) || 1;
 
-  // Selected subcategory display name
-  const currentCategoryHeading = useMemo(() => {
-    if (filters.subcategories.length === 1) {
-      return filters.subcategories[0];
-    }
-    if (filters.subcategories.length > 1) {
-      return `${filters.subcategories[0]} & More`;
-    }
-    return 'Electrical';
-  }, [filters.subcategories]);
-
   return (
     <div className="min-h-screen bg-white text-slate-900 pb-20 font-sans">
       
-      {/* 1. BREADCRUMB ROW (Electrical > Wire > Polycab) */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-5 pb-2">
-        <div className="flex items-center gap-2 text-xs text-slate-500 font-medium overflow-x-auto whitespace-nowrap scrollbar-none">
-          <Link
-            to="/electrical"
-            onClick={() => {
-              setFilters((prev) => ({ ...prev, subcategories: [], brands: [] }));
-              setSearchParams({});
-            }}
-            className={`hover:text-amber-600 transition-colors ${
-              filters.subcategories.length === 0 && filters.brands.length === 0
-                ? 'text-slate-900 font-bold'
-                : 'text-slate-700 font-semibold'
-            }`}
-          >
-            electrical
-          </Link>
-
-          {filters.subcategories.length === 1 && (
-            <>
-              <span className="text-slate-400 font-bold">&gt;</span>
-              <button
-                onClick={() => {
-                  setFilters((prev) => ({ ...prev, brands: [] }));
-                }}
-                className={`hover:text-amber-600 transition-colors cursor-pointer ${
-                  filters.brands.length === 0 ? 'text-slate-900 font-bold' : 'text-slate-700 font-medium'
-                }`}
-              >
-                {filters.subcategories[0].toLowerCase()}
-              </button>
-            </>
-          )}
-
-          {filters.brands.length === 1 && (
-            <>
-              <span className="text-slate-400 font-bold">&gt;</span>
-              <span className="font-bold text-slate-900">{filters.brands[0].toLowerCase()}</span>
-            </>
-          )}
-        </div>
-      </div>
-
-      {/* FILTER & SORT BAR (Pill Shape Buttons with Side Tab / Dropdown Menus) */}
-      <div ref={dropdownRef} className="max-w-7xl mx-auto px-4 sm:px-6 py-2.5 mb-6 relative">
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-4">
+      {/* FILTER & SORT BAR (Consolidated into All Filters button) */}
+      <div ref={dropdownRef} className="max-w-7xl mx-auto px-4 sm:px-6 pt-3 pb-2 sm:pt-4 sm:pb-3 mb-3 relative">
+        <div className="flex items-center justify-between gap-2 sm:gap-3 border-b border-slate-100 pb-3 sm:pb-3.5">
           
-          {/* Left: Filter Label & Pill-Shaped Filter Dropdowns */}
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-xs font-semibold text-slate-400 mr-0.5">Filter:</span>
-
+          {/* Left: Main All Filters Button & Active Filter Controls */}
+          <div className="flex items-center gap-2 overflow-x-auto scrollbar-none py-0.5">
             {/* Comprehensive Filter Side-Tab Drawer Button */}
             <button
               id="filter-drawer-pill-btn"
               onClick={() => setIsSideFilterOpen(true)}
-              className={`inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full border text-xs font-bold transition-all cursor-pointer shadow-2xs ${
+              className={`inline-flex items-center gap-1.5 px-3.5 sm:px-4 py-1.5 rounded-full border text-xs font-bold transition-all cursor-pointer shrink-0 shadow-2xs ${
                 hasActiveFilters
                   ? 'bg-amber-50 border-amber-400 text-amber-900'
                   : 'bg-white border-slate-200 hover:border-slate-300 text-slate-800'
@@ -319,189 +258,22 @@ export const ElectricalListingPage: React.FC<ElectricalListingPageProps> = ({
               <span>All Filters {activeFilterCount > 0 ? `(${activeFilterCount})` : ''}</span>
             </button>
 
-            {/* Category Pill Dropdown */}
-            <div className="relative">
-              <button
-                id="filter-category-pill"
-                onClick={() => setActiveDropdown(activeDropdown === 'category' ? null : 'category')}
-                className={`inline-flex items-center gap-1 px-3.5 py-1.5 rounded-full border text-xs font-semibold transition-all cursor-pointer shadow-2xs ${
-                  filters.subcategories.length > 0
-                    ? 'bg-amber-50 border-amber-400 text-amber-900 font-bold'
-                    : 'bg-white border-slate-200 hover:border-slate-300 text-slate-700'
-                }`}
-              >
-                <span>Category</span>
-                <ChevronDown className="w-3 h-3 text-slate-500" />
-              </button>
-
-              {activeDropdown === 'category' && (
-                <div className="absolute top-full left-0 mt-2 w-56 bg-white rounded-xl shadow-xl border border-slate-100 p-3 z-30 space-y-2 animate-in fade-in zoom-in-95">
-                  <div className="text-[11px] font-black uppercase tracking-wider text-slate-400 pb-1 border-b border-slate-100 flex items-center justify-between">
-                    <span>Select Subcategory</span>
-                    {filters.subcategories.length > 0 && (
-                      <button
-                        onClick={() => setFilters((p) => ({ ...p, subcategories: [] }))}
-                        className="text-amber-600 hover:underline cursor-pointer"
-                      >
-                        Clear
-                      </button>
-                    )}
-                  </div>
-                  <div className="space-y-1 max-h-48 overflow-y-auto">
-                    {ALL_SUBCATEGORIES.map((sub) => {
-                      const checked = filters.subcategories.includes(sub);
-                      return (
-                        <button
-                          key={sub}
-                          onClick={() => handleToggleSubcategory(sub)}
-                          className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs transition-colors cursor-pointer text-left ${
-                            checked ? 'bg-amber-50 text-amber-950 font-bold' : 'text-slate-700 hover:bg-slate-50'
-                          }`}
-                        >
-                          <span>{sub}</span>
-                          {checked && <Check className="w-3.5 h-3.5 text-amber-600" />}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Brand Pill Dropdown */}
-            <div className="relative">
-              <button
-                id="filter-brand-pill"
-                onClick={() => setActiveDropdown(activeDropdown === 'brand' ? null : 'brand')}
-                className={`inline-flex items-center gap-1 px-3.5 py-1.5 rounded-full border text-xs font-semibold transition-all cursor-pointer shadow-2xs ${
-                  filters.brands.length > 0
-                    ? 'bg-amber-50 border-amber-400 text-amber-900 font-bold'
-                    : 'bg-white border-slate-200 hover:border-slate-300 text-slate-700'
-                }`}
-              >
-                <span>Brand</span>
-                <ChevronDown className="w-3 h-3 text-slate-500" />
-              </button>
-
-              {activeDropdown === 'brand' && (
-                <div className="absolute top-full left-0 mt-2 w-56 bg-white rounded-xl shadow-xl border border-slate-100 p-3 z-30 space-y-2 animate-in fade-in zoom-in-95">
-                  <div className="text-[11px] font-black uppercase tracking-wider text-slate-400 pb-1 border-b border-slate-100 flex items-center justify-between">
-                    <span>Select Brand</span>
-                    {filters.brands.length > 0 && (
-                      <button
-                        onClick={() => setFilters((p) => ({ ...p, brands: [] }))}
-                        className="text-amber-600 hover:underline cursor-pointer"
-                      >
-                        Clear
-                      </button>
-                    )}
-                  </div>
-                  <div className="space-y-1 max-h-48 overflow-y-auto">
-                    {ALL_BRANDS.map((brand) => {
-                      const checked = filters.brands.includes(brand);
-                      return (
-                        <button
-                          key={brand}
-                          onClick={() => handleToggleBrand(brand)}
-                          className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs transition-colors cursor-pointer text-left ${
-                            checked ? 'bg-amber-50 text-amber-950 font-bold' : 'text-slate-700 hover:bg-slate-50'
-                          }`}
-                        >
-                          <span>{brand}</span>
-                          {checked && <Check className="w-3.5 h-3.5 text-amber-600" />}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Price Range Pill Dropdown */}
-            <div className="relative">
-              <button
-                id="filter-price-pill"
-                onClick={() => setActiveDropdown(activeDropdown === 'price' ? null : 'price')}
-                className={`inline-flex items-center gap-1 px-3.5 py-1.5 rounded-full border text-xs font-semibold transition-all cursor-pointer shadow-2xs ${
-                  filters.minPrice !== undefined || filters.maxPrice !== undefined
-                    ? 'bg-amber-50 border-amber-400 text-amber-900 font-bold'
-                    : 'bg-white border-slate-200 hover:border-slate-300 text-slate-700'
-                }`}
-              >
-                <span>Price</span>
-                <ChevronDown className="w-3 h-3 text-slate-500" />
-              </button>
-
-              {activeDropdown === 'price' && (
-                <div className="absolute top-full left-0 mt-2 w-64 bg-white rounded-xl shadow-xl border border-slate-100 p-4 z-30 space-y-3 animate-in fade-in zoom-in-95">
-                  <div className="text-[11px] font-black uppercase tracking-wider text-slate-400 pb-1 border-b border-slate-100">
-                    Price Range (₹)
-                  </div>
-                  <div className="grid grid-cols-2 gap-2 text-xs">
-                    <div>
-                      <span className="text-[10px] text-slate-500 font-bold block mb-1">Min</span>
-                      <input
-                        type="number"
-                        placeholder="0"
-                        value={filters.minPrice ?? ''}
-                        onChange={(e) =>
-                          setFilters((p) => ({
-                            ...p,
-                            minPrice: e.target.value ? Number(e.target.value) : undefined
-                          }))
-                        }
-                        className="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 text-xs font-semibold outline-hidden focus:border-amber-500"
-                      />
-                    </div>
-                    <div>
-                      <span className="text-[10px] text-slate-500 font-bold block mb-1">Max</span>
-                      <input
-                        type="number"
-                        placeholder="50000"
-                        value={filters.maxPrice ?? ''}
-                        onChange={(e) =>
-                          setFilters((p) => ({
-                            ...p,
-                            maxPrice: e.target.value ? Number(e.target.value) : undefined
-                          }))
-                        }
-                        className="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 text-xs font-semibold outline-hidden focus:border-amber-500"
-                      />
-                    </div>
-                  </div>
-                  <div className="flex justify-between items-center pt-2">
-                    <button
-                      onClick={() => setFilters((p) => ({ ...p, minPrice: undefined, maxPrice: undefined }))}
-                      className="text-xs text-slate-500 hover:text-slate-800 font-bold cursor-pointer"
-                    >
-                      Reset
-                    </button>
-                    <button
-                      onClick={() => setActiveDropdown(null)}
-                      className="px-3 py-1 rounded-lg bg-slate-900 text-white text-xs font-bold hover:bg-black cursor-pointer"
-                    >
-                      Apply
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Clear All pill badge if any filter active */}
+            {/* Clear All / Reset pill badge if any filter active */}
             {hasActiveFilters && (
               <button
                 onClick={handleClearAllFilters}
-                className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-bold text-red-600 hover:bg-red-50 transition-colors cursor-pointer"
+                className="inline-flex items-center gap-1 px-2.5 sm:px-3 py-1.5 rounded-full text-xs font-bold text-red-600 hover:bg-red-50 transition-colors cursor-pointer shrink-0"
               >
                 <X className="w-3 h-3" />
-                <span>Clear All</span>
+                <span className="hidden sm:inline">Clear All</span>
+                <span className="sm:hidden">Reset</span>
               </button>
             )}
           </div>
 
           {/* Right: Product Count & Pill Sort By Dropdown */}
-          <div className="flex items-center gap-4 ml-auto">
-            <span className="text-xs font-semibold text-slate-400">
+          <div className="flex items-center gap-2 sm:gap-4 shrink-0">
+            <span className="hidden xs:inline text-xs font-semibold text-slate-400">
               {totalCount} products
             </span>
 
@@ -510,9 +282,9 @@ export const ElectricalListingPage: React.FC<ElectricalListingPageProps> = ({
               <button
                 id="sort-by-pill-btn"
                 onClick={() => setActiveDropdown(activeDropdown === 'sort' ? null : 'sort')}
-                className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-slate-200 bg-white hover:border-slate-300 text-xs font-semibold text-slate-800 transition-all cursor-pointer shadow-2xs"
+                className="inline-flex items-center gap-1.5 sm:gap-2 px-3 sm:px-3.5 py-1.5 rounded-full border border-slate-200 bg-white hover:border-slate-300 text-xs font-semibold text-slate-800 transition-all cursor-pointer shadow-2xs shrink-0"
               >
-                <span className="text-slate-400 font-normal">Sort by:</span>
+                <span className="text-slate-400 font-normal hidden sm:inline">Sort by:</span>
                 <span className="font-bold text-slate-900">{SORT_LABELS[sortOption]}</span>
                 <ChevronDown className="w-3 h-3 text-slate-500" />
               </button>
@@ -541,11 +313,56 @@ export const ElectricalListingPage: React.FC<ElectricalListingPageProps> = ({
               )}
             </div>
           </div>
-
         </div>
+
+        {/* Selected Filter Tags (Clean line-by-line horizontal scroll row, saving space) */}
+        {hasActiveFilters && (
+          <div className="flex items-center gap-1.5 pt-2 overflow-x-auto scrollbar-none flex-nowrap">
+            {filters.subcategories.map((sub) => (
+              <button
+                key={sub}
+                onClick={() => handleToggleSubcategory(sub)}
+                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-amber-50 border border-amber-200 text-amber-900 text-[11px] font-bold shrink-0 hover:bg-amber-100 transition-colors cursor-pointer"
+              >
+                <span>{sub}</span>
+                <X className="w-3 h-3 text-amber-700" />
+              </button>
+            ))}
+            {filters.brands.map((b) => (
+              <button
+                key={b}
+                onClick={() => handleToggleBrand(b)}
+                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-amber-50 border border-amber-200 text-amber-900 text-[11px] font-bold shrink-0 hover:bg-amber-100 transition-colors cursor-pointer"
+              >
+                <span>{b}</span>
+                <X className="w-3 h-3 text-amber-700" />
+              </button>
+            ))}
+            {(filters.minPrice !== undefined || filters.maxPrice !== undefined) && (
+              <button
+                onClick={() => setFilters((p) => ({ ...p, minPrice: undefined, maxPrice: undefined }))}
+                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-amber-50 border border-amber-200 text-amber-900 text-[11px] font-bold shrink-0 hover:bg-amber-100 transition-colors cursor-pointer"
+              >
+                <span>
+                  ₹{filters.minPrice ?? 0} - ₹{filters.maxPrice ?? 'Any'}
+                </span>
+                <X className="w-3 h-3 text-amber-700" />
+              </button>
+            )}
+            {filters.minRating !== undefined && (
+              <button
+                onClick={() => setFilters((p) => ({ ...p, minRating: undefined }))}
+                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-amber-50 border border-amber-200 text-amber-900 text-[11px] font-bold shrink-0 hover:bg-amber-100 transition-colors cursor-pointer"
+              >
+                <span>★ {filters.minRating}+</span>
+                <X className="w-3 h-3 text-amber-700" />
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
-      {/* 4. PRODUCT CATALOG GRID (Borderless, 4 products in one row) */}
+      {/* 4. PRODUCT CATALOG GRID (Borderless, 4 products in one row, reduced height) */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6">
         {loading ? (
           <div className="py-24 text-center">
@@ -569,7 +386,7 @@ export const ElectricalListingPage: React.FC<ElectricalListingPageProps> = ({
             </button>
           </div>
         ) : (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-x-6 gap-y-10 sm:gap-x-8 sm:gap-y-12">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-x-4 sm:gap-x-6 gap-y-6 sm:gap-y-8">
             {paginatedProducts.map((product) => {
               const cartQty = getProductCartQty(product.id);
               const adapted = adaptToCartProduct(product);
@@ -582,20 +399,18 @@ export const ElectricalListingPage: React.FC<ElectricalListingPageProps> = ({
                   key={product.id}
                   className="group flex flex-col justify-between transition-all duration-200 border-0 p-1"
                 >
-                  {/* Top discount badge (yellow pill matching reference image) */}
-                  <div className="min-h-6 mb-2">
+                  {/* Clean Product Image with Floating Discount Tag */}
+                  <Link
+                    to={`/electrical/product/${product.id}`}
+                    className="block aspect-square overflow-hidden rounded-xl bg-slate-50/60 p-3 sm:p-4 mb-2.5 flex items-center justify-center relative cursor-pointer"
+                  >
+                    {/* Floating discount text (no background box) */}
                     {product.discount_percent > 0 && (
-                      <span className="inline-block bg-[#facc15] text-slate-950 text-[11px] font-black px-2.5 py-0.5 rounded-full shadow-2xs tracking-wide">
+                      <span className="absolute top-2 left-2.5 sm:top-2.5 sm:left-3 text-red-600 font-black text-[11px] sm:text-xs tracking-tight z-10 select-none drop-shadow-2xs">
                         {product.discount_percent}% OFF
                       </span>
                     )}
-                  </div>
 
-                  {/* Clean Product Image - Centered and Borderless */}
-                  <Link
-                    to={`/electrical/product/${product.id}`}
-                    className="block aspect-square overflow-hidden rounded-xl bg-slate-50/60 p-4 mb-4 flex items-center justify-center relative cursor-pointer"
-                  >
                     <img
                       src={primaryImage}
                       alt={product.name}
@@ -604,8 +419,8 @@ export const ElectricalListingPage: React.FC<ElectricalListingPageProps> = ({
                     />
                   </Link>
 
-                  {/* Product Details & Reference-Style Delivery Tags */}
-                  <div className="space-y-2 flex-1 flex flex-col justify-between">
+                  {/* Product Details */}
+                  <div className="space-y-1.5 flex-1 flex flex-col justify-between">
                     <div>
                       <Link
                         to={`/electrical/product/${product.id}`}
@@ -629,7 +444,7 @@ export const ElectricalListingPage: React.FC<ElectricalListingPageProps> = ({
 
                       {/* Wire Standard Colours Indicator */}
                       {isWireProduct(adapted) && (
-                        <div className="mt-2 pt-1 border-t border-dashed border-slate-100 flex items-center justify-between gap-1">
+                        <div className="mt-1.5 pt-1 border-t border-dashed border-slate-100 flex items-center justify-between gap-1">
                           <span className="text-[10px] font-bold text-slate-500">IS 694 Colours:</span>
                           <div className="flex items-center gap-1">
                             {INDIAN_STANDARD_WIRE_COLORS.map(c => (
@@ -645,31 +460,8 @@ export const ElectricalListingPage: React.FC<ElectricalListingPageProps> = ({
                       )}
                     </div>
 
-                    {/* Delivery Tags matching Reference Image */}
-                    <div className="space-y-1.5 pt-2">
-                      {/* Row 1: 60 Mins & Pay on Delivery */}
-                      <div className="flex items-center gap-3 text-[11px] text-slate-600 font-medium">
-                        <span className="flex items-center gap-1">
-                          <Clock className="w-3.5 h-3.5 text-emerald-600" />
-                          60 Mins
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <Banknote className="w-3.5 h-3.5 text-emerald-600" />
-                          Pay on Delivery
-                        </span>
-                      </div>
-
-                      {/* Row 2: Teal Pill Badge for Free Delivery */}
-                      <div>
-                        <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded bg-[#0f766e] text-white text-[10px] font-bold">
-                          <Truck className="w-3 h-3 shrink-0" />
-                          <span>Free Delivery <span className="font-normal opacity-90">above ₹500</span></span>
-                        </span>
-                      </div>
-                    </div>
-
                     {/* Add to Cart / Quick Quantity Controls */}
-                    <div className="pt-2">
+                    <div className="pt-1.5">
                       {cartQty > 0 ? (
                         <div className="flex items-center justify-between bg-yellow-400 text-slate-950 font-black rounded-lg px-2.5 py-1.5 shadow-xs border border-yellow-500/30">
                           <button
@@ -709,7 +501,7 @@ export const ElectricalListingPage: React.FC<ElectricalListingPageProps> = ({
                             e.preventDefault();
                             onAddToCart(adapted);
                           }}
-                          className="w-full py-2.5 px-3 rounded-lg bg-yellow-400 hover:bg-yellow-500 text-slate-950 font-black text-xs transition-all cursor-pointer flex items-center justify-center gap-1.5 active:scale-98 shadow-xs border border-yellow-500/20"
+                          className="w-full py-2 px-3 rounded-lg bg-yellow-400 hover:bg-yellow-500 text-slate-950 font-black text-xs transition-all cursor-pointer flex items-center justify-center gap-1.5 active:scale-98 shadow-xs border border-yellow-500/20"
                         >
                           <ShoppingCart className="w-3.5 h-3.5" />
                           <span>Add to Cart</span>

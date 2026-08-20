@@ -50,10 +50,10 @@ export const CartView: React.FC<CartViewProps> = ({
   onContinueShopping
 }) => {
   const [customerName, setCustomerName] = useState(() => {
-    return activeAddress?.receiverName || localStorage.getItem('giriraj_user_name') || 'Kolkata Customer';
+    return activeAddress?.receiverName || localStorage.getItem('giriraj_user_name') || '';
   });
   const [phone, setPhone] = useState(() => {
-    return userPhone || activeAddress?.receiverPhone || localStorage.getItem('giriraj_user_phone') || '9830012345';
+    return userPhone || activeAddress?.receiverPhone || localStorage.getItem('giriraj_user_phone') || '';
   });
   const [email, setEmail] = useState(() => {
     return localStorage.getItem('giriraj_user_email') || '';
@@ -153,6 +153,16 @@ export const CartView: React.FC<CartViewProps> = ({
         });
       } catch (err) {
         console.warn('Confetti error', err);
+      }
+
+      if (phone.trim()) {
+        try {
+          localStorage.setItem('giriraj_user_phone', phone.trim());
+          if (customerName.trim()) localStorage.setItem('giriraj_user_name', customerName.trim());
+          if (email.trim()) localStorage.setItem('giriraj_user_email', email.trim());
+        } catch {
+          // ignore
+        }
       }
 
       onClearCart();
@@ -397,7 +407,7 @@ export const CartView: React.FC<CartViewProps> = ({
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
                     required
-                    placeholder="e.g. 9830012345"
+                    placeholder="Enter 10-digit mobile number"
                     className="w-full px-3 py-2 text-sm rounded-xl border border-slate-300 bg-white font-medium focus:outline-none focus:ring-2 focus:ring-yellow-400 text-slate-900 placeholder:text-slate-400"
                   />
                 </div>

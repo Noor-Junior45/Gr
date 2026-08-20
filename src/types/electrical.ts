@@ -13,6 +13,7 @@ export interface ElectricalProduct {
   image_urls: string[];
   rating_avg: number;
   rating_count: number;
+  faqs?: Array<{ question?: string; answer?: string; q?: string; a?: string }>;
   created_at?: string;
   updated_at?: string;
 }

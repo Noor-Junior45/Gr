@@ -103,16 +103,11 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                 alt={product.name}
                 className="w-full h-full object-contain p-2"
               />
-              <span className="absolute top-3 left-3 px-2.5 py-1 rounded-md bg-green-600 text-white text-xs font-black flex items-center gap-1 shadow-sm">
-                <Zap className="w-3.5 h-3.5 fill-white" />
-                <span>60 MINS – 7 DAYS DELIVERY</span>
-              </span>
-
-              {/* 100% Genuine Transparent Pill Tag */}
-              <div className="absolute top-3 right-3 bg-white/80 backdrop-blur-md border border-white/60 text-emerald-800 text-[11px] font-black px-3 py-1 rounded-full shadow-xs flex items-center gap-1.5 z-10">
-                <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-                <span>100% Genuine</span>
-              </div>
+              {(!product.inStock || (product.stockCount !== undefined && product.stockCount <= 0)) && (
+                <span className="absolute top-3 left-3 px-2.5 py-1 rounded-md bg-red-600 text-white text-xs font-black flex items-center gap-1 shadow-sm">
+                  <span>OUT OF STOCK</span>
+                </span>
+              )}
             </div>
 
             {/* Thumbnail Strip with Scroll Arrows when 5+ images */}
@@ -396,7 +391,14 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                 Close
               </button>
 
-              {quantityInCart === 0 ? (
+              {(!product.inStock || (product.stockCount !== undefined && product.stockCount <= 0)) ? (
+                <button
+                  disabled
+                  className="flex-1 py-3 px-6 rounded-xl bg-slate-200 text-slate-500 font-black text-sm flex items-center justify-center cursor-not-allowed border border-slate-300 shadow-none"
+                >
+                  <span>Out of Stock</span>
+                </button>
+              ) : quantityInCart === 0 ? (
                 <button
                   onClick={handleAdd}
                   className="flex-1 py-3 px-6 rounded-xl bg-yellow-400 hover:bg-yellow-500 text-slate-950 font-black text-sm transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer border border-yellow-500/30 active:scale-98"
