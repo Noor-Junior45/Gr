@@ -19,7 +19,7 @@ interface FooterProps {
 
 export const Footer: React.FC<FooterProps> = () => {
   return (
-    <footer className="bg-slate-900 text-slate-300 text-xs mt-16 relative border-t-2 border-amber-500 font-sans">
+    <footer className="bg-slate-900 text-slate-300 text-xs mt-16 relative border-t-4 border-amber-400 font-sans shadow-md">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-12 pb-8">
         
         {/* 3 Headings Column Grid (Company, Policy, Contact) */}
@@ -43,21 +43,7 @@ export const Footer: React.FC<FooterProps> = () => {
                 </Link>
               </li>
 
-              {/* 2. Contact (WhatsApp Link) */}
-              <li>
-                <a
-                  href="https://wa.me/918777400280?text=Hello%20Giriraj%20Power,%20I%20have%20an%20inquiry%20regarding%20electrical%20and%20construction%20supplies."
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-slate-300 hover:text-emerald-400 transition-colors font-medium flex items-center gap-1.5 cursor-pointer"
-                >
-                  <span className="text-emerald-500">›</span>
-                  <span>Contact (WhatsApp Chat)</span>
-                  <ExternalLink className="w-3 h-3 text-slate-500" />
-                </a>
-              </li>
-
-              {/* 3. FAQ's */}
+              {/* 2. FAQ's */}
               <li>
                 <Link
                   to="/faqs"
@@ -68,14 +54,6 @@ export const Footer: React.FC<FooterProps> = () => {
                 </Link>
               </li>
             </ul>
-
-            {/* Trust badge under company */}
-            <div className="pt-2">
-              <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800/80 border border-slate-700/80 text-amber-300 text-[11px] font-bold">
-                <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-                <span>Kolkata's Wholesale Hub</span>
-              </div>
-            </div>
           </div>
 
           {/* HEADING 2: POLICY */}
@@ -129,11 +107,6 @@ export const Footer: React.FC<FooterProps> = () => {
                 </Link>
               </li>
             </ul>
-
-            <div className="pt-2 flex items-center gap-1.5 text-[11px] text-slate-400">
-              <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-              <span>100% Genuine ISI Warranties &amp; GST Invoices</span>
-            </div>
           </div>
 
           {/* HEADING 3: CONTACT */}
@@ -154,16 +127,28 @@ export const Footer: React.FC<FooterProps> = () => {
                 </div>
               </div>
 
-              {/* Mobile Numbers */}
+              {/* Mobile Helplines */}
               <div className="flex items-start gap-2.5">
                 <Phone className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
-                <div>
-                  <p className="font-bold text-white">Direct Helplines</p>
-                  <p className="text-[11px] text-slate-400 leading-relaxed mt-0.5 space-y-0.5">
-                    <span><strong className="text-slate-200">WhatsApp:</strong> +91 87774 00280</span><br />
-                    <span><strong className="text-slate-200">Contractor:</strong> +91 90071 68561</span><br />
-                    <span><strong className="text-slate-200">Alternative:</strong> +91 98745 69712</span>
-                  </p>
+                <div className="space-y-1.5">
+                  <p className="font-bold text-white text-xs">Direct Helplines</p>
+                  <div className="flex items-center gap-3">
+                    <a
+                      href="tel:+918777400280"
+                      className="text-slate-300 hover:text-amber-400 transition-colors font-medium flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <span className="text-amber-500">›</span>
+                      <span>Contact</span>
+                    </a>
+                    <span className="text-slate-600">•</span>
+                    <a
+                      href="tel:+919874569712"
+                      className="text-slate-300 hover:text-amber-400 transition-colors font-medium flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <span className="text-amber-500">›</span>
+                      <span>Alternative</span>
+                    </a>
+                  </div>
                 </div>
               </div>
 
@@ -184,13 +169,9 @@ export const Footer: React.FC<FooterProps> = () => {
 
         </div>
 
-        {/* Bottom Bar: Copyright and Depot Note */}
+        {/* Bottom Bar: Copyright */}
         <div className="pt-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-slate-500 text-[11px]">
           <p>© {new Date().getFullYear()} Giriraj Power &amp; Hardware. All rights reserved.</p>
-          <div className="flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-            <span>60-Minute Fast Dispatch Hub Active across Kolkata</span>
-          </div>
         </div>
 
       </div>

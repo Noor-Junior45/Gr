@@ -30,10 +30,14 @@ import {
   PackageCheck,
   RotateCcw,
   Sparkle,
-  ShoppingCart
+  ShoppingCart,
+  Info,
+  Package,
+  Wrench
 } from 'lucide-react';
 import { Product, CartItem } from '../types';
 import { INITIAL_PRODUCTS } from '../data/products';
+import { OFFICIAL_BRANDS } from './BrandLogos';
 
 export interface HomePageProps {
   onAddToCart: (product: Product) => void;
@@ -52,134 +56,134 @@ export const REFERENCE_CATEGORIES = [
     id: 'cat-cement',
     name: 'Cement',
     badge: 'Bulk Prices',
-    image: 'https://images.unsplash.com/photo-1590069261209-f8e9b8642343?q=80&w=600&auto=format&fit=crop',
+    image: 'https://i.imgur.com/u0PYh6L.png',
     targetRoute: '/construction?subcategory=Cement%20%26%20Concrete'
   },
   {
     id: 'cat-tiling',
     name: 'Tiling',
     badge: 'Bulk Prices',
-    image: 'https://images.unsplash.com/photo-1584622650111-993a426fbf0a?q=80&w=600&auto=format&fit=crop',
+    image: 'https://i.imgur.com/WwkWGNa.jpeg',
     targetRoute: '/construction?subcategory=Tiling%20%26%20Adhesives'
   },
   {
     id: 'cat-painting',
     name: 'Painting',
-    image: 'https://images.unsplash.com/photo-1562259949-e8e7689d7828?q=80&w=600&auto=format&fit=crop',
+    image: 'https://i.imgur.com/PZgJwqo.png',
     targetRoute: '/construction?subcategory=Paints%20%26%20Putty'
   },
   {
     id: 'cat-waterproofing',
     name: 'Water Proofing',
-    image: 'https://images.unsplash.com/photo-1504307651254-35680f356dfd?q=80&w=600&auto=format&fit=crop',
+    image: 'https://i.imgur.com/PmoHsyt.png',
     targetRoute: '/construction?subcategory=Waterproofing'
   },
   {
     id: 'cat-plywood',
     name: 'Plywood, MDF & HDHMR',
-    image: 'https://images.unsplash.com/photo-1546484396-fb3fc6f95f98?q=80&w=600&auto=format&fit=crop',
+    image: 'https://i.imgur.com/Ej3lEg6.jpeg',
     targetRoute: '/construction?subcategory=Plywood%20%26%20Boards'
   },
   {
     id: 'cat-fevicol',
     name: 'Fevicol',
-    image: 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?q=80&w=600&auto=format&fit=crop',
+    image: 'https://i.imgur.com/fuzbLCY.png',
     targetRoute: '/construction?subcategory=Adhesives%20%26%20Fevicol'
   },
   {
     id: 'cat-wires-mcb',
     name: 'Wires, MCB & Distribution Boards',
-    image: 'https://images.unsplash.com/photo-1558223616-e5d79faebdd6?q=80&w=600&auto=format&fit=crop',
+    image: 'https://i.imgur.com/eBSEgi0.jpeg',
     targetRoute: '/electrical?subcategory=Wiring'
   },
   {
     id: 'cat-kitchen-sinks',
     name: 'Kitchen Sinks & Faucets',
-    image: 'https://images.unsplash.com/photo-1584622650111-993a426fbf0a?q=80&w=600&auto=format&fit=crop',
+    image: 'https://i.imgur.com/3jGz1Lk.jpeg',
     targetRoute: '/construction?subcategory=Kitchen%20Sinks%20%26%20Faucets'
   },
   {
     id: 'cat-sanitary',
     name: 'Sanitary & Bath Fittings',
-    image: 'https://images.unsplash.com/photo-1584622650111-993a426fbf0a?q=80&w=600&auto=format&fit=crop',
+    image: 'https://i.imgur.com/cPcIuQX.jpeg',
     targetRoute: '/construction?subcategory=Sanitary%20%26%20Bath%20Fittings'
   },
   {
     id: 'cat-switches',
     name: 'Switches & Sockets',
-    image: 'https://images.unsplash.com/photo-1558494949-ef010cbdcc31?q=80&w=600&auto=format&fit=crop',
+    image: 'https://i.imgur.com/K4vzOY8.jpeg',
     targetRoute: '/electrical?subcategory=Switches'
   },
   {
     id: 'cat-hinges-hardware',
     name: 'Hinges, Channels & Handles',
-    image: 'https://images.unsplash.com/photo-1508873696983-2df5293cb395?q=80&w=600&auto=format&fit=crop',
+    image: 'https://i.imgur.com/mnLdVng.jpeg',
     targetRoute: '/construction?subcategory=Hinges%20%26%20Hardware'
   },
   {
     id: 'cat-kitchen-systems',
     name: 'Kitchen Systems & Accessories',
-    image: 'https://images.unsplash.com/photo-1556911220-e15b29be8c8f?q=80&w=600&auto=format&fit=crop',
+    image: 'https://i.imgur.com/DYdlXEY.jpeg',
     targetRoute: '/construction?subcategory=Kitchen%20Systems%20%26%20Accessories'
   },
   {
     id: 'cat-wardrobe-fittings',
     name: 'Wardrobe & Bed Fittings',
-    image: 'https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?q=80&w=600&auto=format&fit=crop',
+    image: 'https://i.imgur.com/E3cKauk.jpeg',
     targetRoute: '/construction?subcategory=Wardrobe%20%26%20Bed%20Fittings'
   },
   {
     id: 'cat-door-locks',
     name: 'Door Locks & Hardware',
-    image: 'https://images.unsplash.com/photo-1558002038-1055907df827?q=80&w=600&auto=format&fit=crop',
+    image: 'https://i.imgur.com/pGZFUb9.jpeg',
     targetRoute: '/construction?subcategory=Door%20Locks%20%26%20Hardware'
   },
   {
     id: 'cat-conduits-gi',
     name: 'Conduits & GI Boxes',
-    image: 'https://images.unsplash.com/photo-1584992236310-6edddc08acff?q=80&w=600&auto=format&fit=crop',
+    image: 'https://i.imgur.com/wvzR0RE.jpeg',
     targetRoute: '/electrical?subcategory=PVC%20Items'
   },
   {
     id: 'cat-lighting',
     name: 'Lighting',
-    image: 'https://images.unsplash.com/photo-1507668077129-56e32842fceb?q=80&w=600&auto=format&fit=crop',
+    image: 'https://i.imgur.com/QhdLqOq.jpeg',
     targetRoute: '/electrical?subcategory=Lights'
   },
   {
     id: 'cat-cpvc-tanks',
     name: 'CPVC Pipes & Overhead Tanks',
-    image: 'https://images.unsplash.com/photo-1585704032915-c3400ca199e7?q=80&w=600&auto=format&fit=crop',
+    image: 'https://i.imgur.com/UOMAmSr.png',
     targetRoute: '/construction?subcategory=Plumbing%20%26%20Pipes'
   },
   {
     id: 'cat-fans-exhaust',
     name: 'Ceiling Fans & Exhaust',
-    image: 'https://images.unsplash.com/photo-1618221195710-dd6b41faaea6?q=80&w=600&auto=format&fit=crop',
+    image: 'https://i.imgur.com/iirlNS3.png',
     targetRoute: '/electrical?subcategory=Fans'
   },
   {
     id: 'cat-power-tools',
     name: 'Power Tools & Accessories',
-    image: 'https://images.unsplash.com/photo-1508873696983-2df5293cb395?q=80&w=600&auto=format&fit=crop',
+    image: 'https://i.imgur.com/41cqlhr.jpeg',
     targetRoute: '/construction?subcategory=Power%20Tools'
   },
   {
     id: 'cat-cctv',
     name: 'CCTV & Surveillance',
-    image: 'https://images.unsplash.com/photo-1557597774-9d273605dfa9?q=80&w=600&auto=format&fit=crop',
+    image: 'https://i.imgur.com/SQXJ1g6.jpeg',
     targetRoute: '/electrical?subcategory=CCTV%20%26%20Surveillance'
   },
   {
     id: 'cat-appliances-power',
     name: 'Home Appliances & Power Backup',
-    image: 'https://images.unsplash.com/photo-1585771724684-38269d6639fd?q=80&w=600&auto=format&fit=crop',
+    image: 'https://i.imgur.com/Kz3Hn96.jpeg',
     targetRoute: '/electrical?subcategory=Home%20Appliances'
   },
   {
     id: 'cat-general-hardware',
     name: 'General Hardware & Tools',
-    image: 'https://images.unsplash.com/photo-1508873696983-2df5293cb395?q=80&w=600&auto=format&fit=crop',
+    image: 'https://i.imgur.com/TiRmlFp.jpeg',
     targetRoute: '/construction?subcategory=General%20Hardware%20%26%20Tools'
   }
 ];
@@ -418,11 +422,6 @@ export const HomePage: React.FC<HomePageProps> = ({
               className="max-h-full max-w-full object-contain group-hover:scale-105 transition-transform duration-300 drop-shadow-2xs"
               loading="lazy"
             />
-
-            <div className="absolute bottom-2 right-2 bg-white/90 backdrop-blur-xs px-2 py-0.5 rounded text-[10px] font-bold text-slate-600 border border-slate-200/80 flex items-center gap-1 shadow-2xs">
-              <Clock className="w-2.5 h-2.5 text-emerald-600" />
-              <span>{product.deliveryMinutes || 60}m</span>
-            </div>
           </Link>
 
           {/* Brand & Unit Badge */}
@@ -515,7 +514,7 @@ export const HomePage: React.FC<HomePageProps> = ({
         {/* =====================================================================
             ROW 1: POSTERS (Hero Banner Carousel)
             ===================================================================== */}
-        <section id="row-1-posters" className="relative">
+        <section id="row-1-posters" className="relative space-y-4">
           <div className="relative rounded-2xl sm:rounded-3xl overflow-hidden shadow-sm border border-slate-200">
             {HERO_POSTERS.map((poster, index) => {
               const isActive = index === activePosterIndex;
@@ -673,6 +672,20 @@ export const HomePage: React.FC<HomePageProps> = ({
                 {renderProductCard(p)}
               </div>
             ))}
+            {/* See All Card at end of scroll */}
+            <div className="w-36 sm:w-44 shrink-0 flex flex-col">
+              <Link
+                to="/electrical"
+                className="h-full min-h-[250px] flex flex-col items-center justify-center rounded-2xl border border-slate-100/80 bg-white p-4 shadow-2xs hover:shadow-sm hover:border-blue-300 group transition-all cursor-pointer text-center"
+              >
+                <div className="w-10 h-10 rounded-full bg-blue-50 group-hover:bg-blue-100 flex items-center justify-center mb-2 transition-colors">
+                  <ChevronRight className="w-5 h-5 text-blue-600 group-hover:translate-x-0.5 transition-transform" />
+                </div>
+                <span className="text-sm sm:text-base font-bold text-blue-600 group-hover:text-blue-700 transition-colors">
+                  See All
+                </span>
+              </Link>
+            </div>
           </div>
         </section>
 
@@ -712,418 +725,765 @@ export const HomePage: React.FC<HomePageProps> = ({
                 {renderProductCard(p)}
               </div>
             ))}
-          </div>
-        </section>
-
-        {/* =====================================================================
-            ROW 6: WHY YOU CAN TRUST US
-            ===================================================================== */}
-        <section id="row-6-trust" className="space-y-4">
-          <div className="border-b border-slate-100 pb-2">
-            <h2 className="text-lg sm:text-xl font-black text-slate-900 tracking-tight">
-              Why You Can Trust Giriraj Power
-            </h2>
-            <p className="text-xs text-slate-500 font-medium">
-              Kolkata's verified supply network for builders, electricians &amp; homeowners
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/60 space-y-2">
-              <div className="w-8 h-8 rounded-lg bg-amber-100 text-amber-800 flex items-center justify-center font-bold">
-                <ShieldCheck className="w-5 h-5" />
-              </div>
-              <h3 className="text-sm font-black text-slate-900">100% Genuine ISI Certified Brands</h3>
-              <p className="text-xs text-slate-600 leading-relaxed">
-                Direct authorized distributor sourcing from RR Kabel, Polycab, Schneider, UltraTech, and Tata Tiscon with authentic factory warranties.
-              </p>
-            </div>
-
-            <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/60 space-y-2">
-              <div className="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-800 flex items-center justify-center font-bold">
-                <Clock className="w-5 h-5" />
-              </div>
-              <h3 className="text-sm font-black text-slate-900">60-Minute Kolkata Express Dispatch</h3>
-              <p className="text-xs text-slate-600 leading-relaxed">
-                Emergency electrical repair items, wires, switches, and tools dispatched immediately from our central Kasba warehouse hub.
-              </p>
-            </div>
-
-            <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/60 space-y-2">
-              <div className="w-8 h-8 rounded-lg bg-blue-100 text-blue-800 flex items-center justify-center font-bold">
-                <TrendingUp className="w-5 h-5" />
-              </div>
-              <h3 className="text-sm font-black text-slate-900">Factory Wholesale Builder Rates</h3>
-              <p className="text-xs text-slate-600 leading-relaxed">
-                Direct-to-site wholesale pricing with zero middleman markups, giving you maximum margin on your electrical and construction projects.
-              </p>
-            </div>
-
-            <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/60 space-y-2">
-              <div className="w-8 h-8 rounded-lg bg-purple-100 text-purple-800 flex items-center justify-center font-bold">
-                <FileText className="w-5 h-5" />
-              </div>
-              <h3 className="text-sm font-black text-slate-900">100% GST Invoices &amp; ITC Ready</h3>
-              <p className="text-xs text-slate-600 leading-relaxed">
-                Every purchase receives a formal GST tax invoice, ensuring full input tax credit eligibility for business filings and contractors.
-              </p>
-            </div>
-
-            <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/60 space-y-2">
-              <div className="w-8 h-8 rounded-lg bg-teal-100 text-teal-800 flex items-center justify-center font-bold">
-                <Truck className="w-5 h-5" />
-              </div>
-              <h3 className="text-sm font-black text-slate-900">Direct Truck Delivery &amp; Unloading</h3>
-              <p className="text-xs text-slate-600 leading-relaxed">
-                Heavy payload transport for cement bags, TMT bars, and sand with on-site ground unloading assistance across Greater Kolkata.
-              </p>
-            </div>
-
-            <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/60 space-y-2">
-              <div className="w-8 h-8 rounded-lg bg-orange-100 text-orange-800 flex items-center justify-center font-bold">
-                <Sparkles className="w-5 h-5" />
-              </div>
-              <h3 className="text-sm font-black text-slate-900">Licensed Electricians &amp; Technical Support</h3>
-              <p className="text-xs text-slate-600 leading-relaxed">
-                Certified wiring technicians available for apartment wiring inspections, short circuit diagnosis, and switchboard fittings.
-              </p>
-            </div>
-          </div>
-        </section>
-
-        {/* =====================================================================
-            ROW 7: BRAND NAMES WE ARE SELLING
-            ===================================================================== */}
-        <section id="row-7-brands" className="space-y-4">
-          <div className="border-b border-slate-100 pb-2">
-            <h2 className="text-lg sm:text-xl font-black text-slate-900 tracking-tight">
-              Brands Available on Our Platform
-            </h2>
-            <p className="text-xs text-slate-500 font-medium">
-              100% Authorized &amp; Direct Manufacturer Sourcing
-            </p>
-          </div>
-
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-2.5">
-            {PARTNER_BRANDS.map((b) => (
-              <div
-                key={b.name}
-                className="p-3 rounded-xl border border-slate-200 bg-white hover:border-amber-400 hover:shadow-xs transition-all flex flex-col justify-between text-center"
+            {/* See All Card at end of scroll */}
+            <div className="w-36 sm:w-44 shrink-0 flex flex-col">
+              <Link
+                to="/construction"
+                className="h-full min-h-[250px] flex flex-col items-center justify-center rounded-2xl border border-slate-100/80 bg-white p-4 shadow-2xs hover:shadow-sm hover:border-blue-300 group transition-all cursor-pointer text-center"
               >
-                <div>
-                  <p className="text-xs font-black text-slate-900 line-clamp-1">{b.name}</p>
-                  <p className="text-[10px] text-slate-500 mt-0.5">{b.segment}</p>
+                <div className="w-10 h-10 rounded-full bg-blue-50 group-hover:bg-blue-100 flex items-center justify-center mb-2 transition-colors">
+                  <ChevronRight className="w-5 h-5 text-blue-600 group-hover:translate-x-0.5 transition-transform" />
                 </div>
-                <div className="pt-2">
-                  <span className="text-[9px] font-bold text-amber-800 bg-amber-50 border border-amber-200/80 px-2 py-0.5 rounded-full inline-block">
-                    {b.badge}
+                <span className="text-sm sm:text-base font-bold text-blue-600 group-hover:text-blue-700 transition-colors">
+                  See All
+                </span>
+              </Link>
+            </div>
+          </div>
+        </section>
+
+        {/* =====================================================================
+            ROW 6: WHY CHOOSE GIRIRAJ POWER (B2B Trust & Value Pillars)
+            ===================================================================== */}
+        <section
+          id="row-6-trust"
+          className="relative overflow-hidden rounded-3xl bg-gradient-to-b from-[#FDFBF7] via-[#F8F6F0] to-[#F4F1E8] border border-amber-200/80 p-5 sm:p-8 lg:p-10 space-y-6 shadow-xs"
+        >
+          {/* Decorative Technical & Circuit Background Art */}
+          <div className="absolute inset-0 pointer-events-none overflow-hidden select-none" aria-hidden="true">
+            {/* Ambient Radial Highlights */}
+            <div className="absolute -top-24 -left-24 w-96 h-96 bg-amber-200/30 rounded-full blur-3xl" />
+            <div className="absolute -bottom-24 -right-24 w-96 h-96 bg-blue-100/40 rounded-full blur-3xl" />
+            
+            {/* SVG Electrical Grid & Technical Blueprint Art */}
+            <svg
+              className="absolute inset-0 w-full h-full opacity-[0.045]"
+              xmlns="http://www.w3.org/2000/svg"
+              width="100%"
+              height="100%"
+            >
+              <defs>
+                <pattern id="trust-grid-pattern" width="48" height="48" patternUnits="userSpaceOnUse">
+                  <path d="M 48 0 L 0 0 0 48" fill="none" stroke="#0F1B2D" strokeWidth="0.8" />
+                  <circle cx="24" cy="24" r="1.2" fill="#FF9800" />
+                  <path d="M 12 24 h 6 M 30 24 h 6 M 24 12 v 6 M 24 30 v 6" stroke="#0F1B2D" strokeWidth="0.6" strokeDasharray="1 3" />
+                </pattern>
+              </defs>
+              <rect width="100%" height="100%" fill="url(#trust-grid-pattern)" />
+            </svg>
+
+            {/* Corner Industrial Framing Accents */}
+            <div className="absolute top-3 left-3 w-4 h-4 border-t-2 border-l-2 border-amber-400/60 rounded-tl" />
+            <div className="absolute top-3 right-3 w-4 h-4 border-t-2 border-r-2 border-amber-400/60 rounded-tr" />
+            <div className="absolute bottom-3 left-3 w-4 h-4 border-b-2 border-l-2 border-amber-400/60 rounded-bl" />
+            <div className="absolute bottom-3 right-3 w-4 h-4 border-b-2 border-r-2 border-amber-400/60 rounded-br" />
+          </div>
+
+          {/* Content Layer */}
+          <div className="relative z-10 space-y-6">
+            {/* Section Header */}
+            <div className="text-center max-w-2xl mx-auto space-y-2">
+              <div className="inline-flex items-center justify-center gap-2">
+                <span className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-amber-500/15 text-amber-600 border border-amber-500/30 flex items-center justify-center shadow-2xs">
+                  <Zap className="w-4 h-4 fill-amber-500 text-amber-500" />
+                </span>
+                <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold font-sf-pro text-[#0F1B2D] tracking-tight">
+                  Why Choose Giriraj Power?
+                </h2>
+              </div>
+              <p className="text-xs sm:text-sm text-[#5F6B7A] font-medium leading-relaxed">
+                Reliable products, transparent pricing, and dependable supply for electrical and construction needs.
+              </p>
+            </div>
+
+            {/* 6 Value Pillar Cards Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
+              {/* Card 1: Genuine Branded Products */}
+              <div className="group bg-white/95 backdrop-blur-xs rounded-2xl p-5 sm:p-6 border border-[#E2E7EE] shadow-2xs hover:shadow-md hover:-translate-y-0.5 hover:border-amber-400/80 transition-all duration-200 flex flex-col justify-between">
+                <div className="space-y-3">
+                  <div className="w-10 h-10 rounded-xl bg-amber-50 text-[#FF9800] border border-amber-200/60 flex items-center justify-center group-hover:scale-105 transition-transform">
+                    <ShieldCheck className="w-5 h-5" />
+                  </div>
+                  <h3 className="text-base font-bold text-[#0F1B2D] group-hover:text-amber-800 transition-colors">
+                    Genuine Branded Products
+                  </h3>
+                  <p className="text-xs sm:text-sm text-[#5F6B7A] leading-relaxed">
+                    Source electrical products from established brands and authorized distribution channels, with applicable manufacturer warranties and documentation.
+                  </p>
+                </div>
+              </div>
+
+              {/* Card 2: Transparent Wholesale Pricing */}
+              <div className="group bg-white/95 backdrop-blur-xs rounded-2xl p-5 sm:p-6 border border-[#E2E7EE] shadow-2xs hover:shadow-md hover:-translate-y-0.5 hover:border-amber-400/80 transition-all duration-200 flex flex-col justify-between">
+                <div className="space-y-3">
+                  <div className="w-10 h-10 rounded-xl bg-amber-50 text-[#FF9800] border border-amber-200/60 flex items-center justify-center group-hover:scale-105 transition-transform">
+                    <TrendingUp className="w-5 h-5" />
+                  </div>
+                  <h3 className="text-base font-bold text-[#0F1B2D] group-hover:text-amber-800 transition-colors">
+                    Transparent Wholesale Pricing
+                  </h3>
+                  <p className="text-xs sm:text-sm text-[#5F6B7A] leading-relaxed">
+                    Get competitive project and bulk pricing with clear quotations and no unnecessary middleman markups.
+                  </p>
+                </div>
+              </div>
+
+              {/* Card 3: GST Invoices & Business Documentation */}
+              <div className="group bg-white/95 backdrop-blur-xs rounded-2xl p-5 sm:p-6 border border-[#E2E7EE] shadow-2xs hover:shadow-md hover:-translate-y-0.5 hover:border-amber-400/80 transition-all duration-200 flex flex-col justify-between">
+                <div className="space-y-3">
+                  <div className="w-10 h-10 rounded-xl bg-amber-50 text-[#FF9800] border border-amber-200/60 flex items-center justify-center group-hover:scale-105 transition-transform">
+                    <FileText className="w-5 h-5" />
+                  </div>
+                  <h3 className="text-base font-bold text-[#0F1B2D] group-hover:text-amber-800 transition-colors">
+                    GST Invoices &amp; Business Documentation
+                  </h3>
+                  <p className="text-xs sm:text-sm text-[#5F6B7A] leading-relaxed">
+                    Receive proper GST invoices for eligible purchases, helping businesses and contractors maintain accurate purchase records and claim input tax credit where applicable.
+                  </p>
+                </div>
+              </div>
+
+              {/* Card 4: Reliable Delivery Across Greater Kolkata */}
+              <div className="group bg-white/95 backdrop-blur-xs rounded-2xl p-5 sm:p-6 border border-[#E2E7EE] shadow-2xs hover:shadow-md hover:-translate-y-0.5 hover:border-amber-400/80 transition-all duration-200 flex flex-col justify-between">
+                <div className="space-y-3">
+                  <div className="w-10 h-10 rounded-xl bg-amber-50 text-[#FF9800] border border-amber-200/60 flex items-center justify-center group-hover:scale-105 transition-transform">
+                    <Truck className="w-5 h-5" />
+                  </div>
+                  <h3 className="text-base font-bold text-[#0F1B2D] group-hover:text-amber-800 transition-colors">
+                    Reliable Delivery Across Greater Kolkata
+                  </h3>
+                  <p className="text-xs sm:text-sm text-[#5F6B7A] leading-relaxed">
+                    Delivery timelines depend on product availability, order quantity, destination, and transport requirements. Standard orders may take 1–7 working days.
+                  </p>
+                </div>
+              </div>
+
+              {/* Card 5: Heavy Material Delivery Available */}
+              <div className="group bg-white/95 backdrop-blur-xs rounded-2xl p-5 sm:p-6 border border-[#E2E7EE] shadow-2xs hover:shadow-md hover:-translate-y-0.5 hover:border-amber-400/80 transition-all duration-200 flex flex-col justify-between">
+                <div className="space-y-3">
+                  <div className="w-10 h-10 rounded-xl bg-amber-50 text-[#FF9800] border border-amber-200/60 flex items-center justify-center group-hover:scale-105 transition-transform">
+                    <Package className="w-5 h-5" />
+                  </div>
+                  <h3 className="text-base font-bold text-[#0F1B2D] group-hover:text-amber-800 transition-colors">
+                    Heavy Material Delivery Available
+                  </h3>
+                  <p className="text-xs sm:text-sm text-[#5F6B7A] leading-relaxed">
+                    For bulk and heavy orders, we can arrange suitable transport. Unloading assistance or unloading charges may be additional depending on the site and order.
+                  </p>
+                </div>
+              </div>
+
+              {/* Card 6: Technical Support When You Need It */}
+              <div className="group bg-white/95 backdrop-blur-xs rounded-2xl p-5 sm:p-6 border border-[#E2E7EE] shadow-2xs hover:shadow-md hover:-translate-y-0.5 hover:border-amber-400/80 transition-all duration-200 flex flex-col justify-between">
+                <div className="space-y-3">
+                  <div className="w-10 h-10 rounded-xl bg-amber-50 text-[#FF9800] border border-amber-200/60 flex items-center justify-center group-hover:scale-105 transition-transform">
+                    <Wrench className="w-5 h-5" />
+                  </div>
+                  <h3 className="text-base font-bold text-[#0F1B2D] group-hover:text-amber-800 transition-colors">
+                    Technical Support When You Need It
+                  </h3>
+                  <p className="text-xs sm:text-sm text-[#5F6B7A] leading-relaxed">
+                    Get assistance with product selection, electrical requirements, quantities, and project-related material planning.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Delivery Information Strip */}
+            <div className="rounded-2xl border border-amber-200/60 bg-white/95 backdrop-blur-xs p-4 sm:p-5 shadow-2xs flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4">
+              <div className="w-9 h-9 rounded-xl bg-amber-50 text-[#0F1B2D] flex items-center justify-center shrink-0 border border-amber-200/80">
+                <Info className="w-4.5 h-4.5 text-[#FF9800]" />
+              </div>
+              <div className="space-y-1 flex-1">
+                <div className="flex items-center gap-2">
+                  <h4 className="text-xs font-bold text-[#0F1B2D] uppercase tracking-wider">
+                    Delivery Notice
+                  </h4>
+                  <span className="text-[10px] font-semibold text-[#168A6A] bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                    Dispatch Info
                   </span>
                 </div>
+                <p className="text-xs text-[#5F6B7A] leading-relaxed">
+                  Delivery timelines depend on stock availability, order size, destination and transport requirements. Standard orders may take 1–7 working days. Same-day or priority delivery may be available for selected local orders. Unloading charges, if applicable, are payable separately.
+                </p>
               </div>
+            </div>
+
+            {/* Action CTA */}
+            <div className="flex items-center justify-center pt-2">
+              <button
+                onClick={() => {
+                  if (onOpenBulkQuoteModal) {
+                    onOpenBulkQuoteModal();
+                  } else {
+                    window.open(
+                      'https://wa.me/918777400280?text=Hi%20Giriraj%20Power,%20I%20would%20like%20to%20request%20a%20project%20wholesale%20quote.',
+                      '_blank'
+                    );
+                  }
+                }}
+                className="w-full sm:w-auto px-7 py-3 rounded-xl bg-[#FFFDF9] hover:bg-amber-50 active:bg-amber-100 text-[#0F1B2D] font-black text-xs sm:text-sm transition-all border border-amber-300/80 hover:border-amber-400 shadow-xs hover:shadow-md cursor-pointer flex items-center justify-center gap-2.5 active:scale-98"
+              >
+                <FileText className="w-4 h-4 text-[#FF9800]" />
+                <span>Request a Quote</span>
+              </button>
+            </div>
+          </div>
+        </section>
+
+        {/* =====================================================================
+            ROW 7: BRAND NAMES WE ARE SELLING (Official Logos & Borderless Showcase)
+            ===================================================================== */}
+        <section id="row-7-brands" className="space-y-6 pt-2">
+          {/* Centered Heading & Subtitle */}
+          <div className="text-center max-w-2xl mx-auto space-y-2">
+            <div className="inline-flex items-center justify-center gap-2">
+              <span className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg bg-amber-100 text-amber-800 flex items-center justify-center">
+                <Award className="w-3.5 h-3.5" />
+              </span>
+              <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold font-sf-pro text-[#0F1B2D] tracking-tight">
+                Brands Available on Our Platform
+              </h2>
+            </div>
+            <p className="text-xs sm:text-sm text-[#5F6B7A] font-medium leading-relaxed">
+              100% Authorized &amp; Direct Manufacturer Sourcing for Kolkata Builders, Electricians &amp; Contractors
+            </p>
+          </div>
+
+          {/* Side-by-Side Borderless Official Brand Showcase Grid (Centered items if last row is incomplete) */}
+          <div className="flex flex-wrap items-stretch justify-center gap-3 sm:gap-4">
+            {OFFICIAL_BRANDS.map((brand) => (
+              <Link
+                key={`grid-${brand.id}`}
+                to={brand.targetRoute}
+                className="group w-[calc(50%-0.5rem)] sm:w-[calc(33.333%-0.75rem)] md:w-[calc(25%-0.75rem)] lg:w-[calc(14.285%-0.9rem)] min-w-[130px] p-3.5 rounded-2xl bg-white hover:bg-slate-50/80 hover:shadow-xs transition-all flex flex-col justify-between items-center text-center cursor-pointer border-0"
+              >
+                {/* Official Logo Display */}
+                <div className="h-10 flex items-center justify-center w-full group-hover:scale-105 transition-transform duration-200">
+                  {brand.renderLogo()}
+                </div>
+
+                {/* Brand Name & Segment (No extra badges/tags) */}
+                <div className="mt-2 space-y-0.5 w-full text-center">
+                  <p className="text-xs font-bold text-slate-800 line-clamp-1 group-hover:text-amber-800 transition-colors">
+                    {brand.name}
+                  </p>
+                  <p className="text-[10px] text-slate-500 line-clamp-1 font-medium">
+                    {brand.segment}
+                  </p>
+                </div>
+              </Link>
             ))}
+          </div>
+
+          {/* Continuous Slow-Moving Logo Carousel (Bottom White/Light Bar - Edge to Edge Rectangle) */}
+          <div className="-mx-4 sm:-mx-6 relative overflow-hidden py-3.5 bg-white/95 rounded-none border-y border-x-0 border-slate-200/80 shadow-2xs">
+            <div className="absolute left-0 top-0 bottom-0 w-12 bg-gradient-to-r from-white to-transparent z-10 pointer-events-none" />
+            <div className="absolute right-0 top-0 bottom-0 w-12 bg-gradient-to-l from-white to-transparent z-10 pointer-events-none" />
+
+            <div className="animate-marquee-slow flex items-center gap-6 whitespace-nowrap">
+              {OFFICIAL_BRANDS.map((brand) => (
+                <Link
+                  key={`marquee-1-${brand.id}`}
+                  to={brand.targetRoute}
+                  className="inline-flex items-center gap-3 px-4 py-1.5 hover:bg-slate-50 transition-all cursor-pointer select-none shrink-0"
+                >
+                  <div className="shrink-0 flex items-center justify-center">
+                    {brand.renderLogo()}
+                  </div>
+                </Link>
+              ))}
+
+              {/* Duplicate array for continuous infinite scroll */}
+              {OFFICIAL_BRANDS.map((brand) => (
+                <Link
+                  key={`marquee-2-${brand.id}`}
+                  to={brand.targetRoute}
+                  className="inline-flex items-center gap-3 px-4 py-1.5 hover:bg-slate-50 transition-all cursor-pointer select-none shrink-0"
+                  aria-hidden="true"
+                >
+                  <div className="shrink-0 flex items-center justify-center">
+                    {brand.renderLogo()}
+                  </div>
+                </Link>
+              ))}
+            </div>
           </div>
         </section>
 
         {/* =====================================================================
             ROW 8: CALCULATOR (Simple interface for cost estimation of gadgets & materials)
             ===================================================================== */}
-        <section id="row-8-calculator" className="space-y-4">
-          <div className="border-b border-slate-100 pb-2">
-            <div className="flex items-center gap-2">
-              <Calculator className="w-5 h-5 text-amber-600" />
-              <h2 className="text-lg sm:text-xl font-black text-slate-900 tracking-tight">
+        <section id="row-8-calculator" className="space-y-4 pt-2">
+          {/* Centered Heading & Subtitle */}
+          <div className="text-center max-w-2xl mx-auto space-y-2 pb-1">
+            <div className="inline-flex items-center justify-center gap-2">
+              <span className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-amber-500/10 text-amber-600 border border-amber-500/20 flex items-center justify-center shadow-2xs">
+                <Calculator className="w-4 h-4 text-amber-600" />
+              </span>
+              <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold font-sf-pro text-[#0F1B2D] tracking-tight">
                 Material &amp; Cost Estimation Calculator
               </h2>
             </div>
-            <p className="text-xs text-slate-500 font-medium">
+            <p className="text-xs sm:text-sm text-[#5F6B7A] font-medium leading-relaxed">
               Estimate electrical wiring and construction material quantities with live wholesale pricing
             </p>
           </div>
 
-          {/* Simple Clean Calculator Card (No over-designed gradients, clean inputs) */}
-          <div className="rounded-2xl border border-slate-200 bg-slate-50/50 p-4 sm:p-6 space-y-6">
+          {/* Premium Redesigned Calculator Card */}
+          <div className="rounded-3xl border border-slate-200/90 bg-white shadow-sm overflow-hidden">
             
-            {/* Top Mode Selector & Presets */}
-            <div className="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-slate-200">
-              {/* Mode Buttons */}
-              <div className="flex items-center gap-1.5 bg-white p-1 rounded-xl border border-slate-200">
+            {/* Top Toolbar: Mode Switcher & BHK Property Size Presets */}
+            <div className="p-4 sm:p-6 bg-slate-50/80 border-b border-slate-200/80 flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-4">
+              {/* Mode Segmented Controls */}
+              <div className="inline-flex p-1.5 rounded-2xl bg-slate-200/70 border border-slate-300/60 shadow-inner">
                 <button
+                  type="button"
                   onClick={() => setCalcMode('electrical')}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                    calcMode === 'electrical' ? 'bg-amber-400 text-slate-950 shadow-2xs' : 'text-slate-600 hover:text-slate-900'
+                  className={`flex items-center gap-2 px-3.5 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-bold font-sf-pro transition-all cursor-pointer ${
+                    calcMode === 'electrical'
+                      ? 'bg-white text-slate-950 shadow-xs scale-[1.02]'
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-white/40'
                   }`}
                 >
-                  Electrical Estimate
+                  <Zap className={`w-3.5 h-3.5 ${calcMode === 'electrical' ? 'text-amber-500 fill-amber-500' : 'text-slate-400'}`} />
+                  <span>Electrical Only</span>
                 </button>
                 <button
+                  type="button"
                   onClick={() => setCalcMode('construction')}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                    calcMode === 'construction' ? 'bg-amber-400 text-slate-950 shadow-2xs' : 'text-slate-600 hover:text-slate-900'
+                  className={`flex items-center gap-2 px-3.5 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-bold font-sf-pro transition-all cursor-pointer ${
+                    calcMode === 'construction'
+                      ? 'bg-white text-slate-950 shadow-xs scale-[1.02]'
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-white/40'
                   }`}
                 >
-                  Construction Estimate
+                  <Building2 className={`w-3.5 h-3.5 ${calcMode === 'construction' ? 'text-emerald-600' : 'text-slate-400'}`} />
+                  <span>Construction Only</span>
                 </button>
                 <button
+                  type="button"
                   onClick={() => setCalcMode('both')}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                    calcMode === 'both' ? 'bg-amber-400 text-slate-950 shadow-2xs' : 'text-slate-600 hover:text-slate-900'
+                  className={`flex items-center gap-2 px-3.5 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-bold font-sf-pro transition-all cursor-pointer ${
+                    calcMode === 'both'
+                      ? 'bg-slate-900 text-white shadow-xs scale-[1.02]'
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-white/40'
                   }`}
                 >
-                  Combined Project
+                  <Layers className={`w-3.5 h-3.5 ${calcMode === 'both' ? 'text-amber-400' : 'text-slate-400'}`} />
+                  <span>Combined Project</span>
                 </button>
               </div>
 
               {/* Apartment / House Size Presets */}
-              <div className="flex items-center gap-1.5 text-xs">
-                <span className="font-bold text-slate-600">Property Size:</span>
-                {(['1bhk', '2bhk', '3bhk'] as const).map((p) => (
-                  <button
-                    key={p}
-                    onClick={() => handlePresetChange(p)}
-                    className={`px-2.5 py-1 rounded-md uppercase font-bold text-[11px] transition-all cursor-pointer ${
-                      bhkPreset === p ? 'bg-slate-900 text-white' : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-100'
-                    }`}
-                  >
-                    {p}
-                  </button>
-                ))}
+              <div className="flex items-center flex-wrap gap-2">
+                <span className="text-xs font-bold text-slate-500 font-sf-pro uppercase tracking-wider">
+                  Quick Preset:
+                </span>
+                <div className="flex items-center gap-1.5">
+                  {(
+                    [
+                      { id: '1bhk', label: '1 BHK', area: '~550 sq.ft' },
+                      { id: '2bhk', label: '2 BHK', area: '~950 sq.ft' },
+                      { id: '3bhk', label: '3 BHK', area: '~1400 sq.ft' }
+                    ] as const
+                  ).map((preset) => {
+                    const isSelected = bhkPreset === preset.id;
+                    return (
+                      <button
+                        key={preset.id}
+                        type="button"
+                        onClick={() => handlePresetChange(preset.id)}
+                        className={`group px-3 py-1.5 rounded-xl font-sf-pro text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 border ${
+                          isSelected
+                            ? 'bg-amber-500 text-slate-950 border-amber-500 shadow-xs'
+                            : 'bg-white text-slate-700 border-slate-200/90 hover:bg-slate-100 hover:border-slate-300'
+                        }`}
+                      >
+                        <span>{preset.label}</span>
+                        <span className={`text-[10px] ${isSelected ? 'text-slate-900/80' : 'text-slate-400'}`}>
+                          {preset.area}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
             </div>
 
-            {/* Inputs Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              
-              {/* Column 1: Electrical Parameters (Shown if electrical or both) */}
-              {(calcMode === 'electrical' || calcMode === 'both') && (
-                <div className="bg-white rounded-xl p-4 border border-slate-200 space-y-4">
-                  <h3 className="text-xs font-black uppercase text-amber-800 tracking-wide flex items-center gap-1.5 border-b border-slate-100 pb-2">
-                    <Zap className="w-3.5 h-3.5 text-amber-600" />
-                    <span>Electrical Wire &amp; Switch Items</span>
-                  </h3>
-
-                  {/* Wire Coils */}
-                  <div className="flex items-center justify-between gap-2">
-                    <div>
-                      <label className="text-xs font-bold text-slate-900">Wire Coils (1.0 / 1.5 sqmm):</label>
-                      <p className="text-[10px] text-slate-400">₹3,800 / 200m coil avg</p>
+            {/* Interactive Inputs Section */}
+            <div className="p-4 sm:p-6 lg:p-8">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8">
+                
+                {/* Column 1: Electrical Estimator Card */}
+                {(calcMode === 'electrical' || calcMode === 'both') && (
+                  <div className="rounded-2xl border border-slate-200/90 bg-gradient-to-b from-amber-50/20 to-white p-5 sm:p-6 space-y-4">
+                    {/* Header */}
+                    <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                      <div className="flex items-center gap-2">
+                        <div className="w-7 h-7 rounded-lg bg-amber-500/15 text-amber-600 flex items-center justify-center">
+                          <Zap className="w-4 h-4 fill-amber-500 text-amber-500" />
+                        </div>
+                        <div>
+                          <h3 className="text-sm font-bold font-sf-pro text-slate-900">
+                            Electrical Wiring &amp; Switchgear
+                          </h3>
+                          <p className="text-[11px] text-slate-500">ISI certified copper wires &amp; modular points</p>
+                        </div>
+                      </div>
+                      <span className="text-xs font-bold text-amber-900 bg-amber-100/90 px-2.5 py-1 rounded-full">
+                        ₹{estimatedCost.electricalSubtotal.toLocaleString('en-IN')}
+                      </span>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => setWireCoils(Math.max(1, wireCoils - 1))}
-                        className="w-7 h-7 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold flex items-center justify-center cursor-pointer"
-                      >
-                        -
-                      </button>
-                      <span className="w-8 text-center text-xs font-black">{wireCoils}</span>
-                      <button
-                        onClick={() => setWireCoils(wireCoils + 1)}
-                        className="w-7 h-7 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold flex items-center justify-center cursor-pointer"
-                      >
-                        +
-                      </button>
+
+                    <div className="space-y-3.5">
+                      {/* Wire Coils */}
+                      <div className="p-3 rounded-xl bg-slate-50/70 border border-slate-100 flex items-center justify-between gap-3 hover:border-slate-200 transition-colors">
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-bold text-slate-900">RR Kabel / Polycab Coils</span>
+                            <span className="text-[10px] font-semibold text-slate-500 bg-white px-1.5 py-0.5 rounded border border-slate-200">
+                              ₹3,800/coil
+                            </span>
+                          </div>
+                          <p className="text-[10px] text-slate-400">1.0 &amp; 1.5 sq.mm (90m - 200m)</p>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => setWireCoils(Math.max(1, wireCoils - 1))}
+                            className="w-8 h-8 rounded-lg bg-white border border-slate-200 text-slate-700 hover:bg-slate-900 hover:text-white active:scale-95 transition-all flex items-center justify-center font-bold shadow-2xs cursor-pointer"
+                            aria-label="Decrease wire coils"
+                          >
+                            <Minus className="w-3.5 h-3.5" />
+                          </button>
+                          <span className="w-8 text-center text-xs font-black font-sf-pro text-slate-900">
+                            {wireCoils}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => setWireCoils(wireCoils + 1)}
+                            className="w-8 h-8 rounded-lg bg-white border border-slate-200 text-slate-700 hover:bg-amber-500 hover:text-slate-950 active:scale-95 transition-all flex items-center justify-center font-bold shadow-2xs cursor-pointer"
+                            aria-label="Increase wire coils"
+                          >
+                            <Plus className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Modular Switches */}
+                      <div className="p-3 rounded-xl bg-slate-50/70 border border-slate-100 flex items-center justify-between gap-3 hover:border-slate-200 transition-colors">
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-bold text-slate-900">Modular Switches &amp; Sockets</span>
+                            <span className="text-[10px] font-semibold text-slate-500 bg-white px-1.5 py-0.5 rounded border border-slate-200">
+                              ₹135/pt
+                            </span>
+                          </div>
+                          <p className="text-[10px] text-slate-400">Schneider / Havells switch points</p>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => setModularSwitches(Math.max(4, modularSwitches - 2))}
+                            className="w-8 h-8 rounded-lg bg-white border border-slate-200 text-slate-700 hover:bg-slate-900 hover:text-white active:scale-95 transition-all flex items-center justify-center font-bold shadow-2xs cursor-pointer"
+                            aria-label="Decrease modular switches"
+                          >
+                            <Minus className="w-3.5 h-3.5" />
+                          </button>
+                          <span className="w-8 text-center text-xs font-black font-sf-pro text-slate-900">
+                            {modularSwitches}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => setModularSwitches(modularSwitches + 2)}
+                            className="w-8 h-8 rounded-lg bg-white border border-slate-200 text-slate-700 hover:bg-amber-500 hover:text-slate-950 active:scale-95 transition-all flex items-center justify-center font-bold shadow-2xs cursor-pointer"
+                            aria-label="Increase modular switches"
+                          >
+                            <Plus className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* MCB Distribution Boxes */}
+                      <div className="p-3 rounded-xl bg-slate-50/70 border border-slate-100 flex items-center justify-between gap-3 hover:border-slate-200 transition-colors">
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-bold text-slate-900">MCB Distribution Box (DB)</span>
+                            <span className="text-[10px] font-semibold text-slate-500 bg-white px-1.5 py-0.5 rounded border border-slate-200">
+                              ₹950/box
+                            </span>
+                          </div>
+                          <p className="text-[10px] text-slate-400">Double door SPN/TPN with isolator</p>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => setMcbBoxes(Math.max(1, mcbBoxes - 1))}
+                            className="w-8 h-8 rounded-lg bg-white border border-slate-200 text-slate-700 hover:bg-slate-900 hover:text-white active:scale-95 transition-all flex items-center justify-center font-bold shadow-2xs cursor-pointer"
+                            aria-label="Decrease MCB boxes"
+                          >
+                            <Minus className="w-3.5 h-3.5" />
+                          </button>
+                          <span className="w-8 text-center text-xs font-black font-sf-pro text-slate-900">
+                            {mcbBoxes}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => setMcbBoxes(mcbBoxes + 1)}
+                            className="w-8 h-8 rounded-lg bg-white border border-slate-200 text-slate-700 hover:bg-amber-500 hover:text-slate-950 active:scale-95 transition-all flex items-center justify-center font-bold shadow-2xs cursor-pointer"
+                            aria-label="Increase MCB boxes"
+                          >
+                            <Plus className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Conduit Pipes */}
+                      <div className="p-3 rounded-xl bg-slate-50/70 border border-slate-100 flex items-center justify-between gap-3 hover:border-slate-200 transition-colors">
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-bold text-slate-900">PVC Conduit Pipes</span>
+                            <span className="text-[10px] font-semibold text-slate-500 bg-white px-1.5 py-0.5 rounded border border-slate-200">
+                              ₹120/pipe
+                            </span>
+                          </div>
+                          <p className="text-[10px] text-slate-400">20mm / 25mm Heavy duty 3m length</p>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => setPvcConduits(Math.max(2, pvcConduits - 2))}
+                            className="w-8 h-8 rounded-lg bg-white border border-slate-200 text-slate-700 hover:bg-slate-900 hover:text-white active:scale-95 transition-all flex items-center justify-center font-bold shadow-2xs cursor-pointer"
+                            aria-label="Decrease PVC conduits"
+                          >
+                            <Minus className="w-3.5 h-3.5" />
+                          </button>
+                          <span className="w-8 text-center text-xs font-black font-sf-pro text-slate-900">
+                            {pvcConduits}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => setPvcConduits(pvcConduits + 2)}
+                            className="w-8 h-8 rounded-lg bg-white border border-slate-200 text-slate-700 hover:bg-amber-500 hover:text-slate-950 active:scale-95 transition-all flex items-center justify-center font-bold shadow-2xs cursor-pointer"
+                            aria-label="Increase PVC conduits"
+                          >
+                            <Plus className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
                     </div>
                   </div>
+                )}
 
-                  {/* Modular Switches */}
-                  <div className="flex items-center justify-between gap-2">
-                    <div>
-                      <label className="text-xs font-bold text-slate-900">Modular Switches &amp; Sockets:</label>
-                      <p className="text-[10px] text-slate-400">₹135 / point avg</p>
+                {/* Column 2: Construction Estimator Card */}
+                {(calcMode === 'construction' || calcMode === 'both') && (
+                  <div className="rounded-2xl border border-slate-200/90 bg-gradient-to-b from-emerald-50/20 to-white p-5 sm:p-6 space-y-4">
+                    {/* Header */}
+                    <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                      <div className="flex items-center gap-2">
+                        <div className="w-7 h-7 rounded-lg bg-emerald-500/15 text-emerald-600 flex items-center justify-center">
+                          <Building2 className="w-4 h-4 text-emerald-600" />
+                        </div>
+                        <div>
+                          <h3 className="text-sm font-bold font-sf-pro text-slate-900">
+                            Cement, Steel &amp; Construction
+                          </h3>
+                          <p className="text-[11px] text-slate-500">Direct factory depot &amp; rebar stock</p>
+                        </div>
+                      </div>
+                      <span className="text-xs font-bold text-emerald-900 bg-emerald-100/90 px-2.5 py-1 rounded-full">
+                        ₹{estimatedCost.constructionSubtotal.toLocaleString('en-IN')}
+                      </span>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => setModularSwitches(Math.max(4, modularSwitches - 2))}
-                        className="w-7 h-7 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold flex items-center justify-center cursor-pointer"
-                      >
-                        -
-                      </button>
-                      <span className="w-8 text-center text-xs font-black">{modularSwitches}</span>
-                      <button
-                        onClick={() => setModularSwitches(modularSwitches + 2)}
-                        className="w-7 h-7 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold flex items-center justify-center cursor-pointer"
-                      >
-                        +
-                      </button>
+
+                    <div className="space-y-3.5">
+                      {/* UltraTech Cement */}
+                      <div className="p-3 rounded-xl bg-slate-50/70 border border-slate-100 flex items-center justify-between gap-3 hover:border-slate-200 transition-colors">
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-bold text-slate-900">UltraTech Cement</span>
+                            <span className="text-[10px] font-semibold text-slate-500 bg-white px-1.5 py-0.5 rounded border border-slate-200">
+                              ₹385/bag
+                            </span>
+                          </div>
+                          <p className="text-[10px] text-slate-400">50kg Fresh OPC 53 Grade / Super</p>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => setCementBags(Math.max(5, cementBags - 5))}
+                            className="w-8 h-8 rounded-lg bg-white border border-slate-200 text-slate-700 hover:bg-slate-900 hover:text-white active:scale-95 transition-all flex items-center justify-center font-bold shadow-2xs cursor-pointer"
+                            aria-label="Decrease cement bags"
+                          >
+                            <Minus className="w-3.5 h-3.5" />
+                          </button>
+                          <span className="w-8 text-center text-xs font-black font-sf-pro text-slate-900">
+                            {cementBags}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => setCementBags(cementBags + 5)}
+                            className="w-8 h-8 rounded-lg bg-white border border-slate-200 text-slate-700 hover:bg-emerald-600 hover:text-white active:scale-95 transition-all flex items-center justify-center font-bold shadow-2xs cursor-pointer"
+                            aria-label="Increase cement bags"
+                          >
+                            <Plus className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* TMT Steel */}
+                      <div className="p-3 rounded-xl bg-slate-50/70 border border-slate-100 flex items-center justify-between gap-3 hover:border-slate-200 transition-colors">
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-bold text-slate-900">Tata Tiscon 550D TMT</span>
+                            <span className="text-[10px] font-semibold text-slate-500 bg-white px-1.5 py-0.5 rounded border border-slate-200">
+                              ₹62/kg
+                            </span>
+                          </div>
+                          <p className="text-[10px] text-slate-400">8mm - 16mm Primary Mill steel</p>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => setTmtSteelKg(Math.max(50, tmtSteelKg - 50))}
+                            className="w-8 h-8 rounded-lg bg-white border border-slate-200 text-slate-700 hover:bg-slate-900 hover:text-white active:scale-95 transition-all flex items-center justify-center font-bold shadow-2xs cursor-pointer"
+                            aria-label="Decrease TMT steel"
+                          >
+                            <Minus className="w-3.5 h-3.5" />
+                          </button>
+                          <span className="w-12 text-center text-xs font-black font-sf-pro text-slate-900">
+                            {tmtSteelKg} kg
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => setTmtSteelKg(tmtSteelKg + 50)}
+                            className="w-8 h-8 rounded-lg bg-white border border-slate-200 text-slate-700 hover:bg-emerald-600 hover:text-white active:scale-95 transition-all flex items-center justify-center font-bold shadow-2xs cursor-pointer"
+                            aria-label="Increase TMT steel"
+                          >
+                            <Plus className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Waterproofing */}
+                      <div className="p-3 rounded-xl bg-slate-50/70 border border-slate-100 flex items-center justify-between gap-3 hover:border-slate-200 transition-colors">
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-bold text-slate-900">Dr. Fixit 101 LW+</span>
+                            <span className="text-[10px] font-semibold text-slate-500 bg-white px-1.5 py-0.5 rounded border border-slate-200">
+                              ₹130/L
+                            </span>
+                          </div>
+                          <p className="text-[10px] text-slate-400">Integral waterproofing compound</p>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => setWaterproofingLiters(Math.max(1, waterproofingLiters - 1))}
+                            className="w-8 h-8 rounded-lg bg-white border border-slate-200 text-slate-700 hover:bg-slate-900 hover:text-white active:scale-95 transition-all flex items-center justify-center font-bold shadow-2xs cursor-pointer"
+                            aria-label="Decrease waterproofing"
+                          >
+                            <Minus className="w-3.5 h-3.5" />
+                          </button>
+                          <span className="w-8 text-center text-xs font-black font-sf-pro text-slate-900">
+                            {waterproofingLiters} L
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => setWaterproofingLiters(waterproofingLiters + 1)}
+                            className="w-8 h-8 rounded-lg bg-white border border-slate-200 text-slate-700 hover:bg-emerald-600 hover:text-white active:scale-95 transition-all flex items-center justify-center font-bold shadow-2xs cursor-pointer"
+                            aria-label="Increase waterproofing"
+                          >
+                            <Plus className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Wall Putty */}
+                      <div className="p-3 rounded-xl bg-slate-50/70 border border-slate-100 flex items-center justify-between gap-3 hover:border-slate-200 transition-colors">
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-bold text-slate-900">Asian Paints Wall Putty</span>
+                            <span className="text-[10px] font-semibold text-slate-500 bg-white px-1.5 py-0.5 rounded border border-slate-200">
+                              ₹680/bag
+                            </span>
+                          </div>
+                          <p className="text-[10px] text-slate-400">20kg Polymer modified white putty</p>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => setWallPuttyBags(Math.max(1, wallPuttyBags - 1))}
+                            className="w-8 h-8 rounded-lg bg-white border border-slate-200 text-slate-700 hover:bg-slate-900 hover:text-white active:scale-95 transition-all flex items-center justify-center font-bold shadow-2xs cursor-pointer"
+                            aria-label="Decrease wall putty bags"
+                          >
+                            <Minus className="w-3.5 h-3.5" />
+                          </button>
+                          <span className="w-8 text-center text-xs font-black font-sf-pro text-slate-900">
+                            {wallPuttyBags}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => setWallPuttyBags(wallPuttyBags + 1)}
+                            className="w-8 h-8 rounded-lg bg-white border border-slate-200 text-slate-700 hover:bg-emerald-600 hover:text-white active:scale-95 transition-all flex items-center justify-center font-bold shadow-2xs cursor-pointer"
+                            aria-label="Increase wall putty bags"
+                          >
+                            <Plus className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
                     </div>
                   </div>
+                )}
 
-                  {/* MCB Boxes */}
-                  <div className="flex items-center justify-between gap-2">
-                    <div>
-                      <label className="text-xs font-bold text-slate-900">MCB Distribution Boxes (DB):</label>
-                      <p className="text-[10px] text-slate-400">₹950 / box with isolator</p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => setMcbBoxes(Math.max(1, mcbBoxes - 1))}
-                        className="w-7 h-7 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold flex items-center justify-center cursor-pointer"
-                      >
-                        -
-                      </button>
-                      <span className="w-8 text-center text-xs font-black">{mcbBoxes}</span>
-                      <button
-                        onClick={() => setMcbBoxes(mcbBoxes + 1)}
-                        className="w-7 h-7 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold flex items-center justify-center cursor-pointer"
-                      >
-                        +
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* PVC Conduits */}
-                  <div className="flex items-center justify-between gap-2">
-                    <div>
-                      <label className="text-xs font-bold text-slate-900">Conduit Pipes (20mm / 25mm):</label>
-                      <p className="text-[10px] text-slate-400">₹120 / length</p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => setPvcConduits(Math.max(2, pvcConduits - 2))}
-                        className="w-7 h-7 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold flex items-center justify-center cursor-pointer"
-                      >
-                        -
-                      </button>
-                      <span className="w-8 text-center text-xs font-black">{pvcConduits}</span>
-                      <button
-                        onClick={() => setPvcConduits(pvcConduits + 2)}
-                        className="w-7 h-7 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold flex items-center justify-center cursor-pointer"
-                      >
-                        +
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Column 2: Construction Parameters (Shown if construction or both) */}
-              {(calcMode === 'construction' || calcMode === 'both') && (
-                <div className="bg-white rounded-xl p-4 border border-slate-200 space-y-4">
-                  <h3 className="text-xs font-black uppercase text-emerald-800 tracking-wide flex items-center gap-1.5 border-b border-slate-100 pb-2">
-                    <Building2 className="w-3.5 h-3.5 text-emerald-600" />
-                    <span>Construction &amp; Building Materials</span>
-                  </h3>
-
-                  {/* Cement Bags */}
-                  <div className="flex items-center justify-between gap-2">
-                    <div>
-                      <label className="text-xs font-bold text-slate-900">UltraTech Cement (50kg bags):</label>
-                      <p className="text-[10px] text-slate-400">₹385 / bag wholesale</p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => setCementBags(Math.max(5, cementBags - 5))}
-                        className="w-7 h-7 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold flex items-center justify-center cursor-pointer"
-                      >
-                        -
-                      </button>
-                      <span className="w-8 text-center text-xs font-black">{cementBags}</span>
-                      <button
-                        onClick={() => setCementBags(cementBags + 5)}
-                        className="w-7 h-7 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold flex items-center justify-center cursor-pointer"
-                      >
-                        +
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* TMT Steel */}
-                  <div className="flex items-center justify-between gap-2">
-                    <div>
-                      <label className="text-xs font-bold text-slate-900">Tata Tiscon TMT Steel (kg):</label>
-                      <p className="text-[10px] text-slate-400">₹62 / kg</p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => setTmtSteelKg(Math.max(50, tmtSteelKg - 50))}
-                        className="w-7 h-7 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold flex items-center justify-center cursor-pointer"
-                      >
-                        -
-                      </button>
-                      <span className="w-12 text-center text-xs font-black">{tmtSteelKg}</span>
-                      <button
-                        onClick={() => setTmtSteelKg(tmtSteelKg + 50)}
-                        className="w-7 h-7 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold flex items-center justify-center cursor-pointer"
-                      >
-                        +
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Waterproofing Liquid */}
-                  <div className="flex items-center justify-between gap-2">
-                    <div>
-                      <label className="text-xs font-bold text-slate-900">Dr. Fixit 101 LW+ (Litres):</label>
-                      <p className="text-[10px] text-slate-400">₹130 / Litre</p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => setWaterproofingLiters(Math.max(1, waterproofingLiters - 1))}
-                        className="w-7 h-7 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold flex items-center justify-center cursor-pointer"
-                      >
-                        -
-                      </button>
-                      <span className="w-8 text-center text-xs font-black">{waterproofingLiters}</span>
-                      <button
-                        onClick={() => setWaterproofingLiters(waterproofingLiters + 1)}
-                        className="w-7 h-7 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold flex items-center justify-center cursor-pointer"
-                      >
-                        +
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Wall Putty */}
-                  <div className="flex items-center justify-between gap-2">
-                    <div>
-                      <label className="text-xs font-bold text-slate-900">Asian Paints Putty (20kg bags):</label>
-                      <p className="text-[10px] text-slate-400">₹680 / 20kg bag</p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={() => setWallPuttyBags(Math.max(1, wallPuttyBags - 1))}
-                        className="w-7 h-7 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold flex items-center justify-center cursor-pointer"
-                      >
-                        -
-                      </button>
-                      <span className="w-8 text-center text-xs font-black">{wallPuttyBags}</span>
-                      <button
-                        onClick={() => setWallPuttyBags(wallPuttyBags + 1)}
-                        className="w-7 h-7 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold flex items-center justify-center cursor-pointer"
-                      >
-                        +
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              )}
-
+              </div>
             </div>
 
-            {/* Bottom Total Estimation Bar & Actions */}
-            <div className="bg-white rounded-xl p-4 sm:p-5 border border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-4">
-              <div>
-                <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">
-                  Approximate Material Wholesale Cost
-                </span>
-                <div className="flex items-baseline gap-2">
-                  <span className="text-2xl sm:text-3xl font-black text-slate-900">
+            {/* Bottom Total Estimation Bar & High-Conversion Action Buttons */}
+            <div className="p-4 sm:p-6 bg-slate-900 text-white flex flex-col md:flex-row items-center justify-between gap-5 border-t border-slate-800">
+              <div className="space-y-1.5 text-center md:text-left w-full md:w-auto">
+                <div className="flex items-center justify-center md:justify-start gap-2">
+                  <span className="text-[11px] font-bold text-amber-400 uppercase tracking-wider font-sf-pro">
+                    Total Estimated Wholesale Price
+                  </span>
+                  <span className="text-[10px] font-semibold text-emerald-400 bg-emerald-950/80 border border-emerald-800/80 px-2 py-0.5 rounded-full">
+                    GST Invoice Included
+                  </span>
+                </div>
+                <div className="flex items-baseline justify-center md:justify-start gap-2">
+                  <span className="text-3xl sm:text-4xl font-bold font-sf-pro tracking-tight text-white">
                     ₹{estimatedCost.total.toLocaleString('en-IN')}
                   </span>
-                  <span className="text-xs text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded">
-                    Includes GST &amp; Depot Pricing
+                  <span className="text-xs text-slate-400 font-medium">
+                    (Approximate Depot Rate)
                   </span>
                 </div>
+                <p className="text-[11px] text-slate-400">
+                  Bulk order pricing with direct dispatch from Kolkata Kasba depot.
+                </p>
               </div>
 
-              <div className="flex items-center gap-2.5 w-full sm:w-auto">
+              {/* Action Buttons */}
+              <div className="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto">
+                <button
+                  type="button"
+                  onClick={() => handlePresetChange('2bhk')}
+                  className="w-full sm:w-auto px-4 py-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold font-sf-pro text-xs transition-all flex items-center justify-center gap-1.5 border border-slate-700 cursor-pointer"
+                  title="Reset to 2 BHK standard preset"
+                >
+                  <RotateCcw className="w-3.5 h-3.5" />
+                  <span>Reset Default</span>
+                </button>
+
                 <a
                   href={`https://wa.me/918777400280?text=Hi%20Giriraj%20Power,%20I%20used%20the%20Cost%20Calculator%20for%20a%20project%20estimate%20of%20Rs%20${estimatedCost.total}.%20Please%20send%20the%20official%20quotation.`}
                   target="_blank"
                   rel="noreferrer"
-                  className="flex-1 sm:flex-none px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-2xs transition-all cursor-pointer"
+                  className="w-full sm:w-auto px-6 py-3 rounded-xl bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white font-bold font-sf-pro text-xs sm:text-sm flex items-center justify-center gap-2 shadow-sm shadow-emerald-900/30 hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer"
                 >
-                  <MessageSquare className="w-4 h-4" />
-                  <span>Get Quotation on WhatsApp</span>
+                  <MessageSquare className="w-4 h-4 fill-white text-emerald-600" />
+                  <span>Get Instant WhatsApp Quote</span>
                 </a>
               </div>
             </div>
