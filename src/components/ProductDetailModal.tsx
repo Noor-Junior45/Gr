@@ -3,6 +3,7 @@ import { X, Zap, Star, ShieldCheck, Check, Plus, Minus, Truck, Heart, RotateCcw,
 import { Product } from '../types';
 import { isProductFavorite, toggleProductFavorite } from '../services/favorites';
 import { INDIAN_STANDARD_WIRE_COLORS, isWireProduct } from '../data/wireColors';
+import { trackProductView } from '../utils/analytics';
 
 interface ProductDetailModalProps {
   product: Product | null;
@@ -41,6 +42,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
       setIsFav(isProductFavorite(product.id));
       setSelectedWireColor(product.selectedColor || (isWireProduct(product) ? 'Red' : ''));
       setSelectedImageIndex(0);
+      trackProductView(product);
     }
   }, [product]);
 

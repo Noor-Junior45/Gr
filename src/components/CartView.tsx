@@ -22,6 +22,7 @@ import { CartItem, KolkataArea, Order, SavedAddress } from '../types';
 import { createFirestoreOrder } from '../services/supabaseService';
 import { sendOrderConfirmationEmail } from '../services/emailService';
 import { INDIAN_STANDARD_WIRE_COLORS } from '../data/wireColors';
+import { trackBeginCheckout, trackPurchase, trackRemoveFromCart } from '../utils/analytics';
 import confetti from 'canvas-confetti';
 
 interface CartViewProps {
@@ -95,6 +96,13 @@ export const CartView: React.FC<CartViewProps> = ({
     }
   };
 
+  // Track Begin Checkout on view
+  React.useEffect(() => {
+    if (items.length > 0) {
+      trackBeginCheckout(items, totalAmount);
+    }
+  }, []);
+
   const handlePlaceOrder = async (e: React.FormEvent) => {
     e.preventDefault();
     if (items.length === 0) return;
@@ -137,6 +145,9 @@ export const CartView: React.FC<CartViewProps> = ({
 
     try {
       const created = await createFirestoreOrder(newOrder);
+
+      // Track GA4 Purchase Event
+      trackPurchase(created, items, totalAmount, deliveryFee);
 
       // Trigger Resend email invoice if email is provided
       if (email.trim()) {

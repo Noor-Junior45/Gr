@@ -39,6 +39,8 @@ import {
 import { Product, UserProfile } from '../../types';
 import { supabase } from '../../lib/supabaseClient';
 import { INDIAN_STANDARD_WIRE_COLORS, isWireProduct } from '../../data/wireColors';
+import { trackProductView } from '../../utils/analytics';
+import { SEOHead } from '../SEOHead';
 
 interface ProductDetailPageProps {
   onAddToCart: (product: Product) => void;
@@ -125,6 +127,9 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
         setLoading(false);
 
         if (data) {
+          // Track Product View for GA4
+          trackProductView(data);
+
           // Fetch dynamic FAQs from Supabase or fallback
           fetchProductFaqs(data.id, data)
             .then((loadedFaqs) => {
@@ -301,6 +306,22 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
 
   return (
     <div className="min-h-screen bg-[#f1f3f6] text-slate-900 pb-32 sm:pb-36 font-sans relative">
+      <SEOHead
+        title={`${product.name} - Buy Online at Best Price in Kolkata | Giriraj Power`}
+        description={`Buy authentic ${product.brand} ${product.name} at ₹${product.price} in Kolkata. Fast 60-min delivery, genuine manufacturer warranty, and certified quality from Giriraj Power.`}
+        keywords={`${product.name}, ${product.brand} ${product.subcategory}, buy ${product.name} Kolkata, electrical shop near me, ${product.tags?.join(', ')}`}
+        image={currentImage}
+        productData={{
+          name: product.name,
+          description: product.description,
+          price: product.price,
+          brand: product.brand,
+          image: currentImage,
+          inStock: product.stock_quantity > 0,
+          rating: 4.8,
+          reviewsCount: reviews.length || 24
+        }}
+      />
       
       {/* Floating Back Button to easily go back to Electrical catalog from anywhere */}
       <button

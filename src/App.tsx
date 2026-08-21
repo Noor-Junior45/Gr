@@ -44,6 +44,8 @@ import { ProductDetailPage } from './components/electrical/ProductDetailPage';
 import { ConstructionPage } from './components/ConstructionPage';
 import { HomePage } from './components/HomePage';
 import { InstallAppModal } from './components/InstallAppModal';
+import { SEOHead } from './components/SEOHead';
+import { trackPageView, trackAddToCart as trackGAAddToCart, trackRemoveFromCart as trackGARemoveFromCart, trackProductView } from './utils/analytics';
 import {
   getSavedUserProfile,
   saveUserProfile,
@@ -214,10 +216,11 @@ export default function App() {
     };
   }, []);
 
-  // Global Scroll Reset on route change
+  // Global Scroll Reset and GA4 Page View on route change
   useEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
-  }, [location.pathname]);
+    trackPageView(location.pathname + location.search);
+  }, [location.pathname, location.search]);
 
   // Cart Helpers
   const cartCount = cartItems.reduce((acc, item) => acc + item.quantity, 0);
@@ -225,6 +228,7 @@ export default function App() {
 
   const handleAddToCart = (product: Product) => {
     const productCol = product.selectedColor || undefined;
+    trackGAAddToCart(product, 1, productCol);
     setCartItems((prev) => {
       const existing = prev.find(
         (i) =>
@@ -250,6 +254,11 @@ export default function App() {
           const matchColor = color !== undefined ? (i.selectedColor || i.product.selectedColor) === color : true;
           if (i.product.id === productId && matchColor) {
             const newQty = i.quantity + delta;
+            if (delta > 0) {
+              trackGAAddToCart(i.product, delta, i.selectedColor);
+            } else if (delta < 0) {
+              trackGARemoveFromCart(i.product, Math.abs(delta));
+            }
             if (newQty <= 0) {
               return null; // remove from cart when reaching 0
             }
@@ -262,15 +271,23 @@ export default function App() {
   };
 
   const handleRemoveCartItem = (productId: string, color?: string) => {
-    setCartItems((prev) =>
-      prev.filter(
+    setCartItems((prev) => {
+      const itemToRemove = prev.find(
+        (i) =>
+          i.product.id === productId &&
+          (color === undefined || (i.selectedColor || i.product.selectedColor) === color)
+      );
+      if (itemToRemove) {
+        trackGARemoveFromCart(itemToRemove.product, itemToRemove.quantity);
+      }
+      return prev.filter(
         (i) =>
           !(
             i.product.id === productId &&
             (color === undefined || (i.selectedColor || i.product.selectedColor) === color)
           )
-      )
-    );
+      );
+    });
   };
 
   const handleClearCart = () => {
@@ -313,6 +330,8 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-white flex flex-col text-slate-900 selection:bg-yellow-400 selection:text-black">
+      {/* Dynamic SEO Meta & Structured Data Manager */}
+      <SEOHead />
       
       {/* Top Header - Hidden when viewing profile or login pages */}
       {location.pathname !== '/profile' && location.pathname !== '/login' && location.pathname !== '/auth' && (
@@ -560,7 +579,10 @@ export default function App() {
                     navigate('/construction');
                   }
                 }}
-                onOpenProductQuickView={(prod) => setSelectedProductQuickView(prod)}
+                onOpenProductQuickView={(prod) => {
+                  setSelectedProductQuickView(prod);
+                  trackProductView(prod);
+                }}
               />
             }
           />
