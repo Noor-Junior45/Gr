@@ -47,6 +47,12 @@ import { InstallAppModal } from './components/InstallAppModal';
 import { SEOHead } from './components/SEOHead';
 import { trackPageView, trackAddToCart as trackGAAddToCart, trackRemoveFromCart as trackGARemoveFromCart, trackProductView } from './utils/analytics';
 import {
+  fetchCartItemsFromSupabase,
+  syncCartItemToSupabase,
+  removeCartItemFromSupabase,
+  clearCartInSupabase
+} from './services/cartService';
+import {
   getSavedUserProfile,
   saveUserProfile,
   signOutUser,
@@ -208,6 +214,13 @@ export default function App() {
     // Load live catalog directly from Supabase (Strict Database Mode)
     fetchProductsFromSupabase().then(setProducts).catch(console.warn);
 
+    // Load user cart items from Supabase if authenticated
+    fetchCartItemsFromSupabase().then((dbCart) => {
+      if (dbCart && dbCart.length > 0) {
+        setCartItems(dbCart);
+      }
+    }).catch(console.warn);
+
     return () => {
       unsubAuth();
       window.removeEventListener('giriraj_user_logged_out', handleLogoutEvent);
@@ -235,11 +248,13 @@ export default function App() {
           i.product.id === product.id &&
           (i.selectedColor || i.product.selectedColor) === productCol
       );
+      const newQty = existing ? Math.min(100, existing.quantity + 1) : 1;
+      syncCartItemToSupabase(product.id, newQty, productCol).catch(() => {});
       if (existing) {
         return prev.map((i) =>
           i.product.id === product.id &&
           (i.selectedColor || i.product.selectedColor) === productCol
-            ? { ...i, quantity: Math.min(100, i.quantity + 1) }
+            ? { ...i, quantity: newQty }
             : i
         );
       }
@@ -260,8 +275,10 @@ export default function App() {
               trackGARemoveFromCart(i.product, Math.abs(delta));
             }
             if (newQty <= 0) {
+              removeCartItemFromSupabase(productId).catch(() => {});
               return null; // remove from cart when reaching 0
             }
+            syncCartItemToSupabase(productId, Math.min(100, newQty), color).catch(() => {});
             return { ...i, quantity: Math.min(100, newQty) };
           }
           return i;
@@ -271,6 +288,7 @@ export default function App() {
   };
 
   const handleRemoveCartItem = (productId: string, color?: string) => {
+    removeCartItemFromSupabase(productId).catch(() => {});
     setCartItems((prev) => {
       const itemToRemove = prev.find(
         (i) =>
@@ -291,6 +309,7 @@ export default function App() {
   };
 
   const handleClearCart = () => {
+    clearCartInSupabase().catch(() => {});
     setCartItems([]);
   };
 
@@ -384,9 +403,33 @@ export default function App() {
             }
           />
 
-          {/* FLIPKART-STYLE ELECTRICAL PRODUCT DETAIL PAGE */}
+          {/* FLIPKART-STYLE PRODUCT DETAIL PAGES */}
           <Route
             path="/electrical/product/:id"
+            element={
+              <ProductDetailPage
+                onAddToCart={handleAddToCart}
+                cartItems={cartItems}
+                onOpenCart={() => navigate('/cart')}
+                userProfile={userProfile}
+                onOpenAuth={() => navigate('/login')}
+              />
+            }
+          />
+          <Route
+            path="/construction/product/:id"
+            element={
+              <ProductDetailPage
+                onAddToCart={handleAddToCart}
+                cartItems={cartItems}
+                onOpenCart={() => navigate('/cart')}
+                userProfile={userProfile}
+                onOpenAuth={() => navigate('/login')}
+              />
+            }
+          />
+          <Route
+            path="/product/:id"
             element={
               <ProductDetailPage
                 onAddToCart={handleAddToCart}
@@ -407,6 +450,10 @@ export default function App() {
                 onUpdateQuantity={handleUpdateCartQuantity}
                 cartItems={cartItems}
                 onOpenCart={() => navigate('/cart')}
+                onOpenProductQuickView={(prod) => {
+                  setSelectedProductQuickView(prod);
+                  trackProductView(prod);
+                }}
               />
             }
           />
@@ -424,6 +471,9 @@ export default function App() {
                 activeAddress={activeSavedAddress}
                 onOpenLocationModal={() => setIsLocationModalOpen(true)}
                 userPhone={userPhone}
+                userProfile={userProfile}
+                onOpenAuth={() => navigate('/login')}
+                onAddToCart={handleAddToCart}
                 onOrderPlaced={(newOrder) => {
                   setLatestPlacedOrder(newOrder);
                 }}
@@ -612,6 +662,8 @@ export default function App() {
         onClose={() => setIsLocationModalOpen(false)}
         currentArea={currentArea}
         activeAddress={activeSavedAddress}
+        userProfile={userProfile}
+        userPhone={userPhone}
         onSelectArea={(area, addr) => {
           setCurrentArea(area);
           if (addr) {

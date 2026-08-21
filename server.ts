@@ -150,7 +150,7 @@ function generateOrderEmailHtml(order: any, customerName: string): string {
         Giriraj Power & Construction Supplies Kolkata
       </p>
       <p style="margin: 0 0 8px 0;">
-        Business WP: +91 87774 00280 | Contractor Helpline: +91 90071 68561 | Email: noorpos.alert@gmail.com
+        Business WP: +91 87774 00280 | Contractor Helpline: +91 90071 68561 | Email: team@girirajpower.in
       </p>
       <p style="margin: 0; color: #64748b;">
         Automated invoice generated via Resend Transactional Mail Service.

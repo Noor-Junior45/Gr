@@ -20,7 +20,7 @@ import {
 } from 'lucide-react';
 import L from 'leaflet';
 import { KOLKATA_AREAS } from '../data/kolkataAreas';
-import { KolkataArea, SavedAddress } from '../types';
+import { KolkataArea, SavedAddress, UserProfile } from '../types';
 import {
   getStoredAddresses,
   saveAddressToFirestore,
@@ -34,7 +34,24 @@ interface LocationModalProps {
   onClose: () => void;
   currentArea: KolkataArea;
   activeAddress?: SavedAddress | null;
+  userProfile?: UserProfile | null;
+  userPhone?: string | null;
   onSelectArea: (area: KolkataArea, address?: SavedAddress) => void;
+}
+
+// Helper function to extract a clean name from email if name is not set
+function deriveNameFromEmail(email?: string): string {
+  if (!email || !email.includes('@')) return '';
+  const username = email.split('@')[0];
+  // Remove trailing digits and convert dots/underscores/hyphens to spaces
+  const cleaned = username.replace(/[._-]+/g, ' ').replace(/\d+$/, '').trim();
+  if (!cleaned) return username;
+  // Capitalize words
+  return cleaned
+    .split(' ')
+    .filter(Boolean)
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(' ');
 }
 
 export const LocationModal: React.FC<LocationModalProps> = ({
@@ -42,6 +59,8 @@ export const LocationModal: React.FC<LocationModalProps> = ({
   onClose,
   currentArea,
   activeAddress,
+  userProfile,
+  userPhone,
   onSelectArea
 }) => {
   // Navigation steps: 'zepto_home' (Screenshot 1) | 'map_pin' (Step 2) | 'details_form' (Step 3)
@@ -73,8 +92,28 @@ export const LocationModal: React.FC<LocationModalProps> = ({
   const [landmark, setLandmark] = useState('');
   const [addressTag, setAddressTag] = useState<'home' | 'work' | 'hotel' | 'other'>('home');
   const [customTagLabel, setCustomTagLabel] = useState('');
-  const [receiverName, setReceiverName] = useState(() => localStorage.getItem('giriraj_user_name') || 'Customer');
-  const [receiverPhone, setReceiverPhone] = useState(() => localStorage.getItem('giriraj_user_phone') || '8777400280');
+  
+  // Calculate initial receiver name by prioritizing user profile name, email-derived name, stored name
+  const [receiverName, setReceiverName] = useState(() => {
+    if (activeAddress?.receiverName) return activeAddress.receiverName;
+    if (userProfile?.name && userProfile.name.toLowerCase() !== 'customer') return userProfile.name;
+    const emailToUse = userProfile?.email || localStorage.getItem('giriraj_user_email') || '';
+    const derived = deriveNameFromEmail(emailToUse);
+    if (derived) return derived;
+    const stored = localStorage.getItem('giriraj_user_name');
+    if (stored && stored.toLowerCase() !== 'customer') return stored;
+    return '';
+  });
+
+  // Calculate initial receiver phone without hardcoded demo number (8777400280 removed)
+  const [receiverPhone, setReceiverPhone] = useState(() => {
+    if (activeAddress?.receiverPhone) return activeAddress.receiverPhone;
+    if (userPhone) return userPhone;
+    if (userProfile?.phone) return userProfile.phone;
+    const stored = localStorage.getItem('giriraj_user_phone');
+    if (stored && stored !== '8777400280') return stored;
+    return '';
+  });
   const [formError, setFormError] = useState<string | null>(null);
 
   // Leaflet Map Refs
@@ -89,14 +128,48 @@ export const LocationModal: React.FC<LocationModalProps> = ({
     return () => unsub();
   }, []);
 
-  // Reset to initial Zepto home screen whenever modal opens
+  // Reset to initial Zepto home screen whenever modal opens and refresh receiver details
   useEffect(() => {
     if (isOpen) {
       setStep('zepto_home');
       setSearchQuery('');
       setFormError(null);
+
+      // Auto-fill Receiver Name
+      if (activeAddress?.receiverName) {
+        setReceiverName(activeAddress.receiverName);
+      } else if (userProfile?.name && userProfile.name.toLowerCase() !== 'customer') {
+        setReceiverName(userProfile.name);
+      } else {
+        const emailToUse = userProfile?.email || localStorage.getItem('giriraj_user_email') || '';
+        const derived = deriveNameFromEmail(emailToUse);
+        if (derived) {
+          setReceiverName(derived);
+        } else {
+          const stored = localStorage.getItem('giriraj_user_name');
+          if (stored && stored.toLowerCase() !== 'customer') {
+            setReceiverName(stored);
+          }
+        }
+      }
+
+      // Auto-fill Receiver Phone (No demo number)
+      if (activeAddress?.receiverPhone) {
+        setReceiverPhone(activeAddress.receiverPhone);
+      } else if (userPhone) {
+        setReceiverPhone(userPhone);
+      } else if (userProfile?.phone) {
+        setReceiverPhone(userProfile.phone);
+      } else {
+        const storedPhone = localStorage.getItem('giriraj_user_phone');
+        if (storedPhone && storedPhone !== '8777400280') {
+          setReceiverPhone(storedPhone);
+        } else {
+          setReceiverPhone('');
+        }
+      }
     }
-  }, [isOpen]);
+  }, [isOpen, activeAddress, userProfile, userPhone]);
 
   // Leaflet Map initialization when transitioning to Step 2 ('map_pin')
   useEffect(() => {
@@ -1197,22 +1270,24 @@ export const LocationModal: React.FC<LocationModalProps> = ({
                 <div className="relative">
                   <UserIcon className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-3" />
                   <input
+                    id="address-receiver-name-input"
                     type="text"
                     placeholder="Receiver Name"
                     value={receiverName}
                     onChange={(e) => setReceiverName(e.target.value)}
-                    className="w-full pl-8 pr-3 py-2 rounded-xl border border-slate-300 text-xs font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-pink-500/40"
+                    className="w-full pl-8 pr-3 py-2 rounded-xl border border-slate-300 text-xs sm:text-sm font-semibold text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-pink-500/40 focus:border-pink-500 bg-white transition-colors"
                   />
                 </div>
 
                 <div className="relative">
                   <Phone className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-3" />
                   <input
+                    id="address-receiver-phone-input"
                     type="tel"
-                    placeholder="Contact Number"
+                    placeholder="10-digit mobile number"
                     value={receiverPhone}
                     onChange={(e) => setReceiverPhone(e.target.value)}
-                    className="w-full pl-8 pr-3 py-2 rounded-xl border border-slate-300 text-xs font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-pink-500/40"
+                    className="w-full pl-8 pr-3 py-2 rounded-xl border border-slate-300 text-xs sm:text-sm font-semibold text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-pink-500/40 focus:border-pink-500 bg-white transition-colors"
                   />
                 </div>
               </div>

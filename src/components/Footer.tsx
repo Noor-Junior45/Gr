@@ -150,20 +150,21 @@ export const Footer: React.FC<FooterProps> = ({ onOpenInstallApp }) => {
                 <Phone className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
                 <div className="space-y-1.5">
                   <p className="font-bold text-white text-xs">Direct Helplines</p>
-                  <div className="flex items-center gap-3">
+                  <div className="flex flex-col space-y-1.5 pt-0.5">
                     <a
                       href="tel:+918777400280"
-                      className="text-slate-300 hover:text-amber-400 transition-colors font-medium flex items-center gap-1.5 cursor-pointer"
+                      className="inline-flex items-center gap-2 px-2.5 py-1 rounded-lg bg-slate-800/60 hover:bg-amber-500 hover:text-slate-950 text-slate-200 transition-all font-semibold text-xs cursor-pointer group w-fit"
+                      title="Call Primary Contact"
                     >
-                      <span className="text-amber-500">›</span>
+                      <Phone className="w-3 h-3 text-emerald-400 group-hover:text-slate-950 transition-colors" />
                       <span>Contact</span>
                     </a>
-                    <span className="text-slate-600">•</span>
                     <a
                       href="tel:+919874569712"
-                      className="text-slate-300 hover:text-amber-400 transition-colors font-medium flex items-center gap-1.5 cursor-pointer"
+                      className="inline-flex items-center gap-2 px-2.5 py-1 rounded-lg bg-slate-800/60 hover:bg-amber-500 hover:text-slate-950 text-slate-200 transition-all font-semibold text-xs cursor-pointer group w-fit"
+                      title="Call Alternative Helpline"
                     >
-                      <span className="text-amber-500">›</span>
+                      <Phone className="w-3 h-3 text-emerald-400 group-hover:text-slate-950 transition-colors" />
                       <span>Alternative</span>
                     </a>
                   </div>

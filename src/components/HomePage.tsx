@@ -1036,71 +1036,71 @@ export const HomePage: React.FC<HomePageProps> = ({
             ===================================================================== */}
         <section id="row-8-calculator" className="space-y-4 pt-2">
           {/* Centered Heading & Subtitle */}
-          <div className="text-center max-w-2xl mx-auto space-y-2 pb-1">
+          <div className="text-center max-w-2xl mx-auto space-y-2 pb-1 px-2">
             <div className="inline-flex items-center justify-center gap-2">
               <span className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-amber-500/10 text-amber-600 border border-amber-500/20 flex items-center justify-center shadow-2xs">
                 <Calculator className="w-4 h-4 text-amber-600" />
               </span>
-              <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold font-sf-pro text-[#0F1B2D] tracking-tight">
+              <h2 className="text-xl sm:text-3xl lg:text-4xl font-black font-sf-pro text-[#0F1B2D] tracking-tight leading-tight">
                 Material &amp; Cost Estimation Calculator
               </h2>
             </div>
-            <p className="text-xs sm:text-sm text-[#5F6B7A] font-medium leading-relaxed">
+            <p className="text-xs sm:text-sm text-slate-600 font-medium leading-relaxed">
               Estimate electrical wiring and construction material quantities with live wholesale pricing
             </p>
           </div>
 
           {/* Premium Redesigned Calculator Card */}
-          <div className="rounded-3xl border border-slate-200/90 bg-white shadow-sm overflow-hidden">
+          <div className="rounded-2xl sm:rounded-3xl border border-slate-200 bg-white shadow-sm overflow-hidden">
             
             {/* Top Toolbar: Mode Switcher & BHK Property Size Presets */}
-            <div className="p-4 sm:p-6 bg-slate-50/80 border-b border-slate-200/80 flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-4">
-              {/* Mode Segmented Controls */}
-              <div className="inline-flex p-1.5 rounded-2xl bg-slate-200/70 border border-slate-300/60 shadow-inner">
+            <div className="p-3.5 sm:p-6 bg-slate-50 border-b border-slate-200 flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3.5 sm:gap-4">
+              {/* Mode Segmented Controls - Full width grid on mobile for perfect legibility */}
+              <div className="w-full lg:w-auto grid grid-cols-3 gap-1 p-1 sm:p-1.5 rounded-2xl bg-slate-200/80 border border-slate-300/70 shadow-inner">
                 <button
                   type="button"
                   onClick={() => setCalcMode('electrical')}
-                  className={`flex items-center gap-2 px-3.5 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-bold font-sf-pro transition-all cursor-pointer ${
+                  className={`flex flex-col xs:flex-row sm:flex-row items-center justify-center gap-1 sm:gap-2 px-2 py-2 sm:px-4 sm:py-2 rounded-xl text-[11px] sm:text-xs md:text-sm font-bold font-sf-pro transition-all cursor-pointer text-center leading-tight ${
                     calcMode === 'electrical'
-                      ? 'bg-white text-slate-950 shadow-xs scale-[1.02]'
-                      : 'text-slate-600 hover:text-slate-900 hover:bg-white/40'
+                      ? 'bg-white text-slate-950 shadow-sm font-black'
+                      : 'text-slate-700 hover:text-slate-950 hover:bg-white/40'
                   }`}
                 >
-                  <Zap className={`w-3.5 h-3.5 ${calcMode === 'electrical' ? 'text-amber-500 fill-amber-500' : 'text-slate-400'}`} />
-                  <span>Electrical Only</span>
+                  <Zap className={`w-3.5 h-3.5 shrink-0 ${calcMode === 'electrical' ? 'text-amber-500 fill-amber-500' : 'text-slate-500'}`} />
+                  <span className="truncate">Electrical</span>
                 </button>
                 <button
                   type="button"
                   onClick={() => setCalcMode('construction')}
-                  className={`flex items-center gap-2 px-3.5 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-bold font-sf-pro transition-all cursor-pointer ${
+                  className={`flex flex-col xs:flex-row sm:flex-row items-center justify-center gap-1 sm:gap-2 px-2 py-2 sm:px-4 sm:py-2 rounded-xl text-[11px] sm:text-xs md:text-sm font-bold font-sf-pro transition-all cursor-pointer text-center leading-tight ${
                     calcMode === 'construction'
-                      ? 'bg-white text-slate-950 shadow-xs scale-[1.02]'
-                      : 'text-slate-600 hover:text-slate-900 hover:bg-white/40'
+                      ? 'bg-white text-slate-950 shadow-sm font-black'
+                      : 'text-slate-700 hover:text-slate-950 hover:bg-white/40'
                   }`}
                 >
-                  <Building2 className={`w-3.5 h-3.5 ${calcMode === 'construction' ? 'text-emerald-600' : 'text-slate-400'}`} />
-                  <span>Construction Only</span>
+                  <Building2 className={`w-3.5 h-3.5 shrink-0 ${calcMode === 'construction' ? 'text-emerald-600' : 'text-slate-500'}`} />
+                  <span className="truncate">Construction</span>
                 </button>
                 <button
                   type="button"
                   onClick={() => setCalcMode('both')}
-                  className={`flex items-center gap-2 px-3.5 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-bold font-sf-pro transition-all cursor-pointer ${
+                  className={`flex flex-col xs:flex-row sm:flex-row items-center justify-center gap-1 sm:gap-2 px-2 py-2 sm:px-4 sm:py-2 rounded-xl text-[11px] sm:text-xs md:text-sm font-bold font-sf-pro transition-all cursor-pointer text-center leading-tight ${
                     calcMode === 'both'
-                      ? 'bg-slate-900 text-white shadow-xs scale-[1.02]'
-                      : 'text-slate-600 hover:text-slate-900 hover:bg-white/40'
+                      ? 'bg-slate-900 text-white shadow-sm font-black'
+                      : 'text-slate-700 hover:text-slate-950 hover:bg-white/40'
                   }`}
                 >
-                  <Layers className={`w-3.5 h-3.5 ${calcMode === 'both' ? 'text-amber-400' : 'text-slate-400'}`} />
-                  <span>Combined Project</span>
+                  <Layers className={`w-3.5 h-3.5 shrink-0 ${calcMode === 'both' ? 'text-amber-400' : 'text-slate-500'}`} />
+                  <span className="truncate">Combined</span>
                 </button>
               </div>
 
               {/* Apartment / House Size Presets */}
-              <div className="flex items-center flex-wrap gap-2">
-                <span className="text-xs font-bold text-slate-500 font-sf-pro uppercase tracking-wider">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-2 pt-1 sm:pt-0">
+                <span className="text-xs font-black text-slate-600 font-sf-pro uppercase tracking-wider">
                   Quick Preset:
                 </span>
-                <div className="flex items-center gap-1.5">
+                <div className="grid grid-cols-3 sm:flex items-center gap-1.5 sm:gap-2">
                   {(
                     [
                       { id: '1bhk', label: '1 BHK', area: '~550 sq.ft' },
@@ -1114,14 +1114,14 @@ export const HomePage: React.FC<HomePageProps> = ({
                         key={preset.id}
                         type="button"
                         onClick={() => handlePresetChange(preset.id)}
-                        className={`group px-3 py-1.5 rounded-xl font-sf-pro text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 border ${
+                        className={`group px-2.5 sm:px-3 py-2 sm:py-1.5 rounded-xl font-sf-pro text-xs font-black transition-all cursor-pointer flex flex-col sm:flex-row items-center justify-center gap-0.5 sm:gap-1.5 border text-center ${
                           isSelected
-                            ? 'bg-amber-500 text-slate-950 border-amber-500 shadow-xs'
-                            : 'bg-white text-slate-700 border-slate-200/90 hover:bg-slate-100 hover:border-slate-300'
+                            ? 'bg-amber-400 text-slate-950 border-amber-500 shadow-xs'
+                            : 'bg-white text-slate-800 border-slate-300 hover:bg-slate-100 hover:border-slate-400'
                         }`}
                       >
-                        <span>{preset.label}</span>
-                        <span className={`text-[10px] ${isSelected ? 'text-slate-900/80' : 'text-slate-400'}`}>
+                        <span className="leading-tight">{preset.label}</span>
+                        <span className={`text-[10px] leading-tight ${isSelected ? 'text-slate-900 font-bold' : 'text-slate-500 font-medium'}`}>
                           {preset.area}
                         </span>
                       </button>
@@ -1132,163 +1132,163 @@ export const HomePage: React.FC<HomePageProps> = ({
             </div>
 
             {/* Interactive Inputs Section */}
-            <div className="p-4 sm:p-6 lg:p-8">
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8">
+            <div className="p-3.5 sm:p-6 lg:p-8">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 sm:gap-6 lg:gap-8">
                 
                 {/* Column 1: Electrical Estimator Card */}
                 {(calcMode === 'electrical' || calcMode === 'both') && (
-                  <div className="rounded-2xl border border-slate-200/90 bg-gradient-to-b from-amber-50/20 to-white p-5 sm:p-6 space-y-4">
+                  <div className="rounded-2xl border border-amber-200/80 bg-gradient-to-b from-amber-50/40 to-white p-4 sm:p-6 space-y-4 shadow-2xs">
                     {/* Header */}
-                    <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                      <div className="flex items-center gap-2">
-                        <div className="w-7 h-7 rounded-lg bg-amber-500/15 text-amber-600 flex items-center justify-center">
+                    <div className="flex items-center justify-between border-b border-amber-100 pb-3 gap-2">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <div className="w-8 h-8 rounded-lg bg-amber-500/15 text-amber-600 flex items-center justify-center shrink-0">
                           <Zap className="w-4 h-4 fill-amber-500 text-amber-500" />
                         </div>
-                        <div>
-                          <h3 className="text-sm font-bold font-sf-pro text-slate-900">
+                        <div className="min-w-0">
+                          <h3 className="text-sm sm:text-base font-black font-sf-pro text-slate-900 truncate">
                             Electrical Wiring &amp; Switchgear
                           </h3>
-                          <p className="text-[11px] text-slate-500">ISI certified copper wires &amp; modular points</p>
+                          <p className="text-[11px] text-slate-600 font-medium truncate">ISI certified copper wires &amp; modular points</p>
                         </div>
                       </div>
-                      <span className="text-xs font-bold text-amber-900 bg-amber-100/90 px-2.5 py-1 rounded-full">
+                      <span className="text-xs sm:text-sm font-black text-amber-950 bg-amber-200/90 px-2.5 py-1 rounded-full border border-amber-300 shrink-0">
                         ₹{estimatedCost.electricalSubtotal.toLocaleString('en-IN')}
                       </span>
                     </div>
 
-                    <div className="space-y-3.5">
+                    <div className="space-y-2.5 sm:space-y-3">
                       {/* Wire Coils */}
-                      <div className="p-3 rounded-xl bg-slate-50/70 border border-slate-100 flex items-center justify-between gap-3 hover:border-slate-200 transition-colors">
+                      <div className="p-3 rounded-xl bg-white border border-slate-200 shadow-2xs flex items-center justify-between gap-2.5 hover:border-amber-300 transition-colors">
                         <div className="min-w-0">
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs font-bold text-slate-900">RR Kabel / Polycab Coils</span>
-                            <span className="text-[10px] font-semibold text-slate-500 bg-white px-1.5 py-0.5 rounded border border-slate-200">
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            <span className="text-xs sm:text-sm font-black text-slate-900">RR Kabel / Polycab Coils</span>
+                            <span className="text-[10px] sm:text-[11px] font-bold text-amber-900 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200/80">
                               ₹3,800/coil
                             </span>
                           </div>
-                          <p className="text-[10px] text-slate-400">1.0 &amp; 1.5 sq.mm (90m - 200m)</p>
+                          <p className="text-[11px] text-slate-600 font-medium mt-0.5">1.0 &amp; 1.5 sq.mm (90m - 200m)</p>
                         </div>
-                        <div className="flex items-center gap-2 shrink-0">
+                        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
                           <button
                             type="button"
                             onClick={() => setWireCoils(Math.max(1, wireCoils - 1))}
-                            className="w-8 h-8 rounded-lg bg-white border border-slate-200 text-slate-700 hover:bg-slate-900 hover:text-white active:scale-95 transition-all flex items-center justify-center font-bold shadow-2xs cursor-pointer"
+                            className="w-8.5 h-8.5 sm:w-8 sm:h-8 rounded-lg bg-slate-100 hover:bg-slate-900 hover:text-white active:bg-slate-900 active:text-white border border-slate-300 text-slate-900 active:scale-95 transition-all flex items-center justify-center font-black shadow-xs cursor-pointer"
                             aria-label="Decrease wire coils"
                           >
-                            <Minus className="w-3.5 h-3.5" />
+                            <Minus className="w-3.5 h-3.5 stroke-[2.5]" />
                           </button>
-                          <span className="w-8 text-center text-xs font-black font-sf-pro text-slate-900">
+                          <span className="w-8 text-center text-xs sm:text-sm font-black font-sf-pro text-slate-950">
                             {wireCoils}
                           </span>
                           <button
                             type="button"
                             onClick={() => setWireCoils(wireCoils + 1)}
-                            className="w-8 h-8 rounded-lg bg-white border border-slate-200 text-slate-700 hover:bg-amber-500 hover:text-slate-950 active:scale-95 transition-all flex items-center justify-center font-bold shadow-2xs cursor-pointer"
+                            className="w-8.5 h-8.5 sm:w-8 sm:h-8 rounded-lg bg-amber-400 hover:bg-amber-500 active:bg-amber-600 border border-amber-500 text-slate-950 active:scale-95 transition-all flex items-center justify-center font-black shadow-xs cursor-pointer"
                             aria-label="Increase wire coils"
                           >
-                            <Plus className="w-3.5 h-3.5" />
+                            <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
                           </button>
                         </div>
                       </div>
 
                       {/* Modular Switches */}
-                      <div className="p-3 rounded-xl bg-slate-50/70 border border-slate-100 flex items-center justify-between gap-3 hover:border-slate-200 transition-colors">
+                      <div className="p-3 rounded-xl bg-white border border-slate-200 shadow-2xs flex items-center justify-between gap-2.5 hover:border-amber-300 transition-colors">
                         <div className="min-w-0">
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs font-bold text-slate-900">Modular Switches &amp; Sockets</span>
-                            <span className="text-[10px] font-semibold text-slate-500 bg-white px-1.5 py-0.5 rounded border border-slate-200">
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            <span className="text-xs sm:text-sm font-black text-slate-900">Modular Switches &amp; Sockets</span>
+                            <span className="text-[10px] sm:text-[11px] font-bold text-amber-900 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200/80">
                               ₹135/pt
                             </span>
                           </div>
-                          <p className="text-[10px] text-slate-400">Schneider / Havells switch points</p>
+                          <p className="text-[11px] text-slate-600 font-medium mt-0.5">Schneider / Havells switch points</p>
                         </div>
-                        <div className="flex items-center gap-2 shrink-0">
+                        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
                           <button
                             type="button"
                             onClick={() => setModularSwitches(Math.max(4, modularSwitches - 2))}
-                            className="w-8 h-8 rounded-lg bg-white border border-slate-200 text-slate-700 hover:bg-slate-900 hover:text-white active:scale-95 transition-all flex items-center justify-center font-bold shadow-2xs cursor-pointer"
+                            className="w-8.5 h-8.5 sm:w-8 sm:h-8 rounded-lg bg-slate-100 hover:bg-slate-900 hover:text-white active:bg-slate-900 active:text-white border border-slate-300 text-slate-900 active:scale-95 transition-all flex items-center justify-center font-black shadow-xs cursor-pointer"
                             aria-label="Decrease modular switches"
                           >
-                            <Minus className="w-3.5 h-3.5" />
+                            <Minus className="w-3.5 h-3.5 stroke-[2.5]" />
                           </button>
-                          <span className="w-8 text-center text-xs font-black font-sf-pro text-slate-900">
+                          <span className="w-8 text-center text-xs sm:text-sm font-black font-sf-pro text-slate-950">
                             {modularSwitches}
                           </span>
                           <button
                             type="button"
                             onClick={() => setModularSwitches(modularSwitches + 2)}
-                            className="w-8 h-8 rounded-lg bg-white border border-slate-200 text-slate-700 hover:bg-amber-500 hover:text-slate-950 active:scale-95 transition-all flex items-center justify-center font-bold shadow-2xs cursor-pointer"
+                            className="w-8.5 h-8.5 sm:w-8 sm:h-8 rounded-lg bg-amber-400 hover:bg-amber-500 active:bg-amber-600 border border-amber-500 text-slate-950 active:scale-95 transition-all flex items-center justify-center font-black shadow-xs cursor-pointer"
                             aria-label="Increase modular switches"
                           >
-                            <Plus className="w-3.5 h-3.5" />
+                            <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
                           </button>
                         </div>
                       </div>
 
                       {/* MCB Distribution Boxes */}
-                      <div className="p-3 rounded-xl bg-slate-50/70 border border-slate-100 flex items-center justify-between gap-3 hover:border-slate-200 transition-colors">
+                      <div className="p-3 rounded-xl bg-white border border-slate-200 shadow-2xs flex items-center justify-between gap-2.5 hover:border-amber-300 transition-colors">
                         <div className="min-w-0">
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs font-bold text-slate-900">MCB Distribution Box (DB)</span>
-                            <span className="text-[10px] font-semibold text-slate-500 bg-white px-1.5 py-0.5 rounded border border-slate-200">
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            <span className="text-xs sm:text-sm font-black text-slate-900">MCB Distribution Box (DB)</span>
+                            <span className="text-[10px] sm:text-[11px] font-bold text-amber-900 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200/80">
                               ₹950/box
                             </span>
                           </div>
-                          <p className="text-[10px] text-slate-400">Double door SPN/TPN with isolator</p>
+                          <p className="text-[11px] text-slate-600 font-medium mt-0.5">Double door SPN/TPN with isolator</p>
                         </div>
-                        <div className="flex items-center gap-2 shrink-0">
+                        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
                           <button
                             type="button"
                             onClick={() => setMcbBoxes(Math.max(1, mcbBoxes - 1))}
-                            className="w-8 h-8 rounded-lg bg-white border border-slate-200 text-slate-700 hover:bg-slate-900 hover:text-white active:scale-95 transition-all flex items-center justify-center font-bold shadow-2xs cursor-pointer"
+                            className="w-8.5 h-8.5 sm:w-8 sm:h-8 rounded-lg bg-slate-100 hover:bg-slate-900 hover:text-white active:bg-slate-900 active:text-white border border-slate-300 text-slate-900 active:scale-95 transition-all flex items-center justify-center font-black shadow-xs cursor-pointer"
                             aria-label="Decrease MCB boxes"
                           >
-                            <Minus className="w-3.5 h-3.5" />
+                            <Minus className="w-3.5 h-3.5 stroke-[2.5]" />
                           </button>
-                          <span className="w-8 text-center text-xs font-black font-sf-pro text-slate-900">
+                          <span className="w-8 text-center text-xs sm:text-sm font-black font-sf-pro text-slate-950">
                             {mcbBoxes}
                           </span>
                           <button
                             type="button"
                             onClick={() => setMcbBoxes(mcbBoxes + 1)}
-                            className="w-8 h-8 rounded-lg bg-white border border-slate-200 text-slate-700 hover:bg-amber-500 hover:text-slate-950 active:scale-95 transition-all flex items-center justify-center font-bold shadow-2xs cursor-pointer"
+                            className="w-8.5 h-8.5 sm:w-8 sm:h-8 rounded-lg bg-amber-400 hover:bg-amber-500 active:bg-amber-600 border border-amber-500 text-slate-950 active:scale-95 transition-all flex items-center justify-center font-black shadow-xs cursor-pointer"
                             aria-label="Increase MCB boxes"
                           >
-                            <Plus className="w-3.5 h-3.5" />
+                            <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
                           </button>
                         </div>
                       </div>
 
                       {/* Conduit Pipes */}
-                      <div className="p-3 rounded-xl bg-slate-50/70 border border-slate-100 flex items-center justify-between gap-3 hover:border-slate-200 transition-colors">
+                      <div className="p-3 rounded-xl bg-white border border-slate-200 shadow-2xs flex items-center justify-between gap-2.5 hover:border-amber-300 transition-colors">
                         <div className="min-w-0">
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs font-bold text-slate-900">PVC Conduit Pipes</span>
-                            <span className="text-[10px] font-semibold text-slate-500 bg-white px-1.5 py-0.5 rounded border border-slate-200">
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            <span className="text-xs sm:text-sm font-black text-slate-900">PVC Conduit Pipes</span>
+                            <span className="text-[10px] sm:text-[11px] font-bold text-amber-900 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200/80">
                               ₹120/pipe
                             </span>
                           </div>
-                          <p className="text-[10px] text-slate-400">20mm / 25mm Heavy duty 3m length</p>
+                          <p className="text-[11px] text-slate-600 font-medium mt-0.5">20mm / 25mm Heavy duty 3m length</p>
                         </div>
-                        <div className="flex items-center gap-2 shrink-0">
+                        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
                           <button
                             type="button"
                             onClick={() => setPvcConduits(Math.max(2, pvcConduits - 2))}
-                            className="w-8 h-8 rounded-lg bg-white border border-slate-200 text-slate-700 hover:bg-slate-900 hover:text-white active:scale-95 transition-all flex items-center justify-center font-bold shadow-2xs cursor-pointer"
+                            className="w-8.5 h-8.5 sm:w-8 sm:h-8 rounded-lg bg-slate-100 hover:bg-slate-900 hover:text-white active:bg-slate-900 active:text-white border border-slate-300 text-slate-900 active:scale-95 transition-all flex items-center justify-center font-black shadow-xs cursor-pointer"
                             aria-label="Decrease PVC conduits"
                           >
-                            <Minus className="w-3.5 h-3.5" />
+                            <Minus className="w-3.5 h-3.5 stroke-[2.5]" />
                           </button>
-                          <span className="w-8 text-center text-xs font-black font-sf-pro text-slate-900">
+                          <span className="w-8 text-center text-xs sm:text-sm font-black font-sf-pro text-slate-950">
                             {pvcConduits}
                           </span>
                           <button
                             type="button"
                             onClick={() => setPvcConduits(pvcConduits + 2)}
-                            className="w-8 h-8 rounded-lg bg-white border border-slate-200 text-slate-700 hover:bg-amber-500 hover:text-slate-950 active:scale-95 transition-all flex items-center justify-center font-bold shadow-2xs cursor-pointer"
+                            className="w-8.5 h-8.5 sm:w-8 sm:h-8 rounded-lg bg-amber-400 hover:bg-amber-500 active:bg-amber-600 border border-amber-500 text-slate-950 active:scale-95 transition-all flex items-center justify-center font-black shadow-xs cursor-pointer"
                             aria-label="Increase PVC conduits"
                           >
-                            <Plus className="w-3.5 h-3.5" />
+                            <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
                           </button>
                         </div>
                       </div>
@@ -1298,158 +1298,158 @@ export const HomePage: React.FC<HomePageProps> = ({
 
                 {/* Column 2: Construction Estimator Card */}
                 {(calcMode === 'construction' || calcMode === 'both') && (
-                  <div className="rounded-2xl border border-slate-200/90 bg-gradient-to-b from-emerald-50/20 to-white p-5 sm:p-6 space-y-4">
+                  <div className="rounded-2xl border border-emerald-200/80 bg-gradient-to-b from-emerald-50/40 to-white p-4 sm:p-6 space-y-4 shadow-2xs">
                     {/* Header */}
-                    <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                      <div className="flex items-center gap-2">
-                        <div className="w-7 h-7 rounded-lg bg-emerald-500/15 text-emerald-600 flex items-center justify-center">
+                    <div className="flex items-center justify-between border-b border-emerald-100 pb-3 gap-2">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <div className="w-8 h-8 rounded-lg bg-emerald-500/15 text-emerald-600 flex items-center justify-center shrink-0">
                           <Building2 className="w-4 h-4 text-emerald-600" />
                         </div>
-                        <div>
-                          <h3 className="text-sm font-bold font-sf-pro text-slate-900">
+                        <div className="min-w-0">
+                          <h3 className="text-sm sm:text-base font-black font-sf-pro text-slate-900 truncate">
                             Cement, Steel &amp; Construction
                           </h3>
-                          <p className="text-[11px] text-slate-500">Direct factory depot &amp; rebar stock</p>
+                          <p className="text-[11px] text-slate-600 font-medium truncate">Direct factory depot &amp; rebar stock</p>
                         </div>
                       </div>
-                      <span className="text-xs font-bold text-emerald-900 bg-emerald-100/90 px-2.5 py-1 rounded-full">
+                      <span className="text-xs sm:text-sm font-black text-emerald-950 bg-emerald-200/90 px-2.5 py-1 rounded-full border border-emerald-300 shrink-0">
                         ₹{estimatedCost.constructionSubtotal.toLocaleString('en-IN')}
                       </span>
                     </div>
 
-                    <div className="space-y-3.5">
+                    <div className="space-y-2.5 sm:space-y-3">
                       {/* UltraTech Cement */}
-                      <div className="p-3 rounded-xl bg-slate-50/70 border border-slate-100 flex items-center justify-between gap-3 hover:border-slate-200 transition-colors">
+                      <div className="p-3 rounded-xl bg-white border border-slate-200 shadow-2xs flex items-center justify-between gap-2.5 hover:border-emerald-300 transition-colors">
                         <div className="min-w-0">
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs font-bold text-slate-900">UltraTech Cement</span>
-                            <span className="text-[10px] font-semibold text-slate-500 bg-white px-1.5 py-0.5 rounded border border-slate-200">
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            <span className="text-xs sm:text-sm font-black text-slate-900">UltraTech Cement</span>
+                            <span className="text-[10px] sm:text-[11px] font-bold text-emerald-900 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200/80">
                               ₹385/bag
                             </span>
                           </div>
-                          <p className="text-[10px] text-slate-400">50kg Fresh OPC 53 Grade / Super</p>
+                          <p className="text-[11px] text-slate-600 font-medium mt-0.5">50kg Fresh OPC 53 Grade / Super</p>
                         </div>
-                        <div className="flex items-center gap-2 shrink-0">
+                        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
                           <button
                             type="button"
                             onClick={() => setCementBags(Math.max(5, cementBags - 5))}
-                            className="w-8 h-8 rounded-lg bg-white border border-slate-200 text-slate-700 hover:bg-slate-900 hover:text-white active:scale-95 transition-all flex items-center justify-center font-bold shadow-2xs cursor-pointer"
+                            className="w-8.5 h-8.5 sm:w-8 sm:h-8 rounded-lg bg-slate-100 hover:bg-slate-900 hover:text-white active:bg-slate-900 active:text-white border border-slate-300 text-slate-900 active:scale-95 transition-all flex items-center justify-center font-black shadow-xs cursor-pointer"
                             aria-label="Decrease cement bags"
                           >
-                            <Minus className="w-3.5 h-3.5" />
+                            <Minus className="w-3.5 h-3.5 stroke-[2.5]" />
                           </button>
-                          <span className="w-8 text-center text-xs font-black font-sf-pro text-slate-900">
+                          <span className="w-8 text-center text-xs sm:text-sm font-black font-sf-pro text-slate-950">
                             {cementBags}
                           </span>
                           <button
                             type="button"
                             onClick={() => setCementBags(cementBags + 5)}
-                            className="w-8 h-8 rounded-lg bg-white border border-slate-200 text-slate-700 hover:bg-emerald-600 hover:text-white active:scale-95 transition-all flex items-center justify-center font-bold shadow-2xs cursor-pointer"
+                            className="w-8.5 h-8.5 sm:w-8 sm:h-8 rounded-lg bg-emerald-500 hover:bg-emerald-600 active:bg-emerald-700 border border-emerald-600 text-white active:scale-95 transition-all flex items-center justify-center font-black shadow-xs cursor-pointer"
                             aria-label="Increase cement bags"
                           >
-                            <Plus className="w-3.5 h-3.5" />
+                            <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
                           </button>
                         </div>
                       </div>
 
                       {/* TMT Steel */}
-                      <div className="p-3 rounded-xl bg-slate-50/70 border border-slate-100 flex items-center justify-between gap-3 hover:border-slate-200 transition-colors">
+                      <div className="p-3 rounded-xl bg-white border border-slate-200 shadow-2xs flex items-center justify-between gap-2.5 hover:border-emerald-300 transition-colors">
                         <div className="min-w-0">
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs font-bold text-slate-900">Tata Tiscon 550D TMT</span>
-                            <span className="text-[10px] font-semibold text-slate-500 bg-white px-1.5 py-0.5 rounded border border-slate-200">
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            <span className="text-xs sm:text-sm font-black text-slate-900">Tata Tiscon 550D TMT</span>
+                            <span className="text-[10px] sm:text-[11px] font-bold text-emerald-900 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200/80">
                               ₹62/kg
                             </span>
                           </div>
-                          <p className="text-[10px] text-slate-400">8mm - 16mm Primary Mill steel</p>
+                          <p className="text-[11px] text-slate-600 font-medium mt-0.5">8mm - 16mm Primary Mill steel</p>
                         </div>
-                        <div className="flex items-center gap-2 shrink-0">
+                        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
                           <button
                             type="button"
                             onClick={() => setTmtSteelKg(Math.max(50, tmtSteelKg - 50))}
-                            className="w-8 h-8 rounded-lg bg-white border border-slate-200 text-slate-700 hover:bg-slate-900 hover:text-white active:scale-95 transition-all flex items-center justify-center font-bold shadow-2xs cursor-pointer"
+                            className="w-8.5 h-8.5 sm:w-8 sm:h-8 rounded-lg bg-slate-100 hover:bg-slate-900 hover:text-white active:bg-slate-900 active:text-white border border-slate-300 text-slate-900 active:scale-95 transition-all flex items-center justify-center font-black shadow-xs cursor-pointer"
                             aria-label="Decrease TMT steel"
                           >
-                            <Minus className="w-3.5 h-3.5" />
+                            <Minus className="w-3.5 h-3.5 stroke-[2.5]" />
                           </button>
-                          <span className="w-12 text-center text-xs font-black font-sf-pro text-slate-900">
+                          <span className="w-12 text-center text-xs sm:text-sm font-black font-sf-pro text-slate-950">
                             {tmtSteelKg} kg
                           </span>
                           <button
                             type="button"
                             onClick={() => setTmtSteelKg(tmtSteelKg + 50)}
-                            className="w-8 h-8 rounded-lg bg-white border border-slate-200 text-slate-700 hover:bg-emerald-600 hover:text-white active:scale-95 transition-all flex items-center justify-center font-bold shadow-2xs cursor-pointer"
+                            className="w-8.5 h-8.5 sm:w-8 sm:h-8 rounded-lg bg-emerald-500 hover:bg-emerald-600 active:bg-emerald-700 border border-emerald-600 text-white active:scale-95 transition-all flex items-center justify-center font-black shadow-xs cursor-pointer"
                             aria-label="Increase TMT steel"
                           >
-                            <Plus className="w-3.5 h-3.5" />
+                            <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
                           </button>
                         </div>
                       </div>
 
                       {/* Waterproofing */}
-                      <div className="p-3 rounded-xl bg-slate-50/70 border border-slate-100 flex items-center justify-between gap-3 hover:border-slate-200 transition-colors">
+                      <div className="p-3 rounded-xl bg-white border border-slate-200 shadow-2xs flex items-center justify-between gap-2.5 hover:border-emerald-300 transition-colors">
                         <div className="min-w-0">
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs font-bold text-slate-900">Dr. Fixit 101 LW+</span>
-                            <span className="text-[10px] font-semibold text-slate-500 bg-white px-1.5 py-0.5 rounded border border-slate-200">
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            <span className="text-xs sm:text-sm font-black text-slate-900">Dr. Fixit 101 LW+</span>
+                            <span className="text-[10px] sm:text-[11px] font-bold text-emerald-900 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200/80">
                               ₹130/L
                             </span>
                           </div>
-                          <p className="text-[10px] text-slate-400">Integral waterproofing compound</p>
+                          <p className="text-[11px] text-slate-600 font-medium mt-0.5">Integral waterproofing compound</p>
                         </div>
-                        <div className="flex items-center gap-2 shrink-0">
+                        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
                           <button
                             type="button"
                             onClick={() => setWaterproofingLiters(Math.max(1, waterproofingLiters - 1))}
-                            className="w-8 h-8 rounded-lg bg-white border border-slate-200 text-slate-700 hover:bg-slate-900 hover:text-white active:scale-95 transition-all flex items-center justify-center font-bold shadow-2xs cursor-pointer"
+                            className="w-8.5 h-8.5 sm:w-8 sm:h-8 rounded-lg bg-slate-100 hover:bg-slate-900 hover:text-white active:bg-slate-900 active:text-white border border-slate-300 text-slate-900 active:scale-95 transition-all flex items-center justify-center font-black shadow-xs cursor-pointer"
                             aria-label="Decrease waterproofing"
                           >
-                            <Minus className="w-3.5 h-3.5" />
+                            <Minus className="w-3.5 h-3.5 stroke-[2.5]" />
                           </button>
-                          <span className="w-8 text-center text-xs font-black font-sf-pro text-slate-900">
+                          <span className="w-8 text-center text-xs sm:text-sm font-black font-sf-pro text-slate-950">
                             {waterproofingLiters} L
                           </span>
                           <button
                             type="button"
                             onClick={() => setWaterproofingLiters(waterproofingLiters + 1)}
-                            className="w-8 h-8 rounded-lg bg-white border border-slate-200 text-slate-700 hover:bg-emerald-600 hover:text-white active:scale-95 transition-all flex items-center justify-center font-bold shadow-2xs cursor-pointer"
+                            className="w-8.5 h-8.5 sm:w-8 sm:h-8 rounded-lg bg-emerald-500 hover:bg-emerald-600 active:bg-emerald-700 border border-emerald-600 text-white active:scale-95 transition-all flex items-center justify-center font-black shadow-xs cursor-pointer"
                             aria-label="Increase waterproofing"
                           >
-                            <Plus className="w-3.5 h-3.5" />
+                            <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
                           </button>
                         </div>
                       </div>
 
                       {/* Wall Putty */}
-                      <div className="p-3 rounded-xl bg-slate-50/70 border border-slate-100 flex items-center justify-between gap-3 hover:border-slate-200 transition-colors">
+                      <div className="p-3 rounded-xl bg-white border border-slate-200 shadow-2xs flex items-center justify-between gap-2.5 hover:border-emerald-300 transition-colors">
                         <div className="min-w-0">
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs font-bold text-slate-900">Asian Paints Wall Putty</span>
-                            <span className="text-[10px] font-semibold text-slate-500 bg-white px-1.5 py-0.5 rounded border border-slate-200">
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            <span className="text-xs sm:text-sm font-black text-slate-900">Asian Paints Wall Putty</span>
+                            <span className="text-[10px] sm:text-[11px] font-bold text-emerald-900 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200/80">
                               ₹680/bag
                             </span>
                           </div>
-                          <p className="text-[10px] text-slate-400">20kg Polymer modified white putty</p>
+                          <p className="text-[11px] text-slate-600 font-medium mt-0.5">20kg Polymer modified white putty</p>
                         </div>
-                        <div className="flex items-center gap-2 shrink-0">
+                        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
                           <button
                             type="button"
                             onClick={() => setWallPuttyBags(Math.max(1, wallPuttyBags - 1))}
-                            className="w-8 h-8 rounded-lg bg-white border border-slate-200 text-slate-700 hover:bg-slate-900 hover:text-white active:scale-95 transition-all flex items-center justify-center font-bold shadow-2xs cursor-pointer"
+                            className="w-8.5 h-8.5 sm:w-8 sm:h-8 rounded-lg bg-slate-100 hover:bg-slate-900 hover:text-white active:bg-slate-900 active:text-white border border-slate-300 text-slate-900 active:scale-95 transition-all flex items-center justify-center font-black shadow-xs cursor-pointer"
                             aria-label="Decrease wall putty bags"
                           >
-                            <Minus className="w-3.5 h-3.5" />
+                            <Minus className="w-3.5 h-3.5 stroke-[2.5]" />
                           </button>
-                          <span className="w-8 text-center text-xs font-black font-sf-pro text-slate-900">
+                          <span className="w-8 text-center text-xs sm:text-sm font-black font-sf-pro text-slate-950">
                             {wallPuttyBags}
                           </span>
                           <button
                             type="button"
                             onClick={() => setWallPuttyBags(wallPuttyBags + 1)}
-                            className="w-8 h-8 rounded-lg bg-white border border-slate-200 text-slate-700 hover:bg-emerald-600 hover:text-white active:scale-95 transition-all flex items-center justify-center font-bold shadow-2xs cursor-pointer"
+                            className="w-8.5 h-8.5 sm:w-8 sm:h-8 rounded-lg bg-emerald-500 hover:bg-emerald-600 active:bg-emerald-700 border border-emerald-600 text-white active:scale-95 transition-all flex items-center justify-center font-black shadow-xs cursor-pointer"
                             aria-label="Increase wall putty bags"
                           >
-                            <Plus className="w-3.5 h-3.5" />
+                            <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
                           </button>
                         </div>
                       </div>
@@ -1461,38 +1461,38 @@ export const HomePage: React.FC<HomePageProps> = ({
             </div>
 
             {/* Bottom Total Estimation Bar & High-Conversion Action Buttons */}
-            <div className="p-4 sm:p-6 bg-slate-900 text-white flex flex-col md:flex-row items-center justify-between gap-5 border-t border-slate-800">
+            <div className="p-4 sm:p-6 bg-slate-950 text-white flex flex-col md:flex-row items-center justify-between gap-5 border-t border-slate-800">
               <div className="space-y-1.5 text-center md:text-left w-full md:w-auto">
-                <div className="flex items-center justify-center md:justify-start gap-2">
-                  <span className="text-[11px] font-bold text-amber-400 uppercase tracking-wider font-sf-pro">
+                <div className="flex items-center justify-center md:justify-start gap-2 flex-wrap">
+                  <span className="text-xs font-black text-amber-400 uppercase tracking-wider font-sf-pro">
                     Total Estimated Wholesale Price
                   </span>
-                  <span className="text-[10px] font-semibold text-emerald-400 bg-emerald-950/80 border border-emerald-800/80 px-2 py-0.5 rounded-full">
+                  <span className="text-[11px] font-bold text-emerald-300 bg-emerald-950 border border-emerald-700 px-2.5 py-0.5 rounded-full">
                     GST Invoice Included
                   </span>
                 </div>
                 <div className="flex items-baseline justify-center md:justify-start gap-2">
-                  <span className="text-3xl sm:text-4xl font-bold font-sf-pro tracking-tight text-white">
+                  <span className="text-3xl sm:text-4xl font-black font-sf-pro tracking-tight text-white">
                     ₹{estimatedCost.total.toLocaleString('en-IN')}
                   </span>
-                  <span className="text-xs text-slate-400 font-medium">
+                  <span className="text-xs text-slate-300 font-medium">
                     (Approximate Depot Rate)
                   </span>
                 </div>
-                <p className="text-[11px] text-slate-400">
+                <p className="text-xs text-slate-300 font-medium">
                   Bulk order pricing with direct dispatch from Kolkata Kasba depot.
                 </p>
               </div>
 
-              {/* Action Buttons */}
-              <div className="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto">
+              {/* Action Buttons with high visibility and large touch targets */}
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full md:w-auto">
                 <button
                   type="button"
                   onClick={() => handlePresetChange('2bhk')}
-                  className="w-full sm:w-auto px-4 py-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold font-sf-pro text-xs transition-all flex items-center justify-center gap-1.5 border border-slate-700 cursor-pointer"
+                  className="w-full sm:w-auto px-5 py-3.5 rounded-xl bg-slate-800 hover:bg-slate-700 active:bg-slate-600 text-white font-black font-sf-pro text-xs sm:text-sm transition-all flex items-center justify-center gap-2 border border-slate-600 shadow-xs cursor-pointer active:scale-98"
                   title="Reset to 2 BHK standard preset"
                 >
-                  <RotateCcw className="w-3.5 h-3.5" />
+                  <RotateCcw className="w-4 h-4 text-slate-300" />
                   <span>Reset Default</span>
                 </button>
 
@@ -1500,9 +1500,9 @@ export const HomePage: React.FC<HomePageProps> = ({
                   href={`https://wa.me/918777400280?text=Hi%20Giriraj%20Power,%20I%20used%20the%20Cost%20Calculator%20for%20a%20project%20estimate%20of%20Rs%20${estimatedCost.total}.%20Please%20send%20the%20official%20quotation.`}
                   target="_blank"
                   rel="noreferrer"
-                  className="w-full sm:w-auto px-6 py-3 rounded-xl bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white font-bold font-sf-pro text-xs sm:text-sm flex items-center justify-center gap-2 shadow-sm shadow-emerald-900/30 hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer"
+                  className="w-full sm:w-auto px-6 py-3.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 active:bg-emerald-700 text-white font-black font-sf-pro text-xs sm:text-sm flex items-center justify-center gap-2 shadow-md shadow-emerald-950/40 hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer text-center"
                 >
-                  <MessageSquare className="w-4 h-4 fill-white text-emerald-600" />
+                  <MessageSquare className="w-4 h-4 fill-white text-emerald-600 shrink-0" />
                   <span>Get Instant WhatsApp Quote</span>
                 </a>
               </div>

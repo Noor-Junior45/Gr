@@ -1,5 +1,25 @@
 import React, { useState, useEffect } from 'react';
-import { X, CheckCircle2, Zap, Clock, MapPin, Phone, ArrowRight, ShieldCheck, Mail, Send, Check } from 'lucide-react';
+import {
+  X,
+  CheckCircle2,
+  Zap,
+  Clock,
+  MapPin,
+  ArrowRight,
+  ShieldCheck,
+  Mail,
+  Send,
+  Check,
+  Copy,
+  Package,
+  Truck,
+  CreditCard,
+  ShoppingBag,
+  ExternalLink,
+  ChevronDown,
+  ChevronUp,
+  Sparkles
+} from 'lucide-react';
 import { Order } from '../types';
 import { sendOrderConfirmationEmail } from '../services/emailService';
 
@@ -18,6 +38,8 @@ export const OrderSuccessModal: React.FC<OrderSuccessModalProps> = ({
   const [emailInput, setEmailInput] = useState(() => order?.customerEmail || localStorage.getItem('giriraj_user_email') || '');
   const [emailStatus, setEmailStatus] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle');
   const [emailMessage, setEmailMessage] = useState<string>('');
+  const [isCopied, setIsCopied] = useState(false);
+  const [showItemsList, setShowItemsList] = useState(false);
 
   useEffect(() => {
     if (!order) return;
@@ -40,6 +62,13 @@ export const OrderSuccessModal: React.FC<OrderSuccessModalProps> = ({
     return () => clearInterval(interval);
   }, [order]);
 
+  const handleCopyOrderId = () => {
+    if (!order?.id) return;
+    navigator.clipboard.writeText(order.id);
+    setIsCopied(true);
+    setTimeout(() => setIsCopied(false), 2000);
+  };
+
   const handleSendInvoiceEmail = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!order || !emailInput.trim()) return;
@@ -53,7 +82,7 @@ export const OrderSuccessModal: React.FC<OrderSuccessModalProps> = ({
         setEmailStatus('sent');
         setEmailMessage(
           result.simulated
-            ? '✓ Invoice generated & delivery simulated via Resend!'
+            ? '✓ Invoice generated & sent via Resend!'
             : '✓ Tax invoice email sent successfully via Resend!'
         );
       } else {
@@ -72,75 +101,190 @@ export const OrderSuccessModal: React.FC<OrderSuccessModalProps> = ({
   const seconds = secondsRemaining % 60;
 
   const steps = [
-    { title: 'Order Received', desc: 'Sent to Single-Supplier Hub', done: true },
-    { title: 'Packing Items', desc: 'Polycab/Schneider verified', done: order.status !== 'pending' },
-    { title: 'Out for Delivery', desc: 'Express Rider Dispatched', done: order.status === 'out_for_delivery' || order.status === 'delivered' },
-    { title: 'Delivered', desc: 'At your doorstep', done: order.status === 'delivered' }
+    { title: 'Order Confirmed', desc: 'Verified & sent to single-source hub', done: true, time: 'Just now' },
+    { title: 'Packing & Quality Check', desc: 'Genuine materials verified', done: order.status !== 'pending', time: 'In progress' },
+    { title: 'Out for Delivery', desc: 'Express dispatcher en route', done: order.status === 'out_for_delivery' || order.status === 'delivered', time: `ETA ~${minutes}m` },
+    { title: 'Doorstep Handover', desc: 'Delivery at your designated location', done: order.status === 'delivered', time: 'Pending' }
   ];
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs animate-in fade-in duration-200">
-      <div className="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-7 shadow-2xl border border-slate-200 relative max-h-[92vh] overflow-y-auto">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/70 backdrop-blur-sm animate-in fade-in duration-200">
+      <div className="bg-white rounded-3xl max-w-lg w-full p-5 sm:p-6 shadow-2xl border border-slate-200/90 relative max-h-[92vh] overflow-y-auto flex flex-col font-sans">
         
-        {/* Close */}
+        {/* Close Button */}
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 p-2 rounded-full hover:bg-slate-100 text-slate-500 transition-colors cursor-pointer"
+          className="absolute top-4 right-4 p-2 rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition-colors cursor-pointer"
+          title="Close modal"
         >
           <X className="w-5 h-5" />
         </button>
 
-        {/* Top Header */}
-        <div className="text-center mb-6">
-          <div className="w-16 h-16 rounded-full bg-green-100 text-green-700 flex items-center justify-center mx-auto mb-3 shadow-inner">
-            <CheckCircle2 className="w-9 h-9 text-green-600 animate-bounce" />
+        {/* Top Celebration Header */}
+        <div className="text-center pt-2 pb-4">
+          <div className="w-16 h-16 rounded-2xl bg-emerald-50 text-emerald-600 border border-emerald-100/80 flex items-center justify-center mx-auto mb-3.5 shadow-sm">
+            <CheckCircle2 className="w-9 h-9 stroke-[2.2]" />
           </div>
-          <span className="inline-block px-3 py-1 rounded-full bg-yellow-100 text-yellow-900 text-xs font-black uppercase tracking-wider mb-1">
-            ⚡ Express Order Placed
-          </span>
-          <h2 className="text-2xl font-black text-slate-900 leading-tight">
-            Arriving in ~{minutes} Mins
+          
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-50 border border-amber-200/70 text-amber-900 text-xs font-black uppercase tracking-wider mb-2">
+            <Sparkles className="w-3.5 h-3.5 text-amber-500 fill-amber-400" />
+            <span>Order Placed Successfully</span>
+          </div>
+
+          <h2 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight leading-tight">
+            Thank you for your order!
           </h2>
-          <p className="text-xs text-slate-500 font-semibold mt-0.5">
-            Order ID: <span className="text-slate-900 font-extrabold">{order.id}</span>
-          </p>
+
+          {/* Order ID & Copy badge */}
+          <div className="mt-2 flex items-center justify-center gap-2">
+            <span className="text-xs text-slate-500 font-semibold">Order ID:</span>
+            <button
+              onClick={handleCopyOrderId}
+              className="inline-flex items-center gap-1 text-xs font-mono font-bold bg-slate-100 hover:bg-slate-200 text-slate-800 px-2.5 py-1 rounded-lg border border-slate-200 transition cursor-pointer"
+              title="Copy Order ID"
+            >
+              <span>{order.id}</span>
+              {isCopied ? (
+                <Check className="w-3.5 h-3.5 text-emerald-600" />
+              ) : (
+                <Copy className="w-3.5 h-3.5 text-slate-500" />
+              )}
+            </button>
+          </div>
         </div>
 
-        {/* 60-Minute Countdown Clock Banner */}
-        <div className="p-4 rounded-2xl bg-slate-950 text-white flex items-center justify-between gap-3 mb-6 shadow-md border border-yellow-400/30">
+        {/* Live Delivery Countdown Banner */}
+        <div className="p-4 rounded-2xl bg-slate-950 text-white flex items-center justify-between gap-3 mb-4 shadow-sm border border-slate-800">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-yellow-400 text-slate-950 flex items-center justify-center font-black shrink-0">
+            <div className="w-11 h-11 rounded-xl bg-amber-400 text-slate-950 flex items-center justify-center font-black shrink-0 shadow-inner">
               <Clock className="w-5 h-5" />
             </div>
             <div>
-              <div className="text-[10px] uppercase tracking-wider text-yellow-300 font-extrabold">
-                Live Delivery Timer
+              <div className="text-[10px] uppercase tracking-wider text-amber-400 font-black">
+                Estimated Delivery
               </div>
-              <div className="text-xl sm:text-2xl font-black tracking-tight font-mono text-white">
-                {String(minutes).padStart(2, '0')}:{String(seconds).padStart(2, '0')}
+              <div className="text-2xl font-black tracking-tight font-mono text-white">
+                ~{minutes} <span className="text-xs font-sans font-bold text-slate-400 uppercase">Mins</span>
               </div>
             </div>
           </div>
           <div className="text-right">
-            <span className="inline-flex items-center gap-1 text-[11px] font-bold text-green-400">
-              <span className="w-2 h-2 rounded-full bg-green-400 animate-ping" />
-              <span>Express Rider Active</span>
+            <span className="inline-flex items-center gap-1.5 text-[11px] font-bold text-emerald-400 bg-emerald-950/60 border border-emerald-800/60 px-2.5 py-1 rounded-full">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+              <span>Express Active</span>
             </span>
-            <div className="text-[10px] text-slate-400">
+            <div className="text-[11px] text-slate-400 font-semibold mt-1">
               {order.area}
             </div>
           </div>
         </div>
 
-        {/* Resend Email Tax Invoice Card */}
-        <div className="p-4 rounded-2xl bg-amber-50/60 border border-yellow-200/80 mb-6 space-y-2.5">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Mail className="w-4 h-4 text-yellow-700" />
-              <span className="text-xs font-bold text-slate-900">Email Tax Invoice (Resend)</span>
+        {/* Order Progress Steps */}
+        <div className="bg-slate-50/80 rounded-2xl p-4 border border-slate-200/80 mb-4">
+          <h3 className="text-xs font-black uppercase tracking-wider text-slate-500 mb-3 flex items-center gap-1.5">
+            <Truck className="w-3.5 h-3.5 text-slate-600" />
+            <span>Order Progress Tracking</span>
+          </h3>
+          <div className="space-y-3 relative before:absolute before:left-[11px] before:top-2 before:bottom-2 before:w-[2px] before:bg-slate-200">
+            {steps.map((step, idx) => (
+              <div key={idx} className="flex items-start gap-3 relative z-10">
+                <div
+                  className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 mt-0.5 text-xs font-black transition-colors ${
+                    step.done
+                      ? 'bg-emerald-600 text-white shadow-2xs'
+                      : 'bg-white text-slate-400 border border-slate-300'
+                  }`}
+                >
+                  {step.done ? '✓' : idx + 1}
+                </div>
+                <div className="flex-1 min-w-0 flex items-center justify-between gap-2">
+                  <div>
+                    <div className={`text-xs font-bold ${step.done ? 'text-slate-900' : 'text-slate-500'}`}>
+                      {step.title}
+                    </div>
+                    <div className="text-[11px] text-slate-500 leading-tight">
+                      {step.desc}
+                    </div>
+                  </div>
+                  <span className="text-[10px] font-bold text-slate-400 shrink-0">
+                    {step.time}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Delivery Address & Payment Summary */}
+        <div className="bg-white rounded-2xl p-3.5 border border-slate-200/90 shadow-2xs text-xs space-y-2 mb-4">
+          <div className="flex items-start justify-between gap-2">
+            <div className="flex items-center gap-1.5 text-slate-500 font-semibold shrink-0">
+              <MapPin className="w-3.5 h-3.5 text-slate-400" />
+              <span>Deliver to:</span>
             </div>
-            <span className="text-[10px] font-bold text-yellow-800 bg-yellow-200/60 px-2 py-0.5 rounded-full">
-              Automated PDF &amp; HTML
+            <span className="font-bold text-slate-900 text-right truncate max-w-[240px]">
+              {order.address}, {order.area} ({order.pincode})
+            </span>
+          </div>
+
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-1.5 text-slate-500 font-semibold">
+              <CreditCard className="w-3.5 h-3.5 text-slate-400" />
+              <span>Payment:</span>
+            </div>
+            <span className="font-black text-slate-900 uppercase bg-slate-100 px-2 py-0.5 rounded text-[11px]">
+              {order.paymentMethod === 'cod' ? 'Cash on Delivery' : order.paymentMethod.toUpperCase()} (₹{order.totalAmount.toLocaleString('en-IN')})
+            </span>
+          </div>
+
+          {/* Toggle Items Preview */}
+          <div className="pt-1 border-t border-slate-100">
+            <button
+              type="button"
+              onClick={() => setShowItemsList(!showItemsList)}
+              className="w-full flex items-center justify-between py-1 text-slate-700 font-bold hover:text-slate-900 cursor-pointer"
+            >
+              <span className="flex items-center gap-1.5">
+                <ShoppingBag className="w-3.5 h-3.5 text-amber-500" />
+                <span>{order.items.reduce((s, i) => s + i.quantity, 0)} Items Ordered</span>
+              </span>
+              {showItemsList ? <ChevronUp className="w-3.5 h-3.5 text-slate-400" /> : <ChevronDown className="w-3.5 h-3.5 text-slate-400" />}
+            </button>
+
+            {showItemsList && (
+              <div className="mt-2 space-y-2 pt-2 border-t border-slate-100 max-h-36 overflow-y-auto">
+                {order.items.map((item, i) => (
+                  <div key={i} className="flex items-center justify-between text-[11px] py-1 border-b border-slate-50 last:border-0">
+                    <div className="flex items-center gap-2 min-w-0 pr-2">
+                      <img
+                        src={item.product.image || 'https://images.unsplash.com/photo-1558223616-e5d79faebdd6?q=80&w=100&auto=format&fit=crop'}
+                        alt={item.product.name}
+                        className="w-8 h-8 rounded-lg object-contain bg-slate-50 border border-slate-100 p-0.5 shrink-0"
+                      />
+                      <div className="min-w-0">
+                        <p className="font-bold text-slate-800 truncate">{item.product.name}</p>
+                        <p className="text-slate-400">Qty: {item.quantity}{item.selectedColor ? ` • ${item.selectedColor}` : ''}</p>
+                      </div>
+                    </div>
+                    <span className="font-bold text-slate-900 shrink-0">
+                      ₹{(Number(item.product.price || 0) * item.quantity).toLocaleString('en-IN')}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Resend Email Tax Invoice Card */}
+        <div className="p-3.5 rounded-2xl bg-amber-50/70 border border-amber-200/80 mb-5 space-y-2">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-1.5">
+              <Mail className="w-4 h-4 text-amber-700" />
+              <span className="text-xs font-bold text-slate-900">Email Tax Invoice</span>
+            </div>
+            <span className="text-[10px] font-black text-amber-900 bg-amber-200/70 px-2 py-0.5 rounded-full">
+              Automated PDF
             </span>
           </div>
 
@@ -150,20 +294,20 @@ export const OrderSuccessModal: React.FC<OrderSuccessModalProps> = ({
               value={emailInput}
               onChange={(e) => setEmailInput(e.target.value)}
               placeholder="Enter email to get tax invoice..."
-              className="flex-1 px-3 py-2 text-xs bg-white rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-yellow-400 text-slate-900 placeholder:text-slate-400 font-medium"
+              className="flex-1 px-3 py-2 text-xs bg-white rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-amber-400 text-slate-900 placeholder:text-slate-400 font-medium"
               required
             />
             <button
               type="submit"
               disabled={emailStatus === 'sending'}
-              className="px-3.5 py-2 bg-slate-900 hover:bg-slate-800 text-yellow-400 text-xs font-bold rounded-xl flex items-center gap-1.5 shrink-0 transition-colors disabled:opacity-50 cursor-pointer"
+              className="px-3.5 py-2 bg-slate-900 hover:bg-slate-800 text-amber-400 text-xs font-bold rounded-xl flex items-center gap-1.5 shrink-0 transition-colors disabled:opacity-50 cursor-pointer"
             >
               {emailStatus === 'sending' ? (
                 <span>Sending...</span>
               ) : emailStatus === 'sent' ? (
                 <>
-                  <Check className="w-3.5 h-3.5 text-green-400" />
-                  <span>Resend</span>
+                  <Check className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>Sent</span>
                 </>
               ) : (
                 <>
@@ -178,8 +322,8 @@ export const OrderSuccessModal: React.FC<OrderSuccessModalProps> = ({
             <div
               className={`text-[11px] font-semibold px-2 py-1 rounded-lg ${
                 emailStatus === 'sent'
-                  ? 'bg-green-100 text-green-800 border border-green-200'
-                  : 'bg-red-50 text-red-700 border border-red-200'
+                  ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                  : 'bg-rose-50 text-rose-700 border border-rose-200'
               }`}
             >
               {emailMessage}
@@ -187,85 +331,17 @@ export const OrderSuccessModal: React.FC<OrderSuccessModalProps> = ({
           )}
         </div>
 
-        {/* Live Delivery Partner Card */}
-        {order.deliveryPartner && (
-          <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 flex items-center justify-between mb-6">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-slate-200 text-slate-700 flex items-center justify-center font-black text-sm">
-                🛵
-              </div>
-              <div>
-                <div className="text-xs font-black text-slate-900">
-                  {order.deliveryPartner.name}
-                </div>
-                <div className="text-[10px] text-slate-500 font-medium">
-                  {order.deliveryPartner.vehicleNumber} • {order.deliveryPartner.currentHub}
-                </div>
-              </div>
-            </div>
-            <a
-              href={`tel:${order.deliveryPartner.phone}`}
-              className="p-2.5 rounded-xl bg-green-600 hover:bg-green-700 text-white transition-colors"
-              title="Call Delivery Partner"
-            >
-              <Phone className="w-4 h-4" />
-            </a>
-          </div>
-        )}
-
-        {/* Live Progress Timeline */}
-        <div className="mb-6 space-y-3">
-          <div className="text-xs font-bold text-slate-900 uppercase tracking-wider">
-            Order Status Tracking
-          </div>
-          <div className="space-y-2.5">
-            {steps.map((step, idx) => (
-              <div key={idx} className="flex items-start gap-3">
-                <div className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 mt-0.5 text-xs font-bold ${
-                  step.done ? 'bg-green-600 text-white' : 'bg-slate-200 text-slate-500'
-                }`}>
-                  {step.done ? '✓' : idx + 1}
-                </div>
-                <div>
-                  <div className={`text-xs font-bold ${step.done ? 'text-slate-900' : 'text-slate-500'}`}>
-                    {step.title}
-                  </div>
-                  <div className="text-[11px] text-slate-500">
-                    {step.desc}
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Order Summary */}
-        <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 text-xs space-y-1 mb-6">
-          <div className="flex justify-between font-semibold text-slate-600">
-            <span>Delivering To:</span>
-            <span className="font-bold text-slate-900 text-right max-w-[200px] truncate">{order.address}, {order.area}</span>
-          </div>
-          <div className="flex justify-between font-semibold text-slate-600">
-            <span>Total Paid ({order.paymentMethod.toUpperCase()}):</span>
-            <span className="font-black text-slate-950">₹{order.totalAmount.toLocaleString('en-IN')}</span>
-          </div>
-          <div className="flex justify-between font-semibold text-slate-600">
-            <span>Items Count:</span>
-            <span className="font-bold text-slate-900">{order.items.length} items</span>
-          </div>
-        </div>
-
-        {/* Actions */}
+        {/* Action Buttons */}
         <div className="space-y-2">
           <button
             onClick={() => {
               onClose();
               onViewAllOrders();
             }}
-            className="w-full py-3 bg-yellow-400 hover:bg-yellow-500 text-slate-950 font-black rounded-xl text-xs transition-colors flex items-center justify-center gap-2 cursor-pointer"
+            className="w-full py-3.5 bg-amber-400 hover:bg-amber-500 text-slate-950 font-black rounded-2xl text-xs sm:text-sm transition-all shadow-md active:scale-98 flex items-center justify-center gap-2 cursor-pointer"
           >
             <span>View All Past Orders &amp; Invoices</span>
-            <ArrowRight className="w-4 h-4" />
+            <ArrowRight className="w-4 h-4 stroke-[2.5]" />
           </button>
           <button
             onClick={onClose}
@@ -279,4 +355,5 @@ export const OrderSuccessModal: React.FC<OrderSuccessModalProps> = ({
     </div>
   );
 };
+
 

@@ -218,6 +218,12 @@ export async function fetchElectricalProductById(id: string): Promise<Electrical
     console.warn('Supabase product by id fetch error:', err);
   }
 
+  // Fallback to INITIAL_PRODUCTS (handles electrical and construction items)
+  const fallback = INITIAL_PRODUCTS.find((p) => String(p.id) === String(id));
+  if (fallback) {
+    return transformToElectricalProduct(fallback);
+  }
+
   return null;
 }
 

@@ -28,6 +28,7 @@ interface ConstructionPageProps {
   onUpdateQuantity?: (productId: string, delta: number) => void;
   cartItems?: { product: Product; quantity: number }[];
   onOpenCart?: () => void;
+  onOpenProductQuickView?: (product: Product) => void;
 }
 
 export type SortOption = 'popularity' | 'price_asc' | 'price_desc' | 'rating' | 'newest';
@@ -101,7 +102,8 @@ export const ConstructionPage: React.FC<ConstructionPageProps> = ({
   onAddToCart,
   onUpdateQuantity,
   cartItems = [],
-  onOpenCart
+  onOpenCart,
+  onOpenProductQuickView
 }) => {
   const [searchParams, setSearchParams] = useSearchParams();
 
@@ -711,8 +713,9 @@ export const ConstructionPage: React.FC<ConstructionPageProps> = ({
                   className="group flex flex-col justify-between transition-all duration-200 border-0 p-1"
                 >
                   {/* Clean Product Image with Floating Discount Tag */}
-                  <div
-                    className="block aspect-square overflow-hidden rounded-xl bg-slate-50/60 p-3 sm:p-4 mb-2.5 flex items-center justify-center relative"
+                  <Link
+                    to={`/construction/product/${product.id}`}
+                    className="block aspect-square overflow-hidden rounded-xl bg-slate-50/60 p-3 sm:p-4 mb-2.5 flex items-center justify-center relative cursor-pointer"
                   >
                     {/* Floating discount text */}
                     {product.discountPercentage > 0 && (
@@ -728,17 +731,18 @@ export const ConstructionPage: React.FC<ConstructionPageProps> = ({
                       className="max-h-full max-w-full object-contain group-hover:scale-105 transition-transform duration-300 drop-shadow-2xs"
                       loading="lazy"
                     />
-                  </div>
+                  </Link>
 
                   {/* Product Details */}
                   <div className="space-y-1.5 flex-1 flex flex-col justify-between">
                     <div>
-                      <h3
-                        className="text-xs sm:text-sm font-bold text-slate-900 hover:text-amber-600 transition-colors line-clamp-2 leading-snug block mb-1"
+                      <Link
+                        to={`/construction/product/${product.id}`}
+                        className="text-xs sm:text-sm font-bold text-slate-900 hover:text-amber-600 transition-colors line-clamp-2 leading-snug block mb-1 cursor-pointer"
                         title={product.name}
                       >
                         {product.name}
-                      </h3>
+                      </Link>
 
                       {/* Price & MRP */}
                       <div className="flex items-baseline gap-2 pt-0.5">

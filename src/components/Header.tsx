@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Zap, ShoppingBag, User, ChevronDown, Home, Briefcase, Building2, MapPin, Grid, Wrench, AlertTriangle, Download, Smartphone } from 'lucide-react';
+import { Zap, ShoppingBag, User, ChevronDown, Home, Briefcase, Building2, MapPin, Grid, Wrench, AlertTriangle } from 'lucide-react';
 import { KolkataArea, SavedAddress, UserProfile } from '../types';
 
 interface HeaderProps {
@@ -172,23 +172,8 @@ export const Header: React.FC<HeaderProps> = ({
             </div>
           </div>
 
-          {/* Right Action Icons: Install App, Cart Button, Profile Button */}
-          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-            {/* Install / Download App Button */}
-            {onOpenInstallApp && (
-              <button
-                id="top-navbar-download-app-btn"
-                onClick={onOpenInstallApp}
-                className="px-2.5 sm:px-3 py-1.5 rounded-full flex items-center gap-1.5 bg-emerald-50 hover:bg-emerald-100/90 text-emerald-800 border border-emerald-300 text-xs font-bold transition-all active:scale-95 cursor-pointer shadow-2xs group"
-                title="Download App / Install on your Device"
-                aria-label="Download App"
-              >
-                <Download className="w-3.5 h-3.5 text-emerald-600 group-hover:scale-110 transition-transform" />
-                <span className="hidden sm:inline">Install App</span>
-                <span className="sm:hidden text-[11px]">App</span>
-              </button>
-            )}
-
+          {/* Right Action Icons: Cart Button, Profile Button */}
+          <div className="flex items-center gap-2 sm:gap-4 shrink-0">
             {/* Cart Button */}
             <button
               id="top-navbar-cart-btn"

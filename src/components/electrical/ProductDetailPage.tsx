@@ -286,18 +286,34 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
           </div>
           <h2 className="text-lg font-black text-slate-900">Product Not Found</h2>
           <p className="text-xs text-slate-500">
-            The electrical product you are looking for does not exist or has been removed.
+            The product you are looking for does not exist or has been removed from our catalog.
           </p>
-          <Link
-            to="/electrical"
-            className="inline-block px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-md transition-colors"
-          >
-            Back to Electrical Store
-          </Link>
+          <div className="flex items-center justify-center gap-3 pt-2">
+            <Link
+              to="/electrical"
+              className="inline-block px-5 py-2.5 bg-yellow-400 hover:bg-yellow-500 text-slate-950 text-xs font-bold rounded-md transition-colors"
+            >
+              Electrical Store
+            </Link>
+            <Link
+              to="/construction"
+              className="inline-block px-5 py-2.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-md transition-colors"
+            >
+              Construction Store
+            </Link>
+          </div>
         </div>
       </div>
     );
   }
+
+  const isConstructionCategory = (product.category || '').toLowerCase().includes('construction') ||
+    (product.subcategory || '').toLowerCase().includes('cement') ||
+    (product.subcategory || '').toLowerCase().includes('tmt') ||
+    (product.subcategory || '').toLowerCase().includes('waterproof') ||
+    (product.subcategory || '').toLowerCase().includes('paint');
+  const catalogBackRoute = isConstructionCategory ? '/construction' : '/electrical';
+  const catalogBackTitle = isConstructionCategory ? 'Back to Construction Store' : 'Back to Electrical Store';
 
   const currentImage =
     product.image_urls[selectedImageIndex] ||
@@ -309,7 +325,7 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
       <SEOHead
         title={`${product.name} - Buy Online at Best Price in Kolkata | Giriraj Power`}
         description={`Buy authentic ${product.brand} ${product.name} at ₹${product.price} in Kolkata. Fast 60-min delivery, genuine manufacturer warranty, and certified quality from Giriraj Power.`}
-        keywords={`${product.name}, ${product.brand} ${product.subcategory}, buy ${product.name} Kolkata, electrical shop near me, ${product.tags?.join(', ')}`}
+        keywords={`${product.name}, ${product.brand} ${product.subcategory}, buy ${product.name} Kolkata, wholesale shop near me, ${product.tags?.join(', ')}`}
         image={currentImage}
         productData={{
           name: product.name,
@@ -323,13 +339,13 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
         }}
       />
       
-      {/* Floating Back Button to easily go back to Electrical catalog from anywhere */}
+      {/* Floating Back Button to easily go back to Store catalog from anywhere */}
       <button
         type="button"
-        onClick={() => navigate('/electrical')}
+        onClick={() => navigate(catalogBackRoute)}
         className="fixed top-28 sm:top-32 left-4 sm:left-6 z-50 p-2.5 sm:p-3 rounded-full bg-white text-slate-800 hover:bg-yellow-400 hover:text-slate-950 shadow-xl hover:shadow-2xl transition-all border border-slate-300 backdrop-blur-md cursor-pointer active:scale-90 flex items-center justify-center group"
-        title="Back to Electrical Store"
-        aria-label="Back to Electrical Store"
+        title={catalogBackTitle}
+        aria-label={catalogBackTitle}
       >
         <ArrowLeft className="w-5 h-5 stroke-[2.5] group-hover:-translate-x-0.5 transition-transform" />
       </button>
