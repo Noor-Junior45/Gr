@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Zap, ShoppingBag, User, ChevronDown, Home, Briefcase, Building2, MapPin, Grid, Wrench, AlertTriangle } from 'lucide-react';
+import { Zap, ShoppingBag, User, ChevronDown, Home, Briefcase, Building2, MapPin, Grid, Wrench, AlertTriangle, Download, Smartphone } from 'lucide-react';
 import { KolkataArea, SavedAddress, UserProfile } from '../types';
 
 interface HeaderProps {
@@ -23,6 +23,7 @@ interface HeaderProps {
   activeCategory: string;
   onSelectCategory: (cat: string) => void;
   onOpenWishlist?: () => void;
+  onOpenInstallApp?: () => void;
 }
 
 function getHeaderDisplayLocation(currentArea: KolkataArea | null, activeAddress?: SavedAddress | null): { houseNameOnly: string; tag?: string } {
@@ -65,7 +66,8 @@ export const Header: React.FC<HeaderProps> = ({
   activeTab,
   onTabChange,
   activeCategory,
-  onSelectCategory
+  onSelectCategory,
+  onOpenInstallApp
 }) => {
   const [imgError, setImgError] = useState(false);
   const locationInfo = getHeaderDisplayLocation(currentArea, activeAddress);
@@ -138,7 +140,7 @@ export const Header: React.FC<HeaderProps> = ({
             <div className="flex flex-col justify-center text-left">
               <button
                 onClick={() => onTabChange('home')}
-                className="text-lg sm:text-xl font-bold tracking-normal leading-none flex items-center gap-1.5 text-left cursor-pointer focus:outline-none font-bodoni"
+                className="text-lg sm:text-xl font-black tracking-tight leading-none flex items-center gap-1.5 text-left cursor-pointer focus:outline-none font-sf-pro"
               >
                 <span className="text-black">Giriraj</span>
                 <span className="text-[#00875a]">Power</span>
@@ -170,8 +172,23 @@ export const Header: React.FC<HeaderProps> = ({
             </div>
           </div>
 
-          {/* Right Action Icons: Cart Button beside Profile Button */}
-          <div className="flex items-center gap-2 sm:gap-4 shrink-0">
+          {/* Right Action Icons: Install App, Cart Button, Profile Button */}
+          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+            {/* Install / Download App Button */}
+            {onOpenInstallApp && (
+              <button
+                id="top-navbar-download-app-btn"
+                onClick={onOpenInstallApp}
+                className="px-2.5 sm:px-3 py-1.5 rounded-full flex items-center gap-1.5 bg-emerald-50 hover:bg-emerald-100/90 text-emerald-800 border border-emerald-300 text-xs font-bold transition-all active:scale-95 cursor-pointer shadow-2xs group"
+                title="Download App / Install on your Device"
+                aria-label="Download App"
+              >
+                <Download className="w-3.5 h-3.5 text-emerald-600 group-hover:scale-110 transition-transform" />
+                <span className="hidden sm:inline">Install App</span>
+                <span className="sm:hidden text-[11px]">App</span>
+              </button>
+            )}
+
             {/* Cart Button */}
             <button
               id="top-navbar-cart-btn"

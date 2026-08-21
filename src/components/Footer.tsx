@@ -9,15 +9,17 @@ import {
   Building2,
   ExternalLink,
   Clock,
-  Sparkles
+  Sparkles,
+  Download
 } from 'lucide-react';
 
 interface FooterProps {
   onOpenPrivacy?: () => void;
   onOpenTerms?: () => void;
+  onOpenInstallApp?: () => void;
 }
 
-export const Footer: React.FC<FooterProps> = () => {
+export const Footer: React.FC<FooterProps> = ({ onOpenInstallApp }) => {
   return (
     <footer className="bg-slate-900 text-slate-300 text-xs mt-16 relative border-t-4 border-amber-400 font-sans shadow-md">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-12 pb-8">
@@ -53,6 +55,22 @@ export const Footer: React.FC<FooterProps> = () => {
                   <span>FAQ's</span>
                 </Link>
               </li>
+
+              {/* 3. Download App */}
+              {onOpenInstallApp && (
+                <li>
+                  <button
+                    onClick={onOpenInstallApp}
+                    className="text-emerald-400 hover:text-emerald-300 transition-colors font-medium flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <span className="text-emerald-500">›</span>
+                    <span className="flex items-center gap-1">
+                      <span>Download App</span>
+                      <Download className="w-3 h-3 text-emerald-400" />
+                    </span>
+                  </button>
+                </li>
+              )}
             </ul>
           </div>
 

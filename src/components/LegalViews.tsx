@@ -252,47 +252,64 @@ export const LegalView: React.FC<LegalViewProps> = ({ onBack, type }) => {
               <section className="space-y-2">
                 <h3 className="text-sm font-black text-slate-900 uppercase tracking-wide flex items-center gap-2">
                   <span className="w-2 h-2 rounded-full bg-amber-500"></span>
-                  1. 7-Day Return &amp; Replacement Window
+                  1. Product-Specific Refund &amp; Return Eligibility
                 </h3>
                 <p>
-                  At Giriraj Power, customer satisfaction is our top priority. We accept returns or replacements within <strong>7 days</strong> of delivery for:
+                  At Giriraj Power, refund and return acceptance is strictly <strong>applicable only to select eligible products and categories</strong>. Refund terms and eligibility may vary depending on the product type, manufacturer warranty guidelines, and material nature:
                 </p>
-                <ul className="list-disc pl-5 space-y-1 text-slate-600">
-                  <li>Unused, unstripped electrical wire coils in original plastic wrapping.</li>
-                  <li>Modular switches, sockets, and MCB panels in original retail packaging with unbroken seals.</li>
-                  <li>Items that arrive damaged, defective, or incorrect in quantity upon inspection at the delivery point.</li>
+                <ul className="list-disc pl-5 space-y-1.5 text-slate-600">
+                  <li><strong>Standard Electrical Hardware:</strong> Standard boxed modular switches, socket units, and MCBs/DB panels are return-eligible within the return window.</li>
+                  <li><strong>Wire &amp; Cable Coils:</strong> Only full, unbroken, factory-sealed coils with intact plastic wrapping and manufacturer holograms qualify for returns.</li>
+                  <li><strong>Heavy &amp; Bulk Construction Supplies:</strong> Bagged cement, customized TMT steel cuts, mixed paints, tinted coatings, and chemical waterproofing liquids are non-returnable once dispatched to site.</li>
                 </ul>
               </section>
 
               <section className="space-y-2 pt-4 border-t border-slate-100">
                 <h3 className="text-sm font-black text-slate-900 uppercase tracking-wide flex items-center gap-2">
                   <span className="w-2 h-2 rounded-full bg-amber-500"></span>
-                  2. Non-Returnable Goods
+                  2. 7-Day Return Condition &amp; Sealed Packaging Rule
                 </h3>
-                <p>For safety and manufacturer warranty policies, the following cannot be returned:</p>
+                <p>
+                  For all return-eligible items, return requests must be raised <strong>strictly within 7 days after delivery</strong>.
+                </p>
+                <div className="p-3.5 bg-amber-50/80 rounded-xl border border-amber-200/80 space-y-1.5">
+                  <p className="font-bold text-amber-950">Mandatory Packaging &amp; Damage-Free Requirement:</p>
+                  <p className="text-[11px] text-amber-900 leading-relaxed">
+                    To be eligible for a return or replacement, the product must be <strong>completely intact, unused, undamaged, packed in its original manufacturer carton/box, and securely sealed with no sign of tampering, wear, physical dents, or stripped wires</strong>. Any product returned unsealed, stripped, altered, or damaged will be rejected upon physical inspection at the depot.
+                  </p>
+                </div>
+              </section>
+
+              <section className="space-y-2 pt-4 border-t border-slate-100">
+                <h3 className="text-sm font-black text-slate-900 uppercase tracking-wide flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-amber-500"></span>
+                  3. Non-Returnable Items &amp; Exclusions
+                </h3>
+                <p>Returns and refunds are strictly not accepted for:</p>
                 <ul className="list-disc pl-5 space-y-1 text-slate-600">
-                  <li>Cables cut or stripped from custom length reels.</li>
-                  <li>Opened or partially used cement, putty, paint, or chemical waterproofing containers.</li>
-                  <li>Items damaged due to improper installation, voltage overload, or incorrect site handling.</li>
+                  <li>Cables, wires, or conduits cut or unrolled from bulk industrial drums or reels.</li>
+                  <li>Opened, unsealed, or partially consumed adhesives, waterproofing slurries, putty, or paints.</li>
+                  <li>Special custom-ordered switchgear configurations or customized fabrication items.</li>
+                  <li>Products damaged due to electrical surge, incorrect site installation, or moisture exposure post-delivery.</li>
                 </ul>
               </section>
 
               <section className="space-y-2 pt-4 border-t border-slate-100">
                 <h3 className="text-sm font-black text-slate-900 uppercase tracking-wide flex items-center gap-2">
                   <span className="w-2 h-2 rounded-full bg-amber-500"></span>
-                  3. Refund Processing Timelines
+                  4. Refund Processing &amp; Settlement Timelines
                 </h3>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
                   <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200">
                     <p className="font-black text-slate-900">⚡ Giriraj Wallet Refund (Instant)</p>
                     <p className="text-[11px] text-slate-600 mt-0.5">
-                      Credited immediately upon return pickup with 0 deduction, ready for your next checkout.
+                      Credited immediately upon successful depot verification and inspection with zero deduction.
                     </p>
                   </div>
                   <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200">
-                    <p className="font-black text-slate-900">🏦 Original UPI / Card Refund</p>
+                    <p className="font-black text-slate-900">🏦 Original UPI / Bank Account Refund</p>
                     <p className="text-[11px] text-slate-600 mt-0.5">
-                      Settled back to your bank account or card within 3 to 5 business banking days.
+                      Processed to your original payment method / bank account within 3 to 5 business banking days.
                     </p>
                   </div>
                 </div>
@@ -306,35 +323,49 @@ export const LegalView: React.FC<LegalViewProps> = ({ onBack, type }) => {
               <section className="space-y-2">
                 <h3 className="text-sm font-black text-slate-900 uppercase tracking-wide flex items-center gap-2">
                   <span className="w-2 h-2 rounded-full bg-amber-500"></span>
-                  1. 60-Minute Express Dispatch Hub
+                  1. Delivery Timelines &amp; Warehouse Distance Factors
                 </h3>
                 <p>
-                  We operate dedicated quick-commerce delivery fleets from our central Kasba warehouse depot. Orders containing electrical wires, switches, conduits, tools, and hardware qualify for <strong>60-Minute Express Delivery</strong> across active zones in Kolkata (Kasba, Gariahat, Salt Lake, New Town, Park Street, Howrah, Ballygunge, Behala, Jadavpur).
+                  While our electrical quick-dispatch fleets endeavor to fulfill orders rapidly, <strong>shipping and delivery time may vary and might take additional time</strong> based on:
                 </p>
-              </section>
-
-              <section className="space-y-2 pt-4 border-t border-slate-100">
-                <h3 className="text-sm font-black text-slate-900 uppercase tracking-wide flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-amber-500"></span>
-                  2. Heavy Building Materials Truck Dispatch
-                </h3>
-                <p>
-                  Cement, TMT steel bars, sand bags, and large-diameter PVC pipes are dispatched via heavy payload vehicles:
-                </p>
-                <ul className="list-disc pl-5 space-y-1 text-slate-600">
-                  <li>Same-day delivery for bulk orders confirmed before 4:00 PM.</li>
-                  <li>On-site ground unloading assistance provided by experienced delivery staff.</li>
-                  <li>Direct coordination with site supervisor/contractor before truck departure.</li>
+                <ul className="list-disc pl-5 space-y-1.5 text-slate-600">
+                  <li><strong>Warehouse Distance:</strong> Radial transit distance between our central Kasba warehouse depot and your destination address across Greater Kolkata &amp; Bengal.</li>
+                  <li><strong>Plot &amp; Construction Site Location:</strong> Accessibility of interior residential lanes, unpaved approach roads, high-rise lift access, or restricted commercial building zones.</li>
+                  <li><strong>Heavy Load &amp; Traffic Windows:</strong> Truck movement restrictions during peak municipal Kolkata traffic hours.</li>
                 </ul>
               </section>
 
               <section className="space-y-2 pt-4 border-t border-slate-100">
                 <h3 className="text-sm font-black text-slate-900 uppercase tracking-wide flex items-center gap-2">
                   <span className="w-2 h-2 rounded-full bg-amber-500"></span>
-                  3. Shipping Charges &amp; Free Delivery
+                  2. Dynamic Shipping Charges Based on Product &amp; Purchase
                 </h3>
                 <p>
-                  Orders over <strong>₹499</strong> enjoy free express dispatch. For smaller urgent orders, a flat convenience delivery fee of ₹30 is applied at checkout.
+                  <strong>Shipping charges are calculated based on the specific product type, total weight/volume, and purchase value:</strong>
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                  <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200">
+                    <p className="font-black text-slate-900">📦 Standard &amp; Express Parcel Delivery</p>
+                    <p className="text-[11px] text-slate-600 mt-1 leading-relaxed">
+                      Small electrical items, switches, wire bundles, and tools are dispatched with flat nominal delivery fees (Free on qualified minimum purchase thresholds).
+                    </p>
+                  </div>
+                  <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200">
+                    <p className="font-black text-slate-900">🚛 Heavy Bulk Site Logistics (Freight)</p>
+                    <p className="text-[11px] text-slate-600 mt-1 leading-relaxed">
+                      Cement bags, steel rebars, and heavy pipes involve specialized freight rates computed by metric weight, truck capacity, and drop-off plot distance.
+                    </p>
+                  </div>
+                </div>
+              </section>
+
+              <section className="space-y-2 pt-4 border-t border-slate-100">
+                <h3 className="text-sm font-black text-slate-900 uppercase tracking-wide flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-amber-500"></span>
+                  3. Site Unloading &amp; Receipt Inspection
+                </h3>
+                <p className="text-slate-600">
+                  Customers or their designated site supervisors must be present to inspect packaging seals, counts, and batch tags at the time of truck arrival before signing the electronic delivery challan.
                 </p>
               </section>
             </div>
@@ -349,11 +380,11 @@ export const LegalView: React.FC<LegalViewProps> = ({ onBack, type }) => {
                   1. Information We Collect
                 </h3>
                 <p>
-                  Giriraj Power collects only necessary information required to provide 60-minute material deliveries, electrician appointments, and authenticate your account securely:
+                  Giriraj Power collects only necessary information required to process and dispatch orders, schedule verified electrician visits, compute accurate location-based shipping charges, and authenticate your account securely:
                 </p>
                 <ul className="list-disc pl-5 space-y-1 text-slate-600">
                   <li><strong className="text-slate-900">Personal &amp; Contact Details:</strong> Full Name, Email Address, Phone Number.</li>
-                  <li><strong className="text-slate-900">Delivery &amp; Location Information:</strong> GPS pin location, street addresses, and site landmarks.</li>
+                  <li><strong className="text-slate-900">Delivery &amp; Location Information:</strong> GPS pin location, street addresses, plot coordinates, and site landmarks.</li>
                   <li><strong className="text-slate-900">Google OAuth Identity Data:</strong> Public Name, Email Address, and Avatar Photo solely to create and personalize your account profile.</li>
                   <li><strong className="text-slate-900">Order &amp; Transaction Logs:</strong> Items purchased, GST numbers, and payment status.</li>
                 </ul>
@@ -380,17 +411,32 @@ export const LegalView: React.FC<LegalViewProps> = ({ onBack, type }) => {
               <section className="space-y-2">
                 <h3 className="text-sm font-black text-slate-900 uppercase tracking-wide flex items-center gap-2">
                   <span className="w-2 h-2 rounded-full bg-amber-500"></span>
-                  1. Acceptance of Terms
+                  1. Acceptance of Terms &amp; Product Pricing
                 </h3>
                 <p>
-                  By browsing, logging into, or placing orders with Giriraj Power, you agree to these Terms of Service. All materials sold are authentic, genuine, and sourced directly from certified manufacturers.
+                  By browsing, logging into, or placing orders with Giriraj Power, you agree to these Terms of Service. All materials sold are authentic, genuine, and sourced directly from certified manufacturers. Prices, wholesale discounts, and product availability are subject to market conditions and location constraints.
                 </p>
               </section>
 
               <section className="space-y-2 pt-4 border-t border-slate-100">
                 <h3 className="text-sm font-black text-slate-900 uppercase tracking-wide flex items-center gap-2">
                   <span className="w-2 h-2 rounded-full bg-amber-500"></span>
-                  2. Licensed Electrician &amp; Wiring Services
+                  2. Product Delivery, Return Conditions &amp; Shipping Charges
+                </h3>
+                <p>
+                  All purchases are subject to our <strong>Shipping &amp; Delivery Policy</strong> and <strong>Refund &amp; Return Policy</strong>:
+                </p>
+                <ul className="list-disc pl-5 space-y-1 text-slate-600">
+                  <li>Shipping fees depend on the specific product purchased, weight, and distance to the delivery plot/warehouse.</li>
+                  <li>Delivery timelines are indicative and may vary based on warehouse distance and site accessibility.</li>
+                  <li>Refunds and returns are accepted for eligible products only when requested within 7 days of delivery, provided products remain completely intact, undamaged, and in sealed original packaging.</li>
+                </ul>
+              </section>
+
+              <section className="space-y-2 pt-4 border-t border-slate-100">
+                <h3 className="text-sm font-black text-slate-900 uppercase tracking-wide flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-amber-500"></span>
+                  3. Licensed Electrician &amp; Wiring Services
                 </h3>
                 <p>
                   Electrician visits booked through our platform connect you with certified electrical technicians for apartment wiring, diagnostics, and repairs. Standard diagnostic fees are confirmed before dispatch.

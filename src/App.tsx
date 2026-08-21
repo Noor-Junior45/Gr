@@ -43,6 +43,7 @@ import { ElectricalListingPage } from './components/electrical/ElectricalListing
 import { ProductDetailPage } from './components/electrical/ProductDetailPage';
 import { ConstructionPage } from './components/ConstructionPage';
 import { HomePage } from './components/HomePage';
+import { InstallAppModal } from './components/InstallAppModal';
 import {
   getSavedUserProfile,
   saveUserProfile,
@@ -105,6 +106,7 @@ export default function App() {
   const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
   const [isAdminOpen, setIsAdminOpen] = useState(false);
   const [isAiAssistantOpen, setIsAiAssistantOpen] = useState(false);
+  const [isInstallModalOpen, setIsInstallModalOpen] = useState(false);
   const [selectedProductQuickView, setSelectedProductQuickView] = useState<Product | null>(null);
   const [latestPlacedOrder, setLatestPlacedOrder] = useState<Order | null>(null);
   const [orders, setOrders] = useState<Order[]>([]);
@@ -334,6 +336,7 @@ export default function App() {
           onTabChange={handleTabChange}
           activeCategory={activeCategory}
           onSelectCategory={handleCategorySelect}
+          onOpenInstallApp={() => setIsInstallModalOpen(true)}
         />
       )}
 
@@ -574,10 +577,14 @@ export default function App() {
         location.pathname.startsWith('/terms') ||
         location.pathname.startsWith('/construction') ||
         location.pathname.startsWith('/electrical')) && (
-        <Footer />
+        <Footer onOpenInstallApp={() => setIsInstallModalOpen(true)} />
       )}
 
       {/* Modals & Slide-Overs */}
+      <InstallAppModal
+        isOpen={isInstallModalOpen}
+        onClose={() => setIsInstallModalOpen(false)}
+      />
       <LocationModal
         isOpen={isLocationModalOpen}
         onClose={() => setIsLocationModalOpen(false)}

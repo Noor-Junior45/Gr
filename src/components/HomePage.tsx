@@ -221,6 +221,26 @@ const HERO_POSTERS = [
     link: '/construction',
     bgGradient: 'from-emerald-800 via-teal-900 to-slate-900',
     accentColor: 'text-emerald-300'
+  },
+  {
+    id: 'p-4',
+    badge: '💡 Premium Architectural Lighting & Fans',
+    title: 'Modern LED Panels, COB Spotlights & BLDC Fans',
+    subtitle: 'Havells, Polycab & Atomberg energy-efficient fans and ambient lighting solutions for luxury interiors.',
+    ctaText: 'Explore Lighting & Fans',
+    link: '/electrical',
+    bgGradient: 'from-indigo-950 via-slate-900 to-blue-900',
+    accentColor: 'text-indigo-300'
+  },
+  {
+    id: 'p-5',
+    badge: '🪚 CenturyPly & Premium Hardware Depots',
+    title: 'Waterproof Marine Plywood & Modular Kitchen Fittings',
+    subtitle: 'CenturyPly 710 Club Prime, MDF boards, Godrej locks, soft-close hinges, and German-spec drawer channels.',
+    ctaText: 'Explore Plywood & Hardware',
+    link: '/construction',
+    bgGradient: 'from-amber-950 via-stone-900 to-amber-900',
+    accentColor: 'text-amber-300'
   }
 ];
 
@@ -535,19 +555,19 @@ export const HomePage: React.FC<HomePageProps> = ({
                     <p className="text-xs sm:text-sm md:text-base text-slate-200 max-w-2xl leading-relaxed">
                       {poster.subtitle}
                     </p>
-                    <div className="pt-2 flex items-center gap-3">
+                    <div className="pt-2 flex flex-wrap items-center gap-3">
                       <Link
                         to={poster.link}
-                        className="px-5 sm:px-6 py-2.5 sm:py-3 rounded-xl bg-amber-400 hover:bg-amber-500 text-slate-950 font-black text-xs sm:text-sm transition-all shadow-md flex items-center gap-2 cursor-pointer"
+                        className="px-5 sm:px-6 py-2.5 sm:py-3 rounded-2xl bg-white/20 hover:bg-white/30 text-white font-black text-xs sm:text-sm backdrop-blur-md border border-white/40 shadow-[0_8px_32px_0_rgba(255,255,255,0.15)] hover:shadow-[0_8px_32px_0_rgba(255,255,255,0.25)] transition-all hover:scale-[1.02] active:scale-95 flex items-center gap-2 cursor-pointer"
                       >
                         <span>{poster.ctaText}</span>
-                        <ChevronRight className="w-4 h-4" />
+                        <ChevronRight className="w-4 h-4 text-amber-300" />
                       </Link>
                       <a
                         href="https://wa.me/918777400280?text=Hello%20Giriraj%20Power,%20I%20want%20to%20inquire%20about%20wholesale%20rates."
                         target="_blank"
                         rel="noreferrer"
-                        className="px-4 sm:px-5 py-2.5 sm:py-3 rounded-xl bg-white/15 hover:bg-white/25 text-white font-bold text-xs sm:text-sm backdrop-blur-xs border border-white/20 transition-all flex items-center gap-1.5 cursor-pointer"
+                        className="px-4 sm:px-5 py-2.5 sm:py-3 rounded-2xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs sm:text-sm backdrop-blur-md border border-white/25 shadow-[0_8px_32px_0_rgba(0,0,0,0.1)] hover:shadow-[0_8px_32px_0_rgba(255,255,255,0.15)] transition-all hover:scale-[1.02] active:scale-95 flex items-center gap-2 cursor-pointer"
                       >
                         <MessageSquare className="w-4 h-4 text-emerald-400" />
                         <span>WhatsApp Desk</span>
