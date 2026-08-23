@@ -537,12 +537,10 @@ export function saveUserProfile(
 }
 
 export function clearUserProfile(): void {
-  if (activeUserScope) {
-    safeRemoveItem(`giriraj_profile_${activeUserScope}`);
-    safeRemoveItem(`giriraj_orders_${activeUserScope}`);
-    safeRemoveItem(`giriraj_addrs_${activeUserScope}`);
-    safeRemoveItem(`giriraj_upi_${activeUserScope}`);
-  }
+  // We detach the active in-memory session on log out, but MUST NOT delete
+  // the user's persisted orders or saved addresses from localStorage.
+  // This ensures that when the user logs back in with their account, their
+  // full order history and addresses are immediately preserved and restored.
   activeUserScope = null;
 }
 
@@ -566,14 +564,87 @@ function isRealOrder(order: Order): boolean {
 export function getStoredOrders(userScopeOverride?: string): Order[] {
   try {
     const scope = userScopeOverride || activeUserScope;
-    if (!scope) return [];
-    const raw = localStorage.getItem(`giriraj_orders_${scope}`);
-    if (!raw) {
-      return [];
+    const collectedOrders: Order[] = [];
+    const seenIds = new Set<string>();
+
+    const addOrders = (orders: Order[]) => {
+      if (!Array.isArray(orders)) return;
+      for (const order of orders) {
+        if (order && order.id && isRealOrder(order) && !seenIds.has(order.id)) {
+          seenIds.add(order.id);
+          collectedOrders.push(order);
+        }
+      }
+    };
+
+    // 1. Direct scoped storage
+    if (scope) {
+      const raw = safeGetItem(`giriraj_orders_${scope}`);
+      if (raw) {
+        try {
+          const parsed = JSON.parse(raw);
+          addOrders(parsed);
+        } catch {
+          // ignore
+        }
+      }
     }
-    const parsed: Order[] = JSON.parse(raw);
-    const valid = Array.isArray(parsed) ? parsed.filter(isRealOrder) : [];
-    return valid;
+
+    // 2. Multi-key scanning for user across device storage
+    if (typeof window !== 'undefined' && window.localStorage) {
+      try {
+        const totalKeys = localStorage.length;
+        for (let i = 0; i < totalKeys; i++) {
+          const key = localStorage.key(i);
+          if (key && key.startsWith('giriraj_orders_')) {
+            // If scope is specified, check matching scope or match identifiers
+            if (!scope || key === `giriraj_orders_${scope}` || (scope && key.includes(scope.replace(/^(uid_|email_|phone_)/, '')))) {
+              const raw = localStorage.getItem(key);
+              if (raw) {
+                try {
+                  const parsed = JSON.parse(raw);
+                  addOrders(parsed);
+                } catch {
+                  // ignore
+                }
+              }
+            }
+          }
+        }
+      } catch {
+        // ignore
+      }
+    }
+
+    // 3. Master persistent device orders (records associated with this user)
+    const masterRaw = safeGetItem('giriraj_master_orders');
+    if (masterRaw) {
+      try {
+        const masterList: any[] = JSON.parse(masterRaw);
+        if (Array.isArray(masterList)) {
+          const filtered = masterList.filter((entry) => {
+            if (!scope) return true;
+            if (entry.userScope === scope) return true;
+            if (entry.user_id && scope.includes(entry.user_id)) return true;
+            if (entry.customerEmail && scope.toLowerCase().includes(entry.customerEmail.toLowerCase().replace(/[^a-z0-9]/g, '_'))) return true;
+            if (entry.phone && scope.includes(entry.phone.replace(/\D/g, ''))) return true;
+            return false;
+          });
+          addOrders(filtered);
+        }
+      } catch {
+        // ignore
+      }
+    }
+
+    // Sort newest first
+    collectedOrders.sort((a, b) => {
+      const timeA = new Date(a.createdAt || 0).getTime();
+      const timeB = new Date(b.createdAt || 0).getTime();
+      return timeB - timeA;
+    });
+
+    return collectedOrders;
   } catch (e) {
     console.error('Failed reading orders from storage', e);
     return [];
@@ -644,29 +715,42 @@ export async function fetchUserOrders(): Promise<Order[]> {
   try {
     const { data: userData } = await supabase.auth.getUser();
     
-    // If not logged in, user has no authenticated orders
+    // If not logged in, but activeUserScope exists, fetch stored orders
     if (!userData?.user?.id) {
-      activeUserScope = null;
-      notifyOrderListeners([]);
-      return [];
+      if (!activeUserScope) {
+        notifyOrderListeners([]);
+        return [];
+      }
+      const stored = getStoredOrders(activeUserScope);
+      notifyOrderListeners(stored);
+      return stored;
     }
 
-    const scope = getUserScopeKeyFromUser(userData.user);
+    const user = userData.user;
+    const scope = getUserScopeKeyFromUser(user);
     if (scope) {
       activeUserScope = scope;
     }
 
+    const email = user.email ? user.email.trim().toLowerCase() : '';
+    const phone = user.phone ? user.phone.replace(/\D/g, '') : '';
+
     let query = supabase.from('orders').select('*');
-    if (userData.user.email && userData.user.email.includes('@')) {
-      query = query.or(`user_id.eq.${userData.user.id},customer_email.ilike.${userData.user.email.trim().toLowerCase()}`);
-    } else {
-      query = query.eq('user_id', userData.user.id);
+    const orClauses: string[] = [`user_id.eq.${user.id}`];
+    if (email && email.includes('@')) {
+      orClauses.push(`customer_email.ilike.${email}`);
+    }
+    if (phone && phone.length >= 10) {
+      orClauses.push(`phone.ilike.%${phone.slice(-10)}%`);
     }
 
-    const { data, error } = await query.order('created_at', { ascending: false }).limit(50);
+    query = query.or(orClauses.join(','));
 
-    if (!error && data) {
-      const liveOrders: Order[] = data.map((row) => ({
+    const { data, error } = await query.order('created_at', { ascending: false }).limit(50);
+    const localOrders = getStoredOrders(scope || undefined);
+
+    if (!error && Array.isArray(data)) {
+      const dbOrders: Order[] = data.map((row) => ({
         id: row.id,
         customerName: row.customer_name || 'Customer',
         phone: row.phone || '',
@@ -690,14 +774,38 @@ export async function fetchUserOrders(): Promise<Order[]> {
         notes: row.notes || undefined
       })).filter(isRealOrder);
 
+      // Merge DB orders and local orders to ensure no orders are missing
+      const mergedMap = new Map<string, Order>();
+      dbOrders.forEach((o) => mergedMap.set(o.id, o));
+      localOrders.forEach((o) => {
+        if (!mergedMap.has(o.id)) {
+          mergedMap.set(o.id, o);
+        }
+      });
+
+      const finalOrders = Array.from(mergedMap.values()).sort((a, b) => {
+        const timeA = new Date(a.createdAt || 0).getTime();
+        const timeB = new Date(b.createdAt || 0).getTime();
+        return timeB - timeA;
+      });
+
       if (scope) {
-        safeSetItem(`giriraj_orders_${scope}`, JSON.stringify(liveOrders));
+        safeSetItem(`giriraj_orders_${scope}`, JSON.stringify(finalOrders));
       }
-      notifyOrderListeners(liveOrders);
-      return liveOrders;
+      notifyOrderListeners(finalOrders);
+      return finalOrders;
+    } else {
+      // If DB returned error or empty, preserve local stored orders
+      if (localOrders.length > 0) {
+        notifyOrderListeners(localOrders);
+        return localOrders;
+      }
     }
   } catch (err) {
     console.warn('Supabase orders fetch notice:', err);
+    const fallback = getStoredOrders();
+    notifyOrderListeners(fallback);
+    return fallback;
   }
   return [];
 }
@@ -822,10 +930,38 @@ export async function createFirestoreOrder(order: Order): Promise<Order> {
     (order.phone ? getUserScopeKeyFromUser({ phone: order.phone }) : null);
 
   if (scope) {
+    activeUserScope = scope;
     const currentOrders = getStoredOrders(scope);
     const updatedOrders = [order, ...currentOrders.filter((o) => o.id !== order.id)];
     safeSetItem(`giriraj_orders_${scope}`, JSON.stringify(updatedOrders));
     notifyOrderListeners(updatedOrders);
+  }
+
+  // Also persist by specific keys if available
+  if (authData?.user?.id) {
+    const uOrders = getStoredOrders(`uid_${authData.user.id}`);
+    safeSetItem(`giriraj_orders_uid_${authData.user.id}`, JSON.stringify([order, ...uOrders.filter((o) => o.id !== order.id)]));
+  }
+  if (order.customerEmail) {
+    const cleanEmail = order.customerEmail.trim().toLowerCase().replace(/[^a-z0-9]/g, '_');
+    const eOrders = getStoredOrders(`email_${cleanEmail}`);
+    safeSetItem(`giriraj_orders_email_${cleanEmail}`, JSON.stringify([order, ...eOrders.filter((o) => o.id !== order.id)]));
+  }
+  if (order.phone) {
+    const cleanPhone = order.phone.replace(/\D/g, '');
+    const pOrders = getStoredOrders(`phone_${cleanPhone}`);
+    safeSetItem(`giriraj_orders_phone_${cleanPhone}`, JSON.stringify([order, ...pOrders.filter((o) => o.id !== order.id)]));
+  }
+
+  // Master persistent list
+  try {
+    const masterRaw = safeGetItem('giriraj_master_orders');
+    const masterList: any[] = masterRaw ? JSON.parse(masterRaw) : [];
+    const masterOrder = { ...order, userScope: scope, user_id: userId };
+    const updatedMaster = [masterOrder, ...masterList.filter((o) => o.id !== order.id)];
+    safeSetItem('giriraj_master_orders', JSON.stringify(updatedMaster.slice(0, 100)));
+  } catch {
+    // ignore
   }
 
   // Sound chime alert

@@ -22,6 +22,8 @@ interface ElectricalListingPageProps {
   onUpdateQuantity?: (productId: string, delta: number, color?: string) => void;
   cartItems?: { product: Product; quantity: number; selectedColor?: string }[];
   onOpenCart?: () => void;
+  searchQuery?: string;
+  onSearchChange?: (query: string) => void;
 }
 
 const ALL_SUBCATEGORIES = [
@@ -52,14 +54,16 @@ export const ElectricalListingPage: React.FC<ElectricalListingPageProps> = ({
   onAddToCart,
   onUpdateQuantity,
   cartItems = [],
-  onOpenCart
+  onOpenCart,
+  searchQuery: propSearchQuery,
+  onSearchChange
 }) => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
 
   // URL Query Sync
   const initialSubcategory = searchParams.get('subcategory');
-  const initialSearch = searchParams.get('q') || '';
+  const initialSearch = searchParams.get('q') || propSearchQuery || '';
 
   const [products, setProducts] = useState<ElectricalProduct[]>([]);
   const [loading, setLoading] = useState(true);
@@ -84,6 +88,16 @@ export const ElectricalListingPage: React.FC<ElectricalListingPageProps> = ({
   const itemsPerPage = 16;
 
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Sync searchQuery when URL param or prop changes
+  useEffect(() => {
+    const urlQ = searchParams.get('q');
+    if (urlQ !== null) {
+      setSearchQuery(urlQ);
+    } else if (propSearchQuery !== undefined) {
+      setSearchQuery(propSearchQuery);
+    }
+  }, [searchParams, propSearchQuery]);
 
   // Close dropdown on click outside
   useEffect(() => {
@@ -178,9 +192,18 @@ export const ElectricalListingPage: React.FC<ElectricalListingPageProps> = ({
       inStockOnly: false
     });
     setSearchQuery('');
+    if (onSearchChange) onSearchChange('');
     setSearchParams({});
     setCurrentPage(1);
     setActiveDropdown(null);
+  };
+
+  const handleClearSearch = () => {
+    setSearchQuery('');
+    if (onSearchChange) onSearchChange('');
+    const newParams = new URLSearchParams(searchParams);
+    newParams.delete('q');
+    setSearchParams(newParams);
   };
 
   const hasActiveFilters = useMemo(() => {
@@ -327,6 +350,17 @@ export const ElectricalListingPage: React.FC<ElectricalListingPageProps> = ({
         {/* Selected Filter Tags (Clean line-by-line horizontal scroll row, saving space) */}
         {hasActiveFilters && (
           <div className="flex items-center gap-1.5 pt-2 overflow-x-auto scrollbar-none flex-nowrap">
+            {searchQuery && (
+              <button
+                id="clear-search-pill-btn"
+                onClick={handleClearSearch}
+                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-slate-900 text-white text-[11px] font-bold shrink-0 hover:bg-slate-800 transition-colors cursor-pointer shadow-2xs"
+                title="Clear search query"
+              >
+                <span>Search: &ldquo;{searchQuery}&rdquo;</span>
+                <X className="w-3 h-3 text-slate-300" />
+              </button>
+            )}
             {filters.subcategories.map((sub) => (
               <button
                 key={sub}
@@ -367,6 +401,12 @@ export const ElectricalListingPage: React.FC<ElectricalListingPageProps> = ({
                 <X className="w-3 h-3 text-amber-700" />
               </button>
             )}
+            <button
+              onClick={handleClearAllFilters}
+              className="text-[11px] font-bold text-slate-500 hover:text-slate-900 underline px-1 shrink-0 cursor-pointer"
+            >
+              Clear All
+            </button>
           </div>
         )}
       </div>
@@ -379,20 +419,40 @@ export const ElectricalListingPage: React.FC<ElectricalListingPageProps> = ({
             <p className="text-sm font-bold text-slate-600">Loading electrical catalog...</p>
           </div>
         ) : paginatedProducts.length === 0 ? (
-          <div className="py-20 text-center space-y-3">
+          <div className="py-20 text-center space-y-4 max-w-md mx-auto">
             <div className="w-14 h-14 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center mx-auto">
               <Search className="w-6 h-6" />
             </div>
-            <h3 className="text-base font-bold text-slate-900">No products found</h3>
-            <p className="text-xs text-slate-500 max-w-sm mx-auto">
-              Try adjusting your filter pills or search terms.
-            </p>
-            <button
-              onClick={handleClearAllFilters}
-              className="px-5 py-2 rounded-full bg-amber-400 text-slate-950 font-bold text-xs hover:bg-amber-500 cursor-pointer shadow-2xs transition-all"
-            >
-              Reset Filters
-            </button>
+            <div>
+              <h3 className="text-base font-bold text-slate-900">
+                {searchQuery ? `No electrical products match "${searchQuery}"` : 'No products found'}
+              </h3>
+              <p className="text-xs text-slate-500 mt-1">
+                {searchQuery
+                  ? 'Check for spelling or search in Construction Materials for cement, paint, pipes, hardware, etc.'
+                  : 'Try adjusting your filter pills or search terms.'}
+              </p>
+            </div>
+            
+            <div className="flex flex-wrap items-center justify-center gap-2 pt-2">
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => navigate(`/construction?q=${encodeURIComponent(searchQuery)}`)}
+                  className="px-4 py-2 rounded-full bg-slate-900 text-white font-bold text-xs hover:bg-slate-800 cursor-pointer shadow-xs transition-all flex items-center gap-1.5"
+                >
+                  <span>Search &ldquo;{searchQuery}&rdquo; in Construction</span>
+                  <span>&rarr;</span>
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={handleClearAllFilters}
+                className="px-4 py-2 rounded-full bg-amber-400 text-slate-950 font-bold text-xs hover:bg-amber-500 cursor-pointer shadow-2xs transition-all"
+              >
+                Reset Filters
+              </button>
+            </div>
           </div>
         ) : (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-x-4 sm:gap-x-6 gap-y-6 sm:gap-y-8">

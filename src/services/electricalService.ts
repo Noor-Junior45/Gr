@@ -163,11 +163,22 @@ export async function fetchElectricalProducts(
 
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase().trim();
-      productsList = productsList.filter((p) =>
-        p.name.toLowerCase().includes(q) ||
-        p.brand.toLowerCase().includes(q) ||
-        p.subcategory.toLowerCase().includes(q)
-      );
+      const tokens = q.split(/\s+/).filter(Boolean);
+      
+      productsList = productsList.filter((p) => {
+        const name = (p.name || '').toLowerCase();
+        const brand = (p.brand || '').toLowerCase();
+        const subcategory = (p.subcategory || '').toLowerCase();
+        const desc = (p.description || '').toLowerCase();
+        const specs = typeof p.specifications === 'object' ? JSON.stringify(p.specifications).toLowerCase() : '';
+        const combined = `${name} ${brand} ${subcategory} ${desc} ${specs}`;
+        
+        // Exact substring match
+        if (combined.includes(q)) return true;
+        
+        // Multi-token match: all words in query match combined text
+        return tokens.every((token) => combined.includes(token));
+      });
     }
 
     // Sort order

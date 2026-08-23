@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { useSearchParams, Link } from 'react-router-dom';
+import { useSearchParams, useNavigate, Link } from 'react-router-dom';
 import {
   SlidersHorizontal,
   ChevronDown,
@@ -29,6 +29,8 @@ interface ConstructionPageProps {
   cartItems?: { product: Product; quantity: number }[];
   onOpenCart?: () => void;
   onOpenProductQuickView?: (product: Product) => void;
+  searchQuery?: string;
+  onSearchChange?: (query: string) => void;
 }
 
 export type SortOption = 'popularity' | 'price_asc' | 'price_desc' | 'rating' | 'newest';
@@ -103,13 +105,16 @@ export const ConstructionPage: React.FC<ConstructionPageProps> = ({
   onUpdateQuantity,
   cartItems = [],
   onOpenCart,
-  onOpenProductQuickView
+  onOpenProductQuickView,
+  searchQuery: propSearchQuery,
+  onSearchChange
 }) => {
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
 
   // URL Query Sync
   const initialSubcategory = searchParams.get('subcategory');
-  const initialSearch = searchParams.get('q') || '';
+  const initialSearch = searchParams.get('q') || propSearchQuery || '';
 
   const [rawProducts, setRawProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
@@ -134,6 +139,16 @@ export const ConstructionPage: React.FC<ConstructionPageProps> = ({
 
   const dropdownRef = useRef<HTMLDivElement>(null);
 
+  // Sync searchQuery when URL param or prop changes
+  useEffect(() => {
+    const urlQ = searchParams.get('q');
+    if (urlQ !== null) {
+      setSearchQuery(urlQ);
+    } else if (propSearchQuery !== undefined) {
+      setSearchQuery(propSearchQuery);
+    }
+  }, [searchParams, propSearchQuery]);
+
   // Close dropdown on click outside
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -145,7 +160,7 @@ export const ConstructionPage: React.FC<ConstructionPageProps> = ({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Fetch Construction Products directly from Supabase
+  // Fetch Construction Products directly from Supabase with robust fallback
   const loadConstructionProducts = async () => {
     try {
       setLoading(true);
@@ -173,47 +188,52 @@ export const ConstructionPage: React.FC<ConstructionPageProps> = ({
           );
         });
 
-        const parsed: Product[] = constructionRows.map((row) => {
-          const price = Number(row.price || 0);
-          const originalPrice = Number(row.original_price || row.originalPrice || row.mrp || (price ? price * 1.15 : 0));
-          const discountPercentage = Number(
-            row.discount_percentage ||
-            row.discountPercentage ||
-            row.discount_percent ||
-            (originalPrice > price ? Math.round(((originalPrice - price) / originalPrice) * 100) : 0)
-          );
+        if (constructionRows.length > 0) {
+          const parsed: Product[] = constructionRows.map((row) => {
+            const price = Number(row.price || 0);
+            const originalPrice = Number(row.original_price || row.originalPrice || row.mrp || (price ? price * 1.15 : 0));
+            const discountPercentage = Number(
+              row.discount_percentage ||
+              row.discountPercentage ||
+              row.discount_percent ||
+              (originalPrice > price ? Math.round(((originalPrice - price) / originalPrice) * 100) : 0)
+            );
 
-          let imageUrl = 'https://images.unsplash.com/photo-1541888946425-d0fbb18086f6?q=80&w=800&auto=format&fit=crop';
-          if (Array.isArray(row.image_urls) && row.image_urls.length > 0) {
-            imageUrl = row.image_urls[0];
-          } else if (row.image) {
-            imageUrl = row.image;
-          }
+            let imageUrl = 'https://images.unsplash.com/photo-1541888946425-d0fbb18086f6?q=80&w=800&auto=format&fit=crop';
+            if (Array.isArray(row.image_urls) && row.image_urls.length > 0) {
+              imageUrl = row.image_urls[0];
+            } else if (row.image) {
+              imageUrl = row.image;
+            }
 
-          return {
-            id: String(row.id),
-            name: row.name || 'Construction Material',
-            brand: row.brand || 'Giriraj Genuine',
-            category: 'construction',
-            subCategory: row.subcategory || row.sub_category || 'General Materials',
-            price,
-            originalPrice,
-            discountPercentage,
-            unit: row.unit || '1 Unit',
-            rating: Number(row.rating_avg || row.rating || 4.8),
-            reviewsCount: Number(row.rating_count || row.reviewsCount || 18),
-            deliveryMinutes: Number(row.delivery_minutes || 60),
-            image: imageUrl,
-            inStock: (row.stock_quantity ?? row.stockCount ?? 10) > 0,
-            stockCount: Number(row.stock_quantity ?? row.stockCount ?? 10),
-            tags: row.tags || [row.brand || 'Giriraj', 'Construction'],
-            isEmergency: false,
-            specs: typeof row.specifications === 'object' ? row.specifications : (typeof row.specs === 'object' ? row.specs : {}),
-            description: row.description || 'Premium grade certified construction supplies delivered direct to site in Kolkata.'
-          };
-        });
+            return {
+              id: String(row.id),
+              name: row.name || 'Construction Material',
+              brand: row.brand || 'Giriraj Genuine',
+              category: 'construction',
+              subCategory: row.subcategory || row.sub_category || 'General Materials',
+              price,
+              originalPrice,
+              discountPercentage,
+              unit: row.unit || '1 Unit',
+              rating: Number(row.rating_avg || row.rating || 4.8),
+              reviewsCount: Number(row.rating_count || row.reviewsCount || 18),
+              deliveryMinutes: Number(row.delivery_minutes || 60),
+              image: imageUrl,
+              inStock: (row.stock_quantity ?? row.stockCount ?? 10) > 0,
+              stockCount: Number(row.stock_quantity ?? row.stockCount ?? 10),
+              tags: row.tags || [row.brand || 'Giriraj', 'Construction'],
+              isEmergency: false,
+              specs: typeof row.specifications === 'object' ? row.specifications : (typeof row.specs === 'object' ? row.specs : {}),
+              description: row.description || 'Premium grade certified construction supplies delivered direct to site in Kolkata.'
+            };
+          });
 
-        setRawProducts(parsed);
+          setRawProducts(parsed);
+        } else {
+          const fallback = INITIAL_PRODUCTS.filter((p) => p.category === 'construction');
+          setRawProducts(fallback);
+        }
       } else {
         const fallback = INITIAL_PRODUCTS.filter((p) => p.category === 'construction');
         setRawProducts(fallback);
@@ -289,9 +309,18 @@ export const ConstructionPage: React.FC<ConstructionPageProps> = ({
       inStockOnly: false
     });
     setSearchQuery('');
+    if (onSearchChange) onSearchChange('');
     setSearchParams({});
     setCurrentPage(1);
     setActiveDropdown(null);
+  };
+
+  const handleClearSearch = () => {
+    setSearchQuery('');
+    if (onSearchChange) onSearchChange('');
+    const newParams = new URLSearchParams(searchParams);
+    newParams.delete('q');
+    setSearchParams(newParams);
   };
 
   const hasActiveFilters = useMemo(() => {
@@ -379,15 +408,22 @@ export const ConstructionPage: React.FC<ConstructionPageProps> = ({
       list = list.filter((p) => p.inStock);
     }
 
-    // Search Query
+    // Search Query (Multi-token, specifications & description matching)
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase().trim();
-      list = list.filter(
-        (p) =>
-          p.name.toLowerCase().includes(q) ||
-          p.brand.toLowerCase().includes(q) ||
-          p.subCategory.toLowerCase().includes(q)
-      );
+      const tokens = q.split(/\s+/).filter(Boolean);
+      list = list.filter((p) => {
+        const name = (p.name || '').toLowerCase();
+        const brand = (p.brand || '').toLowerCase();
+        const sub = (p.subCategory || '').toLowerCase();
+        const desc = (p.description || '').toLowerCase();
+        const tags = (p.tags || []).map((t) => t.toLowerCase()).join(' ');
+        const specs = typeof p.specs === 'object' ? JSON.stringify(p.specs).toLowerCase() : '';
+        const combined = `${name} ${brand} ${sub} ${desc} ${tags} ${specs}`;
+        
+        if (combined.includes(q)) return true;
+        return tokens.every((token) => combined.includes(token));
+      });
     }
 
     // Sort order
@@ -555,16 +591,21 @@ export const ConstructionPage: React.FC<ConstructionPageProps> = ({
             )}
             {searchQuery.trim() && (
               <button
-                onClick={() => {
-                  setSearchQuery('');
-                  setSearchParams({});
-                }}
-                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-amber-50 border border-amber-200 text-amber-900 text-[11px] font-bold shrink-0 hover:bg-amber-100 transition-colors cursor-pointer"
+                id="clear-construction-search-pill-btn"
+                onClick={handleClearSearch}
+                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-slate-900 text-white text-[11px] font-bold shrink-0 hover:bg-slate-800 transition-colors cursor-pointer shadow-2xs"
+                title="Clear search query"
               >
-                <span>Search: "{searchQuery}"</span>
-                <X className="w-3 h-3 text-amber-700" />
+                <span>Search: &ldquo;{searchQuery}&rdquo;</span>
+                <X className="w-3 h-3 text-slate-300" />
               </button>
             )}
+            <button
+              onClick={handleClearAllFilters}
+              className="text-[11px] font-bold text-slate-500 hover:text-slate-900 underline px-1 shrink-0 cursor-pointer"
+            >
+              Clear All
+            </button>
           </div>
         )}
       </div>
@@ -683,20 +724,40 @@ export const ConstructionPage: React.FC<ConstructionPageProps> = ({
           </div>
         ) : paginatedProducts.length === 0 ? (
           /* When backend has products, but current filters/search return 0 */
-          <div className="py-20 text-center space-y-3">
+          <div className="py-20 text-center space-y-4 max-w-md mx-auto">
             <div className="w-14 h-14 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center mx-auto">
               <Search className="w-6 h-6" />
             </div>
-            <h3 className="text-base font-bold text-slate-900">No products found</h3>
-            <p className="text-xs text-slate-500 max-w-sm mx-auto">
-              Try adjusting your filter pills or search terms.
-            </p>
-            <button
-              onClick={handleClearAllFilters}
-              className="px-5 py-2 rounded-full bg-amber-400 text-slate-950 font-bold text-xs hover:bg-amber-500 cursor-pointer shadow-2xs transition-all"
-            >
-              Reset Filters
-            </button>
+            <div>
+              <h3 className="text-base font-bold text-slate-900">
+                {searchQuery ? `No construction materials match "${searchQuery}"` : 'No products found'}
+              </h3>
+              <p className="text-xs text-slate-500 mt-1">
+                {searchQuery
+                  ? 'Looking for switches, wires, LEDs, fans, MCBs, or electrical tools?'
+                  : 'Try adjusting your filter pills or search terms.'}
+              </p>
+            </div>
+
+            <div className="flex flex-wrap items-center justify-center gap-2 pt-2">
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => navigate(`/electrical?q=${encodeURIComponent(searchQuery)}`)}
+                  className="px-4 py-2 rounded-full bg-amber-400 text-slate-950 font-bold text-xs hover:bg-amber-500 cursor-pointer shadow-xs transition-all flex items-center gap-1.5"
+                >
+                  <span>Search &ldquo;{searchQuery}&rdquo; in Electrical Store</span>
+                  <span>&rarr;</span>
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={handleClearAllFilters}
+                className="px-4 py-2 rounded-full bg-slate-900 text-white font-bold text-xs hover:bg-slate-800 cursor-pointer shadow-2xs transition-all"
+              >
+                Reset Filters
+              </button>
+            </div>
           </div>
         ) : (
           /* =========================================================================

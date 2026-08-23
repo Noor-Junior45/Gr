@@ -61,7 +61,9 @@ import {
   getInitialAuthSession,
   syncAllProductsToSupabase,
   fetchProductsFromSupabase,
-  safeGetItem
+  safeGetItem,
+  getUserScopeKeyFromUser,
+  setActiveUserScope
 } from './services/supabaseService';
 
 export default function App() {
@@ -150,8 +152,12 @@ export default function App() {
     // Initial session check
     getInitialAuthSession().then(({ session, user }) => {
       if (user) {
+        const scope = getUserScopeKeyFromUser(user);
+        if (scope) {
+          setActiveUserScope(scope);
+        }
         const userMeta = user.user_metadata || {};
-        const local = getSavedUserProfile();
+        const local = getSavedUserProfile(scope || undefined);
         const phone = user.phone || userMeta.phone || local?.phone || '';
         const name = userMeta.full_name || userMeta.name || local?.name || (user.email ? user.email.split('@')[0] : 'Customer');
         const email = user.email || local?.email || '';
@@ -194,8 +200,12 @@ export default function App() {
 
     const unsubAuth = onAuthStateChange((event, session, user) => {
       if (user) {
+        const scope = getUserScopeKeyFromUser(user);
+        if (scope) {
+          setActiveUserScope(scope);
+        }
         const userMeta = user.user_metadata || {};
-        const local = getSavedUserProfile();
+        const local = getSavedUserProfile(scope || undefined);
         const phone = user.phone || userMeta.phone || local?.phone || '';
         const name = userMeta.full_name || userMeta.name || local?.name || (user.email ? user.email.split('@')[0] : 'Customer');
         const email = user.email || local?.email || '';
@@ -218,6 +228,7 @@ export default function App() {
         setUserName(name);
         setupUserSubscriptions();
       } else {
+        setActiveUserScope(null);
         setUserProfile(null);
         setUserPhone(null);
         setUserName('');
@@ -426,6 +437,8 @@ export default function App() {
                 onUpdateQuantity={handleUpdateCartQuantity}
                 cartItems={cartItems}
                 onOpenCart={() => navigate('/cart')}
+                searchQuery={searchQuery}
+                onSearchChange={setSearchQuery}
               />
             }
           />
@@ -477,6 +490,8 @@ export default function App() {
                 onUpdateQuantity={handleUpdateCartQuantity}
                 cartItems={cartItems}
                 onOpenCart={() => navigate('/cart')}
+                searchQuery={searchQuery}
+                onSearchChange={setSearchQuery}
                 onOpenProductQuickView={(prod) => {
                   setSelectedProductQuickView(prod);
                   trackProductView(prod);
