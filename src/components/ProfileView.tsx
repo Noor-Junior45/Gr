@@ -38,7 +38,7 @@ import {
   Lock,
   Heart
 } from 'lucide-react';
-import { Order, SavedAddress, UserProfile, CartItem, WalletTransaction, Product } from '../types';
+import { Order, SavedAddress, UserProfile, CartItem, WalletTransaction, Product, isUserAdmin, ADMIN_EMAILS } from '../types';
 import { LegalView } from './LegalViews';
 import {
   saveUserProfile,
@@ -1603,7 +1603,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
             </div>
 
             <div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <h1 className="text-base sm:text-lg font-bold tracking-tight text-white capitalize">
                   {displayName}
                 </h1>

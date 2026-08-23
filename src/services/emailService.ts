@@ -15,6 +15,10 @@ export interface EmailServiceStatus {
   configured: boolean;
   fromEmail: string;
   officialEmail?: string;
+  resendInboundEmail?: string;
+  resendInboundDomain?: string;
+  adminEmails?: string[];
+  adminEmail?: string;
   inboundWebhookUrl?: string;
   receivedCount?: number;
   unreadCount?: number;
@@ -38,8 +42,11 @@ export async function getEmailServiceStatus(): Promise<EmailServiceStatus> {
     if (!res.ok) {
       return {
         configured: false,
-        fromEmail: 'Giriraj Power <team@girirajpower.in>',
-        officialEmail: 'team@girirajpower.in',
+        fromEmail: 'Giriraj Power <orders@oieldiakir.resend.app>',
+        officialEmail: 'orders@oieldiakir.resend.app',
+        resendInboundEmail: 'orders@oieldiakir.resend.app',
+        resendInboundDomain: 'oieldiakir.resend.app',
+        adminEmails: ['gauravgiri123344@gmail.com', 'mdhassan1738@gmail.com'],
         service: 'Resend'
       };
     }
@@ -48,8 +55,11 @@ export async function getEmailServiceStatus(): Promise<EmailServiceStatus> {
     console.warn('Failed to check email service status:', err);
     return {
       configured: false,
-      fromEmail: 'Giriraj Power <team@girirajpower.in>',
-      officialEmail: 'team@girirajpower.in',
+      fromEmail: 'Giriraj Power <orders@oieldiakir.resend.app>',
+      officialEmail: 'orders@oieldiakir.resend.app',
+      resendInboundEmail: 'orders@oieldiakir.resend.app',
+      resendInboundDomain: 'oieldiakir.resend.app',
+      adminEmails: ['gauravgiri123344@gmail.com', 'mdhassan1738@gmail.com'],
       service: 'Resend'
     };
   }
@@ -182,6 +192,95 @@ export async function simulateInboundEmail(params?: {
     return await res.json();
   } catch (err) {
     return { success: false, message: 'Failed to simulate inbound email' };
+  }
+}
+
+/**
+ * Formats an order into a clean, complete WhatsApp message for store dispatch & delivery alerts
+ */
+export function formatOrderWhatsAppMessage(order: Order): string {
+  const itemsText = (order.items || [])
+    .map(
+      (it, idx) =>
+        `${idx + 1}. *${it.product?.name || 'Product'}* (${it.product?.brand || 'Giriraj'}) × ${it.quantity} ${it.product?.unit || 'pc'} = ₹${((it.product?.price || 0) * it.quantity).toLocaleString('en-IN')}`
+    )
+    .join('\n');
+
+  return (
+    `⚡ *NEW ORDER RECEIVED - GIRIRAJ POWER* ⚡\n\n` +
+    `📦 *Order ID:* #${order.id}\n` +
+    `📅 *Time:* ${new Date(order.createdAt || Date.now()).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })} IST\n\n` +
+    `👤 *Customer:* ${order.customerName}\n` +
+    `📱 *Mobile:* ${order.phone}\n` +
+    `✉️ *Email:* ${order.customerEmail || 'Not provided'}\n\n` +
+    `📍 *DELIVERY ADDRESS:*\n` +
+    `${order.address}\n` +
+    `${order.landmark ? `Landmark: ${order.landmark}\n` : ''}` +
+    `Area: ${order.area}, PIN: ${order.pincode}\n\n` +
+    `🛒 *ITEMS & QUANTITIES:*\n${itemsText}\n\n` +
+    `💰 *Items Total:* ₹${(order.itemTotal || 0).toLocaleString('en-IN')}\n` +
+    `🚚 *Delivery Fee:* ${(order.deliveryFee || 0) === 0 ? 'FREE (Express 60-Min)' : '₹' + order.deliveryFee}\n` +
+    `${(order.discount || 0) > 0 ? `🎟️ *Discount:* -₹${order.discount}\n` : ''}` +
+    `💳 *GRAND TOTAL:* ₹${(order.totalAmount || 0).toLocaleString('en-IN')}\n` +
+    `💵 *Payment Mode:* ${order.paymentMethod === 'cod' ? 'Cash on Delivery (COD)' : 'Online UPI / Card (PAID)'}\n\n` +
+    `⚡ *Central Dispatch:* Giriraj Power Kasba Hub, Kolkata 700039`
+  );
+}
+
+/**
+ * Returns a direct WhatsApp click-to-chat URL with the complete formatted order
+ */
+export function getOrderWhatsAppUrl(order: Order, recipientPhone = '918777400280'): string {
+  const cleanPhone = recipientPhone.replace(/\D/g, '');
+  const message = formatOrderWhatsAppMessage(order);
+  return `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`;
+}
+
+/**
+ * Notifies the Admin via Email & prepares WhatsApp notification whenever a purchase occurs
+ */
+export async function notifyOrderPlaced(
+  order: Order,
+  customerEmail?: string
+): Promise<{
+  success: boolean;
+  adminAlertSent: boolean;
+  customerInvoiceSent: boolean;
+  whatsappUrl: string;
+  message: string;
+}> {
+  try {
+    const res = await fetch('/api/notify-order', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        order,
+        customerEmail: customerEmail || order.customerEmail
+      })
+    });
+
+    if (!res.ok) {
+      throw new Error(`HTTP error ${res.status}`);
+    }
+
+    const data = await res.json();
+    return {
+      success: true,
+      adminAlertSent: data.adminAlertSent ?? true,
+      customerInvoiceSent: data.customerInvoiceSent ?? false,
+      whatsappUrl: data.whatsappUrl || getOrderWhatsAppUrl(order),
+      message: data.message || 'Order notification dispatched!'
+    };
+  } catch (err: unknown) {
+    const errorMsg = err instanceof Error ? err.message : 'Network error';
+    console.warn('Could not dispatch backend order notification:', errorMsg);
+    return {
+      success: false,
+      adminAlertSent: false,
+      customerInvoiceSent: false,
+      whatsappUrl: getOrderWhatsAppUrl(order),
+      message: `Failed: ${errorMsg}`
+    };
   }
 }
 

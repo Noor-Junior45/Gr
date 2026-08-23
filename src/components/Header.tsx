@@ -16,7 +16,6 @@ interface HeaderProps {
   userPhoto?: string;
   userProfile?: UserProfile | null;
   onOpenAuth: () => void;
-  onOpenAdmin?: () => void;
   onOpenAiAssistant?: () => void;
   activeTab: string;
   onTabChange: (tab: string) => void;

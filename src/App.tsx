@@ -32,8 +32,6 @@ import { ProductDetailModal } from './components/ProductDetailModal';
 import { WiringServices } from './components/WiringServices';
 import { CategorySearchBar } from './components/CategorySearchBar';
 import { CartView } from './components/CartView';
-import { OrderSuccessModal } from './components/OrderSuccessModal';
-import { AdminPortal } from './components/AdminPortal';
 import { MapsGroundingAssistant } from './components/MapsGroundingAssistant';
 import { OrderHistoryView } from './components/OrderHistoryView';
 import { Footer } from './components/Footer';
@@ -112,11 +110,9 @@ export default function App() {
   
   // Modals & Panels
   const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
-  const [isAdminOpen, setIsAdminOpen] = useState(false);
   const [isAiAssistantOpen, setIsAiAssistantOpen] = useState(false);
   const [isInstallModalOpen, setIsInstallModalOpen] = useState(false);
   const [selectedProductQuickView, setSelectedProductQuickView] = useState<Product | null>(null);
-  const [latestPlacedOrder, setLatestPlacedOrder] = useState<Order | null>(null);
   const [orders, setOrders] = useState<Order[]>([]);
   const [savedAddresses, setSavedAddresses] = useState<SavedAddress[]>([]);
 
@@ -127,16 +123,40 @@ export default function App() {
 
   // Initialize stored user profile, auth listener, live orders & saved addresses
   useEffect(() => {
+    let unsubscribeOrders: (() => void) | null = null;
+    let unsubscribeAddresses: (() => void) | null = null;
+
+    const setupUserSubscriptions = () => {
+      if (unsubscribeOrders) unsubscribeOrders();
+      if (unsubscribeAddresses) unsubscribeAddresses();
+
+      unsubscribeOrders = subscribeToOrders((allOrders) => {
+        setOrders(allOrders);
+      });
+
+      unsubscribeAddresses = subscribeToAddresses((allAddrs) => {
+        setSavedAddresses(allAddrs);
+      });
+
+      fetchCartItemsFromSupabase()
+        .then((dbCart) => {
+          if (dbCart !== null) {
+            setCartItems(dbCart);
+          }
+        })
+        .catch(console.warn);
+    };
+
     // Initial session check
     getInitialAuthSession().then(({ session, user }) => {
       if (user) {
-        const local = getSavedUserProfile();
         const userMeta = user.user_metadata || {};
-        const phone = user.phone || userMeta.phone || local?.phone || safeGetItem('giriraj_user_phone') || '';
-        const name = userMeta.full_name || userMeta.name || local?.name || safeGetItem('giriraj_user_name') || 'Customer';
-        const email = user.email || local?.email || safeGetItem('giriraj_user_email') || '';
-        const photoURL = userMeta.avatar_url || userMeta.picture || local?.photoURL || safeGetItem('giriraj_user_photo') || undefined;
-        const dob = local?.dob || safeGetItem('giriraj_user_dob') || '';
+        const local = getSavedUserProfile();
+        const phone = user.phone || userMeta.phone || local?.phone || '';
+        const name = userMeta.full_name || userMeta.name || local?.name || (user.email ? user.email.split('@')[0] : 'Customer');
+        const email = user.email || local?.email || '';
+        const photoURL = userMeta.avatar_url || userMeta.picture || local?.photoURL || undefined;
+        const dob = local?.dob || '';
         const prof: UserProfile = {
           id: user.id,
           phone,
@@ -152,6 +172,13 @@ export default function App() {
         setUserProfile(prof);
         setUserPhone(phone || null);
         setUserName(name);
+        setupUserSubscriptions();
+      } else {
+        setUserProfile(null);
+        setUserPhone(null);
+        setUserName('');
+        setOrders([]);
+        setSavedAddresses([]);
       }
     }).finally(() => {
       setIsAuthLoading(false);
@@ -167,13 +194,13 @@ export default function App() {
 
     const unsubAuth = onAuthStateChange((event, session, user) => {
       if (user) {
-        const local = getSavedUserProfile();
         const userMeta = user.user_metadata || {};
-        const phone = user.phone || userMeta.phone || local?.phone || safeGetItem('giriraj_user_phone') || '';
-        const name = userMeta.full_name || userMeta.name || local?.name || safeGetItem('giriraj_user_name') || 'Customer';
-        const email = user.email || local?.email || safeGetItem('giriraj_user_email') || '';
-        const photoURL = userMeta.avatar_url || userMeta.picture || local?.photoURL || safeGetItem('giriraj_user_photo') || undefined;
-        const dob = local?.dob || safeGetItem('giriraj_user_dob') || '';
+        const local = getSavedUserProfile();
+        const phone = user.phone || userMeta.phone || local?.phone || '';
+        const name = userMeta.full_name || userMeta.name || local?.name || (user.email ? user.email.split('@')[0] : 'Customer');
+        const email = user.email || local?.email || '';
+        const photoURL = userMeta.avatar_url || userMeta.picture || local?.photoURL || undefined;
+        const dob = local?.dob || '';
         const prof: UserProfile = {
           id: user.id,
           phone,
@@ -189,10 +216,14 @@ export default function App() {
         setUserProfile(prof);
         setUserPhone(phone || null);
         setUserName(name);
+        setupUserSubscriptions();
       } else {
         setUserProfile(null);
         setUserPhone(null);
         setUserName('');
+        setOrders([]);
+        setSavedAddresses([]);
+        setCartItems([]);
       }
     });
 
@@ -200,32 +231,29 @@ export default function App() {
       setUserProfile(null);
       setUserPhone(null);
       setUserName('');
+      setOrders([]);
+      setSavedAddresses([]);
+      setCartItems([]);
     };
     window.addEventListener('giriraj_user_logged_out', handleLogoutEvent);
 
-    const unsubscribeOrders = subscribeToOrders((allOrders) => {
+    // Initial default subscriptions for guests
+    unsubscribeOrders = subscribeToOrders((allOrders) => {
       setOrders(allOrders);
     });
 
-    const unsubscribeAddresses = subscribeToAddresses((allAddrs) => {
+    unsubscribeAddresses = subscribeToAddresses((allAddrs) => {
       setSavedAddresses(allAddrs);
     });
 
     // Load live catalog directly from Supabase (Strict Database Mode)
     fetchProductsFromSupabase().then(setProducts).catch(console.warn);
 
-    // Load user cart items from Supabase if authenticated
-    fetchCartItemsFromSupabase().then((dbCart) => {
-      if (dbCart && dbCart.length > 0) {
-        setCartItems(dbCart);
-      }
-    }).catch(console.warn);
-
     return () => {
       unsubAuth();
       window.removeEventListener('giriraj_user_logged_out', handleLogoutEvent);
-      unsubscribeOrders();
-      unsubscribeAddresses();
+      if (unsubscribeOrders) unsubscribeOrders();
+      if (unsubscribeAddresses) unsubscribeAddresses();
     };
   }, []);
 
@@ -368,7 +396,6 @@ export default function App() {
           userPhoto={userProfile?.photoURL}
           userProfile={userProfile}
           onOpenAuth={() => navigate('/login')}
-          onOpenAdmin={() => setIsAdminOpen(true)}
           onOpenAiAssistant={() => setIsAiAssistantOpen(true)}
           activeTab={activeTab}
           onTabChange={handleTabChange}
@@ -475,7 +502,7 @@ export default function App() {
                 onOpenAuth={() => navigate('/login')}
                 onAddToCart={handleAddToCart}
                 onOrderPlaced={(newOrder) => {
-                  setLatestPlacedOrder(newOrder);
+                  navigate('/orders');
                 }}
                 onContinueShopping={() => navigate('/electrical')}
               />
@@ -541,7 +568,6 @@ export default function App() {
             element={
               <OrderHistoryView
                 orders={orders}
-                onOpenOrderModal={(ord) => setLatestPlacedOrder(ord)}
                 onOpenShop={() => navigate('/electrical')}
               />
             }
@@ -617,6 +643,7 @@ export default function App() {
             path="/"
             element={
               <HomePage
+                products={products}
                 onAddToCart={handleAddToCart}
                 onUpdateQuantity={handleUpdateCartQuantity}
                 cartItems={cartItems}
@@ -649,7 +676,9 @@ export default function App() {
         location.pathname.startsWith('/terms') ||
         location.pathname.startsWith('/construction') ||
         location.pathname.startsWith('/electrical')) && (
-        <Footer onOpenInstallApp={() => setIsInstallModalOpen(true)} />
+        <Footer
+          onOpenInstallApp={() => setIsInstallModalOpen(true)}
+        />
       )}
 
       {/* Modals & Slide-Overs */}
@@ -684,20 +713,6 @@ export default function App() {
         }
         onAddToCart={handleAddToCart}
         onUpdateQuantity={handleUpdateCartQuantity}
-      />
-
-      <OrderSuccessModal
-        order={latestPlacedOrder}
-        onClose={() => setLatestPlacedOrder(null)}
-        onViewAllOrders={() => {
-          navigate('/orders');
-          setLatestPlacedOrder(null);
-        }}
-      />
-
-      <AdminPortal
-        isOpen={isAdminOpen}
-        onClose={() => setIsAdminOpen(false)}
       />
 
       <MapsGroundingAssistant

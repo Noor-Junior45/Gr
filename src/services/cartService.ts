@@ -1,6 +1,7 @@
 import { supabase } from '../lib/supabaseClient';
 import { CartItem, Product } from '../types';
 import { INITIAL_PRODUCTS } from '../data/products';
+import { getActiveUserScope } from './supabaseService';
 
 export interface SavedItemRecord {
   id: string;
@@ -9,7 +10,12 @@ export interface SavedItemRecord {
   createdAt: string;
 }
 
-const LOCAL_SAVED_ITEMS_KEY = 'giriraj_saved_items_v1';
+const LOCAL_SAVED_ITEMS_KEY_BASE = 'giriraj_saved_items_v2';
+
+function getSavedItemsKey(): string {
+  const scope = getActiveUserScope();
+  return scope ? `${LOCAL_SAVED_ITEMS_KEY_BASE}_${scope}` : `${LOCAL_SAVED_ITEMS_KEY_BASE}_guest`;
+}
 
 /**
  * Fetch all cart items from Supabase for the current authenticated user.
@@ -238,13 +244,13 @@ export async function fetchSavedItemsFromSupabase(): Promise<SavedItemRecord[]> 
           };
         });
 
-        localStorage.setItem(LOCAL_SAVED_ITEMS_KEY, JSON.stringify(items));
+        localStorage.setItem(getSavedItemsKey(), JSON.stringify(items));
         return items;
       }
     }
 
     // Fallback to local storage
-    const raw = localStorage.getItem(LOCAL_SAVED_ITEMS_KEY);
+    const raw = localStorage.getItem(getSavedItemsKey());
     if (raw) {
       return JSON.parse(raw);
     }
@@ -260,7 +266,7 @@ export async function fetchSavedItemsFromSupabase(): Promise<SavedItemRecord[]> 
  */
 export async function saveItemForLater(product: Product): Promise<SavedItemRecord[]> {
   try {
-    const raw = localStorage.getItem(LOCAL_SAVED_ITEMS_KEY);
+    const raw = localStorage.getItem(getSavedItemsKey());
     const current: SavedItemRecord[] = raw ? JSON.parse(raw) : [];
     const filtered = current.filter((item) => item.productId !== product.id);
     const newRecord: SavedItemRecord = {
@@ -270,7 +276,7 @@ export async function saveItemForLater(product: Product): Promise<SavedItemRecor
       createdAt: new Date().toISOString()
     };
     const updated = [newRecord, ...filtered];
-    localStorage.setItem(LOCAL_SAVED_ITEMS_KEY, JSON.stringify(updated));
+    localStorage.setItem(getSavedItemsKey(), JSON.stringify(updated));
 
     // Sync to Supabase
     const { data: authData } = await supabase.auth.getUser();
@@ -299,10 +305,10 @@ export async function saveItemForLater(product: Product): Promise<SavedItemRecor
  */
 export async function removeSavedItem(productId: string): Promise<SavedItemRecord[]> {
   try {
-    const raw = localStorage.getItem(LOCAL_SAVED_ITEMS_KEY);
+    const raw = localStorage.getItem(getSavedItemsKey());
     const current: SavedItemRecord[] = raw ? JSON.parse(raw) : [];
     const updated = current.filter((item) => item.productId !== productId);
-    localStorage.setItem(LOCAL_SAVED_ITEMS_KEY, JSON.stringify(updated));
+    localStorage.setItem(getSavedItemsKey(), JSON.stringify(updated));
 
     const { data: authData } = await supabase.auth.getUser();
     if (authData?.user?.id) {

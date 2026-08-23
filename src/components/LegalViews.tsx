@@ -201,10 +201,10 @@ export const LegalView: React.FC<LegalViewProps> = ({ onBack, type }) => {
             <div className="space-y-4">
               <section className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-1.5">
                 <h3 className="font-black text-slate-900 text-xs sm:text-sm">
-                  1. How fast is the 60-minute express delivery?
+                  1. How fast is express delivery?
                 </h3>
                 <p className="text-slate-600 text-xs leading-relaxed">
-                  Electrical supplies, cables, switches, and small tools are dispatched immediately from our central Kasba depot and delivered to locations within Kolkata within 30 to 60 minutes.
+                  Electrical supplies, cables, switches, and tools are dispatched directly from our central Kasba warehouse depot and delivered to locations within Kolkata on the same day with priority handling.
                 </p>
               </section>
 

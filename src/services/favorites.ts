@@ -1,8 +1,15 @@
-export const FAVORITES_STORAGE_KEY = 'giriraj_favorite_products';
+import { getActiveUserScope } from './supabaseService';
+
+export const FAVORITES_STORAGE_KEY_BASE = 'giriraj_favorite_products';
+
+function getFavoritesKey(): string {
+  const scope = getActiveUserScope();
+  return scope ? `${FAVORITES_STORAGE_KEY_BASE}_${scope}` : `${FAVORITES_STORAGE_KEY_BASE}_guest`;
+}
 
 export function getFavoriteProductIds(): string[] {
   try {
-    const raw = localStorage.getItem(FAVORITES_STORAGE_KEY);
+    const raw = localStorage.getItem(getFavoritesKey());
     if (raw) {
       const parsed = JSON.parse(raw);
       if (Array.isArray(parsed)) return parsed;
@@ -29,7 +36,7 @@ export function toggleProductFavorite(productId: string): boolean {
       updated = [...current, productId];
       isFav = true;
     }
-    localStorage.setItem(FAVORITES_STORAGE_KEY, JSON.stringify(updated));
+    localStorage.setItem(getFavoritesKey(), JSON.stringify(updated));
     window.dispatchEvent(new CustomEvent('giriraj_favorites_changed', { detail: updated }));
     return isFav;
   } catch {
@@ -39,9 +46,10 @@ export function toggleProductFavorite(productId: string): boolean {
 
 export function clearAllFavorites(): void {
   try {
-    localStorage.setItem(FAVORITES_STORAGE_KEY, JSON.stringify([]));
+    localStorage.setItem(getFavoritesKey(), JSON.stringify([]));
     window.dispatchEvent(new CustomEvent('giriraj_favorites_changed', { detail: [] }));
   } catch {
     // ignore
   }
 }
+

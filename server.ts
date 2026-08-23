@@ -20,6 +20,152 @@ function getResend(): Resend | null {
   return resendClient;
 }
 
+// Safely determine a valid sender address for Resend
+function getSenderFromEmail(): string {
+  const envFrom = process.env.RESEND_FROM_EMAIL?.trim();
+  if (envFrom && envFrom.includes("@")) {
+    return envFrom;
+  }
+  // Default verified sandbox sender for Resend (works out-of-the-box without DNS domain verification)
+  return "Giriraj Power <onboarding@resend.dev>";
+}
+
+interface ResendDispatchOptions {
+  from?: string;
+  to: string | string[];
+  subject: string;
+  html: string;
+  text?: string;
+}
+
+interface ResendDispatchResult {
+  success: boolean;
+  messageId?: string;
+  simulated?: boolean;
+  sandboxNotice?: boolean;
+  message: string;
+  error?: any;
+}
+
+/**
+ * Robust dispatcher for Resend that automatically:
+ * 1. Falls back to onboarding@resend.dev if a custom unverified domain causes a validation_error
+ * 2. Gracefully handles sandbox testing restrictions without throwing unhandled exceptions
+ */
+async function dispatchResendEmail(options: ResendDispatchOptions): Promise<ResendDispatchResult> {
+  const resend = getResend();
+  const rawTo = Array.isArray(options.to) ? options.to : [options.to];
+  const recipients = rawTo
+    .map((r) => (typeof r === "string" ? r.trim() : ""))
+    .filter((r) => Boolean(r) && r.includes("@"));
+
+  if (recipients.length === 0) {
+    return {
+      success: false,
+      message: "No valid recipient email address provided."
+    };
+  }
+
+  if (!resend) {
+    console.log(`[Resend Simulated] Sent to: ${recipients.join(", ")}, Subject: ${options.subject}`);
+    return {
+      success: true,
+      simulated: true,
+      message: "Email delivery simulated successfully! (Add RESEND_API_KEY in Settings for live sending)",
+      messageId: `sim_${Date.now()}`
+    };
+  }
+
+  let fromEmail = options.from || getSenderFromEmail();
+  let sendResult: any = null;
+
+  try {
+    sendResult = await resend.emails.send({
+      from: fromEmail,
+      to: recipients,
+      subject: options.subject,
+      html: options.html,
+      text: options.text
+    });
+  } catch (sdkErr: any) {
+    console.warn("[Resend SDK Exception Handled]:", sdkErr);
+    sendResult = {
+      error: {
+        name: sdkErr?.name || "sdk_error",
+        message: sdkErr?.message || String(sdkErr)
+      }
+    };
+  }
+
+  // Automatic retry with sandbox sender if custom domain was unverified
+  if (sendResult?.error) {
+    const errName = sendResult.error.name || "";
+    const errMsg = sendResult.error.message || "";
+    const isDomainOrValidationErr =
+      errName === "validation_error" ||
+      errMsg.toLowerCase().includes("domain") ||
+      errMsg.toLowerCase().includes("not verified") ||
+      errMsg.toLowerCase().includes("verify it at");
+
+    if (isDomainOrValidationErr && !fromEmail.includes("onboarding@resend.dev")) {
+      console.log(`[Resend Domain Fallback] Unverified sender '${fromEmail}', retrying with verified 'Giriraj Power <onboarding@resend.dev>'...`);
+      try {
+        sendResult = await resend.emails.send({
+          from: "Giriraj Power <onboarding@resend.dev>",
+          to: recipients,
+          subject: options.subject,
+          html: options.html,
+          text: options.text
+        });
+      } catch (retryErr: any) {
+        sendResult = {
+          error: {
+            name: retryErr?.name || "retry_error",
+            message: retryErr?.message || String(retryErr)
+          }
+        };
+      }
+    }
+  }
+
+  // Handle remaining errors or sandbox tier limitations
+  if (sendResult?.error) {
+    const errName = sendResult.error.name || "";
+    const errMsg = sendResult.error.message || "";
+    console.warn("[Resend Notice]:", errName, errMsg);
+
+    // Sandbox limitation: free tier without custom domain only delivers to account owner's email
+    if (
+      errName === "validation_error" ||
+      errMsg.toLowerCase().includes("testing emails") ||
+      errMsg.toLowerCase().includes("verify a domain") ||
+      errMsg.toLowerCase().includes("only send")
+    ) {
+      console.log(`[Resend Sandbox Notice] Handled restriction gracefully for ${recipients[0]}`);
+      return {
+        success: true,
+        simulated: true,
+        sandboxNotice: true,
+        message: "Invoice generated successfully! (Note: In Resend sandbox mode, live email is delivered to verified account owner. Verify your domain at resend.com/domains for all client inboxes).",
+        messageId: `sandbox_${Date.now()}`
+      };
+    }
+
+    return {
+      success: false,
+      message: errMsg || "Failed to send email through Resend.",
+      error: sendResult.error
+    };
+  }
+
+  return {
+    success: true,
+    simulated: false,
+    messageId: sendResult?.data?.id,
+    message: "Email sent successfully via Resend!"
+  };
+}
+
 // HTML Generator for Order Confirmation Invoice Email
 function generateOrderEmailHtml(order: any, customerName: string): string {
   const itemsListHtml = (order.items || [])
@@ -277,8 +423,173 @@ function generateTestEmailHtml(customerName: string): string {
   `;
 }
 
-// Official Organization Email
-const OFFICIAL_EMAIL = "team@girirajpower.in";
+// Official Organization Email, Admin Notification Destinations & Resend Receiving Domain
+const RESEND_INBOUND_DOMAIN = "oieldiakir.resend.app";
+const RESEND_INBOUND_EMAIL = process.env.RESEND_INBOUND_EMAIL || "orders@oieldiakir.resend.app";
+const OFFICIAL_EMAIL = process.env.RESEND_INBOUND_EMAIL || "orders@oieldiakir.resend.app";
+const ADMIN_EMAILS: string[] = [
+  "gauravgiri123344@gmail.com",
+  "mdhassan1738@gmail.com",
+  ...(process.env.ADMIN_EMAIL ? process.env.ADMIN_EMAIL.split(',').map(e => e.trim().toLowerCase()).filter(Boolean) : [])
+].filter((v, i, a) => a.indexOf(v) === i);
+const ADMIN_EMAIL = ADMIN_EMAILS.join(", ");
+const ADMIN_WHATSAPP_NUMBER = process.env.ADMIN_WHATSAPP_NUMBER || "918777400280";
+
+// HTML Generator for Admin Alert when a Customer Buys a Product
+function generateAdminOrderAlertHtml(order: any): string {
+  const phoneClean = (order.phone || "").replace(/\D/g, "").slice(-10);
+  const itemsListHtml = (order.items || [])
+    .map(
+      (item: any, idx: number) => `
+      <tr style="border-bottom: 1px solid #e2e8f0;">
+        <td style="padding: 10px 8px; font-size: 13px; color: #0f172a; font-weight: 700;">
+          ${idx + 1}. ${item.product?.name || 'Item'}
+          <div style="font-size: 11px; color: #64748b; font-weight: normal;">
+            Brand: ${item.product?.brand || 'Giriraj'} | Unit: ${item.product?.unit || '1 pc'}
+          </div>
+        </td>
+        <td style="padding: 10px 8px; font-size: 13px; color: #334155; text-align: center; font-weight: 700;">
+          ${item.quantity}
+        </td>
+        <td style="padding: 10px 8px; font-size: 13px; color: #0f172a; text-align: right; font-weight: 800;">
+          ₹${((item.product?.price || 0) * item.quantity).toLocaleString('en-IN')}
+        </td>
+      </tr>
+    `
+    )
+    .join('');
+
+  return `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>🚨 NEW CUSTOMER PURCHASE ALERT - Giriraj Power</title>
+</head>
+<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #0f172a; margin: 0; padding: 20px; color: #1e293b;">
+  <div style="max-width: 620px; margin: 0 auto; background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.4);">
+    
+    <!-- Top Alert Banner -->
+    <div style="background: linear-gradient(135deg, #b91c1c 0%, #dc2626 100%); padding: 24px 20px; text-align: center; color: #ffffff;">
+      <div style="display: inline-block; background-color: #facc15; color: #0f172a; font-weight: 900; font-size: 13px; padding: 5px 12px; border-radius: 6px; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px;">
+        🚨 NEW CUSTOMER ORDER RECEIVED
+      </div>
+      <h1 style="color: #ffffff; font-size: 22px; font-weight: 900; margin: 4px 0;">
+        Order #${order.id || 'GP-100000'} — ₹${(order.totalAmount || 0).toLocaleString('en-IN')}
+      </h1>
+      <p style="color: #fecaca; font-size: 13px; margin: 0;">
+        Fulfillment & Dispatch Alert (${new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })} IST)
+      </p>
+    </div>
+
+    <!-- Quick Action CTA Buttons -->
+    <div style="background-color: #fefce8; border-bottom: 1px solid #fef08a; padding: 14px 20px; text-align: center;">
+      <a href="tel:${order.phone}" style="display: inline-block; background-color: #0f172a; color: #ffffff; text-decoration: none; font-weight: 700; font-size: 13px; padding: 10px 16px; border-radius: 8px; margin: 4px;">
+        📞 Call Customer (${order.phone})
+      </a>
+      <a href="https://wa.me/91${phoneClean}?text=Hello%20${encodeURIComponent(order.customerName || 'Customer')},%20we%20have%20received%20your%20Giriraj%20Power%20Order%20${order.id}!%20We%20are%20processing%20it%20for%20dispatch." style="display: inline-block; background-color: #16a34a; color: #ffffff; text-decoration: none; font-weight: 700; font-size: 13px; padding: 10px 16px; border-radius: 8px; margin: 4px;">
+        💬 WhatsApp Customer
+      </a>
+    </div>
+
+    <div style="padding: 24px;">
+      
+      <!-- Customer & Delivery Information -->
+      <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px; margin-bottom: 20px;">
+        <h3 style="margin: 0 0 10px 0; font-size: 13px; text-transform: uppercase; color: #0f172a; font-weight: 800; border-bottom: 1px solid #e2e8f0; padding-bottom: 6px;">
+          👤 Customer & Delivery Address
+        </h3>
+        <table style="width: 100%; border-collapse: collapse; font-size: 13px; line-height: 1.6;">
+          <tr>
+            <td style="color: #64748b; width: 35%; padding-bottom: 4px;">Customer Name:</td>
+            <td style="color: #0f172a; font-weight: 800; padding-bottom: 4px;">${order.customerName || 'Valued Customer'}</td>
+          </tr>
+          <tr>
+            <td style="color: #64748b; padding-bottom: 4px;">Mobile Phone:</td>
+            <td style="color: #0f172a; font-weight: 800; padding-bottom: 4px;">
+              <a href="tel:${order.phone}" style="color: #2563eb; text-decoration: none;">${order.phone || '+91'}</a>
+            </td>
+          </tr>
+          <tr>
+            <td style="color: #64748b; padding-bottom: 4px;">Email:</td>
+            <td style="color: #0f172a; font-weight: 600; padding-bottom: 4px;">${order.customerEmail || 'Not provided (Phone checkout)'}</td>
+          </tr>
+          <tr>
+            <td style="color: #64748b; padding-bottom: 4px;">Delivery Address:</td>
+            <td style="color: #0f172a; font-weight: 700; padding-bottom: 4px;">${order.address || 'Address on file'}</td>
+          </tr>
+          ${order.landmark ? `
+          <tr>
+            <td style="color: #64748b; padding-bottom: 4px;">Landmark:</td>
+            <td style="color: #0f172a; font-weight: 600; padding-bottom: 4px;">${order.landmark}</td>
+          </tr>` : ''}
+          <tr>
+            <td style="color: #64748b; padding-bottom: 4px;">Area & PIN:</td>
+            <td style="color: #0f172a; font-weight: 800; padding-bottom: 4px;">${order.area || 'Kolkata'}, PIN: ${order.pincode || '700001'}</td>
+          </tr>
+          <tr>
+            <td style="color: #64748b; padding-bottom: 4px;">Payment Method:</td>
+            <td style="color: #0f172a; font-weight: 900; padding-bottom: 4px; text-transform: uppercase;">
+              ${order.paymentMethod === 'cod' ? '💵 CASH ON DELIVERY (COD - Collect at door)' : '⚡ ONLINE UPI / CARD (PAID)'}
+            </td>
+          </tr>
+        </table>
+      </div>
+
+      <!-- Ordered Items Breakdown -->
+      <h3 style="margin: 0 0 10px 0; font-size: 13px; text-transform: uppercase; color: #0f172a; font-weight: 800;">
+        📦 Ordered Items (${(order.items || []).length} items)
+      </h3>
+      <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 13px;">
+        <thead>
+          <tr style="background-color: #0f172a; color: #ffffff; text-align: left;">
+            <th style="padding: 10px 8px; border-radius: 6px 0 0 6px;">Product / Brand</th>
+            <th style="padding: 10px 8px; text-align: center;">Qty</th>
+            <th style="padding: 10px 8px; text-align: right; border-radius: 0 6px 6px 0;">Total</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${itemsListHtml}
+        </tbody>
+      </table>
+
+      <!-- Order Total Summary Box -->
+      <div style="background-color: #f1f5f9; border-radius: 12px; padding: 16px; margin-bottom: 20px;">
+        <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+          <tr>
+            <td style="color: #64748b; padding-bottom: 6px;">Subtotal:</td>
+            <td style="color: #0f172a; font-weight: 700; text-align: right; padding-bottom: 6px;">₹${(order.itemTotal || 0).toLocaleString('en-IN')}</td>
+          </tr>
+          <tr>
+            <td style="color: #64748b; padding-bottom: 6px;">Delivery Fee:</td>
+            <td style="color: #16a34a; font-weight: 700; text-align: right; padding-bottom: 6px;">${(order.deliveryFee || 0) === 0 ? 'FREE' : '₹' + order.deliveryFee}</td>
+          </tr>
+          ${(order.discount || 0) > 0 ? `
+          <tr>
+            <td style="color: #16a34a; padding-bottom: 6px;">Discount Applied:</td>
+            <td style="color: #16a34a; font-weight: 700; text-align: right; padding-bottom: 6px;">-₹${order.discount}</td>
+          </tr>` : ''}
+          <tr style="border-top: 2px solid #cbd5e1;">
+            <td style="color: #0f172a; font-weight: 900; font-size: 16px; padding-top: 8px;">Grand Total:</td>
+            <td style="color: #b91c1c; font-weight: 900; font-size: 18px; text-align: right; padding-top: 8px;">
+              ₹${(order.totalAmount || 0).toLocaleString('en-IN')}
+            </td>
+          </tr>
+        </table>
+      </div>
+
+    </div>
+
+    <!-- Footer -->
+    <div style="background-color: #0f172a; color: #94a3b8; padding: 18px; text-align: center; font-size: 11px;">
+      Giriraj Power Store Admin Notification System • Kasba Hub Kolkata 700039<br>
+      Admin Alert Email: ${ADMIN_EMAIL}
+    </div>
+  </div>
+</body>
+</html>
+  `;
+}
 
 // In-Memory Storage for Received Inbound Emails (Resend Webhook & Contact Form Inquiries)
 interface ReceivedEmailRecord {
@@ -352,6 +663,10 @@ async function startServer() {
       configured: isConfigured,
       fromEmail,
       officialEmail: OFFICIAL_EMAIL,
+      resendInboundEmail: RESEND_INBOUND_EMAIL,
+      resendInboundDomain: RESEND_INBOUND_DOMAIN,
+      adminEmails: ADMIN_EMAILS,
+      adminEmail: ADMIN_EMAIL,
       inboundWebhookUrl: "/api/resend/inbound",
       receivedCount: receivedEmailsStore.length,
       unreadCount,
@@ -380,8 +695,6 @@ async function startServer() {
         });
       }
 
-      const resend = getResend();
-
       let subject = customSubject;
       let html = customHtml;
       let text = customText;
@@ -404,101 +717,143 @@ async function startServer() {
         html = html || `<p>${customText || "Notification from Giriraj Power Kolkata"}</p>`;
       }
 
-      // If RESEND_API_KEY is not configured, gracefully simulate success without crashing
-      if (!resend) {
-        console.log(`[Resend Simulated] Would send email to: ${to}, Subject: ${subject}`);
-        return res.json({
-          success: true,
-          simulated: true,
-          message: "Email delivery simulated successfully! (Add RESEND_API_KEY in Settings for live sending)",
-          recipient: to,
-          subject
-        });
-      }
-
-      // Sanitize recipient list
-      const rawRecipients = Array.isArray(to) ? to : [to];
-      const recipientList: string[] = rawRecipients
-        .map((r: any) => (typeof r === "string" ? r.trim() : ""))
-        .filter((r: string) => Boolean(r) && r.includes("@"));
-
-      if (recipientList.length === 0) {
-        return res.status(400).json({
-          success: false,
-          message: "No valid recipient email address found."
-        });
-      }
-
-      // Check and sanitize 'from' email format
-      let fromEmail = (process.env.RESEND_FROM_EMAIL || `Giriraj Power <${OFFICIAL_EMAIL}>`).trim();
-      if (!fromEmail.includes("@")) {
-        fromEmail = `Giriraj Power <${OFFICIAL_EMAIL}>`;
-      }
-
-      // Live Send via Resend SDK
-      let sendResult: any = null;
-      try {
-        sendResult = await resend.emails.send({
-          from: fromEmail,
-          to: recipientList,
-          subject,
-          html,
-          text
-        });
-      } catch (sdkErr: any) {
-        console.warn("[Resend SDK Exception Handled]:", sdkErr);
-        sendResult = {
-          error: {
-            name: sdkErr.name || "sdk_error",
-            message: sdkErr.message || String(sdkErr)
-          }
-        };
-      }
-
-      if (sendResult?.error) {
-        const errName = sendResult.error.name || "";
-        const errMsg = sendResult.error.message || "";
-        console.warn("[Resend Notice]:", errName, errMsg);
-
-        // Graceful handling for Resend sandbox mode limitations
-        // (i.e. 'onboarding@resend.dev' only allows sending to the account owner's email address)
-        if (
-          errName === "validation_error" ||
-          errMsg.toLowerCase().includes("testing emails") ||
-          errMsg.toLowerCase().includes("verify a domain") ||
-          errMsg.toLowerCase().includes("only send")
-        ) {
-          console.log(`[Resend Sandbox Fallback] Handled restriction gracefully for ${recipientList[0]}`);
-          return res.json({
-            success: true,
-            simulated: true,
-            sandboxNotice: true,
-            message: "Invoice generated successfully! (Note: In Resend sandbox mode with onboarding@resend.dev, live delivery is active for your verified account email. Verify a custom domain in Resend for all client addresses).",
-            recipient: recipientList[0],
-            subject
-          });
-        }
-
-        return res.status(200).json({
-          success: false,
-          message: errMsg || "Failed to send email through Resend.",
-          error: sendResult.error
-        });
-      }
-
-      console.log(`[Resend Live Success] Email sent to ${recipientList.join(", ")}, id: ${sendResult?.data?.id}`);
-      return res.json({
-        success: true,
-        simulated: false,
-        messageId: sendResult?.data?.id,
-        message: "Email sent successfully via Resend!"
+      const dispatchResult = await dispatchResendEmail({
+        to,
+        subject,
+        html,
+        text
       });
+
+      // If this was an order confirmation, also ensure Admin Alert is triggered in background
+      if (type === "order_confirmation" && order) {
+        try {
+          const adminHtml = generateAdminOrderAlertHtml(order);
+          const adminSubject = `🚨 NEW ORDER #${order.id} (₹${(order.totalAmount || 0).toLocaleString('en-IN')}) - ${order.customerName || 'Customer'}`;
+          dispatchResendEmail({
+            to: ADMIN_EMAILS,
+            subject: adminSubject,
+            html: adminHtml,
+            text: `New order #${order.id} placed by ${order.customerName} (${order.phone}). Amount: ₹${order.totalAmount}. Address: ${order.address}, ${order.area}, PIN: ${order.pincode}.`
+          }).catch((err) => console.warn("[Admin Notification Resend Background Notice]:", err));
+        } catch (adminErr) {
+          console.warn("[Admin Notification Trigger Notice]:", adminErr);
+        }
+      }
+
+      return res.status(200).json(dispatchResult);
     } catch (err: any) {
       console.error("Resend send error:", err);
       return res.status(500).json({
         success: false,
         message: err.message || "An unexpected error occurred while sending email.",
         error: String(err)
+      });
+    }
+  });
+
+  // =========================================================================
+  // AUTOMATED INSTANT ORDER ALERT DISPATCH (EMAIL + WHATSAPP NOTIFIER)
+  // Alerts Admin with full customer details, phone, address, items & quantities
+  // =========================================================================
+  app.post("/api/notify-order", async (req, res) => {
+    try {
+      const { order, customerEmail } = req.body;
+
+      if (!order) {
+        return res.status(400).json({
+          success: false,
+          message: "Missing order payload."
+        });
+      }
+
+      const resend = getResend();
+      const phoneClean = (order.phone || "").replace(/\D/g, "").slice(-10);
+
+      // Build Itemized Text for WhatsApp & SMS
+      const itemsListText = (order.items || [])
+        .map((it: any, i: number) => `${i + 1}. ${it.product?.name || 'Item'} (${it.product?.brand || 'Giriraj'}) x ${it.quantity} ${it.product?.unit || 'pc'} = ₹${((it.product?.price || 0) * it.quantity).toLocaleString('en-IN')}`)
+        .join('\n');
+
+      const whatsappText = `⚡ *NEW ORDER RECEIVED - GIRIRAJ POWER* ⚡\n\n` +
+        `📦 *Order ID:* #${order.id || 'GP-100000'}\n` +
+        `📅 *Date/Time:* ${new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })} (IST)\n\n` +
+        `👤 *Customer Name:* ${order.customerName || 'Customer'}\n` +
+        `📱 *Mobile Phone:* ${order.phone || '+91'}\n` +
+        `✉️ *Email:* ${order.customerEmail || customerEmail || 'Not provided'}\n\n` +
+        `📍 *DELIVERY ADDRESS:*\n` +
+        `${order.address || 'Address provided'}\n` +
+        `${order.landmark ? `Landmark: ${order.landmark}\n` : ''}` +
+        `Area: ${order.area || 'Kolkata'}, PIN: ${order.pincode || '700001'}\n\n` +
+        `🛒 *ORDERED ITEMS & QUANTITIES:*\n${itemsListText}\n\n` +
+        `💰 *Item Total:* ₹${(order.itemTotal || 0).toLocaleString('en-IN')}\n` +
+        `🚚 *Delivery Fee:* ${(order.deliveryFee || 0) === 0 ? 'FREE (Express)' : '₹' + order.deliveryFee}\n` +
+        `${(order.discount || 0) > 0 ? `🎟️ *Discount:* -₹${order.discount}\n` : ''}` +
+        `💳 *GRAND TOTAL:* ₹${(order.totalAmount || 0).toLocaleString('en-IN')}\n` +
+        `💵 *Payment Mode:* ${order.paymentMethod === 'cod' ? 'Cash on Delivery (COD)' : 'Online UPI / Card (PAID)'}\n\n` +
+        `⚡ *Dispatch Central:* Giriraj Power Kasba Hub Kolkata 700039`;
+
+      const whatsappUrl = `https://wa.me/${ADMIN_WHATSAPP_NUMBER}?text=${encodeURIComponent(whatsappText)}`;
+      const customerWhatsappUrl = phoneClean
+        ? `https://wa.me/91${phoneClean}?text=${encodeURIComponent(`Hello ${order.customerName || 'Customer'}, thank you for ordering from Giriraj Power! Your Order #${order.id} for ₹${(order.totalAmount || 0).toLocaleString('en-IN')} has been received and is being dispatched.`)}`
+        : null;
+
+      let adminAlertSent = false;
+      let customerInvoiceSent = false;
+
+      // 1. Send Admin Alert Email to all verified admin users
+      try {
+        const adminHtml = generateAdminOrderAlertHtml(order);
+        const adminSubject = `🚨 [NEW ORDER RECEIVED] #${order.id} (₹${(order.totalAmount || 0).toLocaleString('en-IN')}) - ${order.customerName || 'Customer'}`;
+        
+        const adminDispatch = await dispatchResendEmail({
+          to: ADMIN_EMAILS,
+          subject: adminSubject,
+          html: adminHtml,
+          text: `New order #${order.id} placed by ${order.customerName} (${order.phone}). Amount: ₹${order.totalAmount}. Address: ${order.address}, ${order.area}, PIN: ${order.pincode}.`
+        });
+        adminAlertSent = adminDispatch.success;
+      } catch (adminErr: any) {
+        console.warn("[Admin Order Alert Email Notice]:", adminErr);
+      }
+
+      // 2. Send Customer Tax Invoice if email provided
+      const targetCustEmail = customerEmail || order.customerEmail;
+      if (targetCustEmail && targetCustEmail.includes("@")) {
+        try {
+          const custHtml = generateOrderEmailHtml(order, order.customerName || "Valued Customer");
+          const custSubject = `⚡ Order Confirmed #${order.id} - Giriraj Power Express Kolkata`;
+          
+          const custDispatch = await dispatchResendEmail({
+            to: [targetCustEmail.trim()],
+            subject: custSubject,
+            html: custHtml,
+            text: `Your Giriraj Power order #${order.id} has been confirmed. Total: ₹${order.totalAmount}. Delivery to ${order.area}, Kolkata.`
+          });
+          customerInvoiceSent = custDispatch.success;
+        } catch (custErr: any) {
+          console.warn("[Customer Invoice Email Notice]:", custErr);
+        }
+      }
+
+      return res.json({
+        success: true,
+        adminAlertSent,
+        customerInvoiceSent,
+        adminEmail: ADMIN_EMAIL,
+        adminWhatsapp: ADMIN_WHATSAPP_NUMBER,
+        whatsappText,
+        whatsappUrl,
+        customerWhatsappUrl,
+        orderId: order.id,
+        message: adminAlertSent
+          ? `Order alert dispatched to ${ADMIN_EMAIL} and WhatsApp ready!`
+          : "Order processed successfully."
+      });
+    } catch (err: any) {
+      console.error("Failed in /api/notify-order:", err);
+      return res.status(500).json({
+        success: false,
+        message: err.message || "Failed to dispatch order notification."
       });
     }
   });
@@ -642,44 +997,39 @@ async function startServer() {
 
       receivedEmailsStore.unshift(newRecord);
 
-      // Attempt sending automated acknowledgment via Resend if configured
-      const resend = getResend();
+      // Attempt sending automated acknowledgment via Resend
       let alertSent = false;
       let ackSent = false;
 
-      if (resend) {
-        try {
-          // 1. Send receipt acknowledgement to customer
-          const fromEmail = (process.env.RESEND_FROM_EMAIL || `Giriraj Power <${OFFICIAL_EMAIL}>`).trim();
-          await resend.emails.send({
-            from: fromEmail.includes("@") ? fromEmail : `Giriraj Power <${OFFICIAL_EMAIL}>`,
-            to: [email.trim().toLowerCase()],
-            subject: `✓ Received: ${subject} - Giriraj Power Kasba`,
-            html: `
-              <div style="font-family: sans-serif; max-width: 540px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden;">
-                <div style="background-color: #0f172a; padding: 20px; text-align: center;">
-                  <h2 style="color: #facc15; margin: 0; font-size: 18px;">⚡ GIRIRAJ POWER</h2>
-                  <p style="color: #94a3b8; margin: 4px 0 0 0; font-size: 12px;">Kasba Central Hub, Kolkata</p>
-                </div>
-                <div style="padding: 24px;">
-                  <h3 style="color: #0f172a; margin: 0 0 12px 0;">Thank you for contacting us, ${senderName}!</h3>
-                  <p style="color: #475569; font-size: 14px; line-height: 1.5; margin: 0 0 16px 0;">
-                    We have received your message at <strong>${OFFICIAL_EMAIL}</strong>. Our Kasba engineering and wholesale desk will get back to you shortly.
-                  </p>
-                  <div style="background-color: #f8fafc; border-left: 4px solid #facc15; padding: 12px; margin: 16px 0; font-size: 13px; color: #334155;">
-                    <strong>Your Message:</strong><br>${message.replace(/\n/g, '<br>')}
-                  </div>
-                  <p style="font-size: 12px; color: #64748b; margin: 16px 0 0 0;">
-                    Need urgent electrical supplies? Call our 60-min dispatch desk: <strong>+91 87774 00280</strong> | Contractor: <strong>+91 90071 68561</strong>
-                  </p>
-                </div>
+      try {
+        // 1. Send receipt acknowledgement to customer
+        const ackDispatch = await dispatchResendEmail({
+          to: [email.trim().toLowerCase()],
+          subject: `✓ Received: ${subject} - Giriraj Power Kasba`,
+          html: `
+            <div style="font-family: sans-serif; max-width: 540px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden;">
+              <div style="background-color: #0f172a; padding: 20px; text-align: center;">
+                <h2 style="color: #facc15; margin: 0; font-size: 18px;">⚡ GIRIRAJ POWER</h2>
+                <p style="color: #94a3b8; margin: 4px 0 0 0; font-size: 12px;">Kasba Central Hub, Kolkata</p>
               </div>
-            `
-          });
-          ackSent = true;
-        } catch (resendErr) {
-          console.warn("[Resend Inbound Auto-Reply Notice]:", resendErr);
-        }
+              <div style="padding: 24px;">
+                <h3 style="color: #0f172a; margin: 0 0 12px 0;">Thank you for contacting us, ${senderName}!</h3>
+                <p style="color: #475569; font-size: 14px; line-height: 1.5; margin: 0 0 16px 0;">
+                  We have received your message at <strong>${OFFICIAL_EMAIL}</strong>. Our Kasba engineering and wholesale desk will get back to you shortly.
+                </p>
+                <div style="background-color: #f8fafc; border-left: 4px solid #facc15; padding: 12px; margin: 16px 0; font-size: 13px; color: #334155;">
+                  <strong>Your Message:</strong><br>${message.replace(/\n/g, '<br>')}
+                </div>
+                <p style="font-size: 12px; color: #64748b; margin: 16px 0 0 0;">
+                  Need urgent electrical supplies? Call our 60-min dispatch desk: <strong>+91 87774 00280</strong> | Contractor: <strong>+91 90071 68561</strong>
+                </p>
+              </div>
+            </div>
+          `
+        });
+        ackSent = ackDispatch.success;
+      } catch (resendErr) {
+        console.warn("[Resend Inbound Auto-Reply Notice]:", resendErr);
       }
 
       return res.json({
@@ -712,43 +1062,34 @@ async function startServer() {
 
       const record = receivedEmailsStore[recordIndex];
       const replySubject = customSubject || `Re: ${record.subject}`;
-      const resend = getResend();
 
       let sendResult: any = null;
-      let fromEmail = (process.env.RESEND_FROM_EMAIL || `Giriraj Power <${OFFICIAL_EMAIL}>`).trim();
-      if (!fromEmail.includes("@")) {
-        fromEmail = `Giriraj Power <${OFFICIAL_EMAIL}>`;
-      }
-
-      if (resend) {
-        try {
-          sendResult = await resend.emails.send({
-            from: fromEmail,
-            to: [record.from],
-            subject: replySubject,
-            text: replyText,
-            html: `
-              <div style="font-family: sans-serif; max-width: 560px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden;">
-                <div style="background-color: #0f172a; padding: 18px 24px; border-bottom: 3px solid #facc15;">
-                  <h2 style="color: #facc15; margin: 0; font-size: 16px;">⚡ GIRIRAJ POWER RESPONSE</h2>
-                  <p style="color: #94a3b8; margin: 4px 0 0 0; font-size: 11px;">Official Reply from ${OFFICIAL_EMAIL}</p>
-                </div>
-                <div style="padding: 24px; font-size: 14px; color: #1e293b; line-height: 1.6;">
-                  <p style="margin: 0 0 16px 0;">Dear <strong>${record.fromName || 'Customer'}</strong>,</p>
-                  <p style="margin: 0 0 20px 0; white-space: pre-line;">${replyText}</p>
-                  
-                  <div style="border-top: 1px solid #e2e8f0; padding-top: 16px; margin-top: 20px; font-size: 12px; color: #64748b;">
-                    <strong>Giriraj Power Support & Wholesale Desk</strong><br>
-                    Kasba Central Warehouse, Kolkata 700039<br>
-                    WhatsApp: +91 87774 00280 | Phone: +91 90071 68561 | Email: ${OFFICIAL_EMAIL}
-                  </div>
+      try {
+        sendResult = await dispatchResendEmail({
+          to: [record.from],
+          subject: replySubject,
+          text: replyText,
+          html: `
+            <div style="font-family: sans-serif; max-width: 560px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden;">
+              <div style="background-color: #0f172a; padding: 18px 24px; border-bottom: 3px solid #facc15;">
+                <h2 style="color: #facc15; margin: 0; font-size: 16px;">⚡ GIRIRAJ POWER RESPONSE</h2>
+                <p style="color: #94a3b8; margin: 4px 0 0 0; font-size: 11px;">Official Reply from ${OFFICIAL_EMAIL}</p>
+              </div>
+              <div style="padding: 24px; font-size: 14px; color: #1e293b; line-height: 1.6;">
+                <p style="margin: 0 0 16px 0;">Dear <strong>${record.fromName || 'Customer'}</strong>,</p>
+                <p style="margin: 0 0 20px 0; white-space: pre-line;">${replyText}</p>
+                
+                <div style="border-top: 1px solid #e2e8f0; padding-top: 16px; margin-top: 20px; font-size: 12px; color: #64748b;">
+                  <strong>Giriraj Power Support & Wholesale Desk</strong><br>
+                  Kasba Central Warehouse, Kolkata 700039<br>
+                  WhatsApp: +91 87774 00280 | Phone: +91 90071 68561 | Email: ${OFFICIAL_EMAIL}
                 </div>
               </div>
-            `
-          });
-        } catch (sdkErr: any) {
-          console.warn("[Resend Reply SDK error]:", sdkErr);
-        }
+            </div>
+          `
+        });
+      } catch (sdkErr: any) {
+        console.warn("[Resend Reply SDK error]:", sdkErr);
       }
 
       // Update record status to replied
@@ -765,7 +1106,7 @@ async function startServer() {
       return res.json({
         success: true,
         message: `Reply sent successfully to ${record.from}!`,
-        replyId: sendResult?.data?.id,
+        replyId: sendResult?.messageId,
         record: receivedEmailsStore[recordIndex]
       });
     } catch (err: any) {

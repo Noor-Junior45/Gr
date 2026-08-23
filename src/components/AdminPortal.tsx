@@ -23,9 +23,9 @@ import {
   Sparkles,
   CheckCheck
 } from 'lucide-react';
-import { Order, OrderStatus, ReceivedEmail } from '../types';
+import { Order, OrderStatus, ReceivedEmail, ADMIN_EMAILS, isUserAdmin } from '../types';
 import {
-  subscribeToOrders,
+  subscribeToAdminOrders,
   updateOrderStatusInFirestore,
   clearAllOrdersFromSupabase,
   syncAllProductsToSupabase
@@ -34,6 +34,8 @@ import { soundService } from '../services/sound';
 import {
   getEmailServiceStatus,
   sendOrderConfirmationEmail,
+  getOrderWhatsAppUrl,
+  formatOrderWhatsAppMessage,
   sendTestEmail,
   EmailServiceStatus,
   getReceivedEmails,
@@ -46,9 +48,10 @@ import {
 interface AdminPortalProps {
   isOpen: boolean;
   onClose: () => void;
+  currentUserEmail?: string;
 }
 
-export const AdminPortal: React.FC<AdminPortalProps> = ({ isOpen, onClose }) => {
+export const AdminPortal: React.FC<AdminPortalProps> = ({ isOpen, onClose, currentUserEmail }) => {
   const [activePortalTab, setActivePortalTab] = useState<'orders' | 'inbox'>('orders');
   const [orders, setOrders] = useState<Order[]>([]);
   const [soundEnabled, setSoundEnabled] = useState(true);
@@ -92,7 +95,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ isOpen, onClose }) => 
   }, [isOpen]);
 
   useEffect(() => {
-    const unsubscribe = subscribeToOrders((newOrders) => {
+    const unsubscribe = subscribeToAdminOrders((newOrders) => {
       setOrders(newOrders);
       // If a new order arrives and count increased, trigger sound alert
       if (newOrders.length > lastOrderCount && lastOrderCount > 0) {
@@ -243,16 +246,22 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ isOpen, onClose }) => 
               <ShieldCheck className="w-6 h-6" />
             </div>
             <div>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <h2 className="text-base sm:text-lg font-black text-white leading-tight">
                   Giriraj Power Management Portal
                 </h2>
-                <span className="px-2 py-0.5 rounded-full bg-green-500/20 text-green-400 border border-green-500/30 text-[10px] font-extrabold uppercase">
-                  team@girirajpower.in
+                <span className="px-2 py-0.5 rounded-full bg-yellow-400 text-slate-950 text-[10px] font-black uppercase">
+                  Admin Team
+                </span>
+                <span className="px-2 py-0.5 rounded-full bg-green-500/20 text-green-400 border border-green-500/30 text-[10px] font-extrabold font-mono">
+                  {emailServiceStatus?.officialEmail || 'orders@oieldiakir.resend.app'}
                 </span>
               </div>
-              <p className="text-xs text-slate-400">
-                Kasba Central Hub • Live Dispatch &amp; Inbound Resend Email Desk
+              <p className="text-xs text-slate-400 mt-0.5">
+                Admins: <strong className="text-slate-200">gauravgiri123344@gmail.com</strong> &amp; <strong className="text-slate-200">mdhassan1738@gmail.com</strong>
+                {currentUserEmail && isUserAdmin(currentUserEmail) && (
+                  <span className="ml-1 text-emerald-400 font-bold">• Active: {currentUserEmail}</span>
+                )}
               </p>
             </div>
           </div>
@@ -340,7 +349,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ isOpen, onClose }) => 
           <div className="hidden sm:flex items-center gap-3 text-xs text-slate-400">
             <span className="flex items-center gap-1.5">
               <Mail className="w-3.5 h-3.5 text-yellow-400" />
-              Official: <strong className="text-white">team@girirajpower.in</strong>
+              Inbound: <strong className="text-yellow-300 font-mono">{emailServiceStatus?.resendInboundEmail || 'orders@oieldiakir.resend.app'}</strong>
             </span>
           </div>
         </div>
@@ -592,6 +601,16 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ isOpen, onClose }) => 
                             <Mail className="w-3.5 h-3.5" />
                             <span>{sendingOrderEmailId === order.id ? 'Sending...' : 'Email Invoice (Resend)'}</span>
                           </button>
+                          <a
+                            href={getOrderWhatsAppUrl(order, '918777400280')}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="px-3 py-1.5 rounded-xl bg-green-950/80 hover:bg-green-900 border border-green-700/50 text-green-300 text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
+                            title="Open pre-formatted order summary in WhatsApp for delivery runner"
+                          >
+                            <MessageSquare className="w-3.5 h-3.5 text-green-400" />
+                            <span>WhatsApp Dispatch</span>
+                          </a>
                         </div>
 
                         <div className="flex items-center gap-2">
@@ -705,7 +724,7 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ isOpen, onClose }) => 
                     <Inbox className="w-10 h-10 mx-auto mb-2 opacity-40" />
                     <p className="text-xs font-bold">No received messages yet</p>
                     <p className="text-[11px] text-slate-600 mt-1">
-                      Emails sent to <strong>team@girirajpower.in</strong> or via contact forms will appear here.
+                      Emails sent to <strong className="text-yellow-400">orders@oieldiakir.resend.app</strong> (or <strong className="text-slate-400">&lt;anything&gt;@oieldiakir.resend.app</strong>) or via store contact forms will appear here.
                     </p>
                   </div>
                 ) : (

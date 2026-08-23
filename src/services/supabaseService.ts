@@ -1,6 +1,6 @@
 import { supabase } from '../lib/supabaseClient';
 import { User, Session, AuthChangeEvent } from '@supabase/supabase-js';
-import { Order, OrderStatus, WiringServiceBooking, SavedAddress, UserProfile, Product } from '../types';
+import { Order, OrderStatus, WiringServiceBooking, SavedAddress, UserProfile, Product, isUserAdmin } from '../types';
 import { INITIAL_PRODUCTS } from '../data/products';
 import { soundService } from './sound';
 
@@ -18,6 +18,62 @@ export const SAVED_ADDRESSES_STORAGE_KEY = 'giriraj_user_addresses_v4';
 export const ACTIVE_SAVED_ADDRESS_KEY = 'giriraj_active_address_v4';
 export const SAVED_UPI_STORAGE_KEY = 'giriraj_user_saved_upi';
 export const ORDERS_STORAGE_KEY = 'giriraj_orders_v2';
+
+// In-memory active user scope to prevent cross-account data leakage
+let activeUserScope: string | null = null;
+
+export function setActiveUserScope(scope: string | null): void {
+  activeUserScope = scope;
+}
+
+export function getActiveUserScope(): string | null {
+  return activeUserScope;
+}
+
+export function getUserScopeKeyFromUser(user?: { id?: string; email?: string | null; phone?: string | null } | null): string | null {
+  if (!user) return null;
+  if (user.id) return `uid_${user.id}`;
+  if (user.email && user.email.trim()) return `email_${user.email.trim().toLowerCase().replace(/[^a-z0-9]/g, '_')}`;
+  if (user.phone && user.phone.trim()) return `phone_${user.phone.replace(/\D/g, '')}`;
+  return null;
+}
+
+/**
+ * Purges legacy unscoped global localStorage keys to permanently eliminate cross-user data leakage
+ */
+export function purgeLegacyUnscopedStorage(): void {
+  if (typeof window === 'undefined' || !window.localStorage) return;
+  try {
+    const legacyKeys = [
+      'giriraj_user_phone',
+      'giriraj_user_name',
+      'giriraj_user_email',
+      'giriraj_user_photo',
+      'giriraj_user_dob',
+      'giriraj_user_email_verified',
+      'giriraj_user_wallet_balance',
+      'giriraj_user_refund_balance',
+      'giriraj_user_cashback_balance',
+      'giriraj_user_addresses_v4',
+      'giriraj_active_address_v4',
+      'giriraj_active_address',
+      'giriraj_active_landmark',
+      'giriraj_user_saved_upi',
+      'giriraj_orders_v2',
+      'giriraj_customer_orders',
+      'giriraj_orders_cache',
+      'giriraj_saved_items_v1'
+    ];
+    legacyKeys.forEach((k) => localStorage.removeItem(k));
+  } catch (e) {
+    // ignore
+  }
+}
+
+// Auto-purge legacy shared keys once on load
+if (typeof window !== 'undefined') {
+  purgeLegacyUnscopedStorage();
+}
 
 // Safe LocalStorage helpers for SSR / sandboxed iframe environments
 export function safeGetItem(key: string): string | null {
@@ -309,26 +365,34 @@ export function onAuthStateChange(
 
     if (event === 'SIGNED_OUT' || (!session && !user && event !== 'INITIAL_SESSION')) {
       clearUserProfile();
+      setActiveUserScope(null);
       callback(event, null, null);
       return;
     }
 
     if (user) {
-      // Extract profile details
+      const scope = getUserScopeKeyFromUser(user);
+      setActiveUserScope(scope);
+
+      // Extract profile details strictly for this authenticated user
       const userMeta = user.user_metadata || {};
-      const phone = user.phone || userMeta.phone || safeGetItem(USER_PHONE_KEY) || '';
-      const name = userMeta.full_name || userMeta.name || userMeta.custom_claims?.name || safeGetItem(USER_NAME_KEY) || (user.email ? user.email.split('@')[0] : 'Customer');
-      const email = user.email || userMeta.email || safeGetItem(USER_EMAIL_KEY) || '';
-      const photoURL = userMeta.avatar_url || userMeta.picture || safeGetItem(USER_PHOTO_KEY) || undefined;
+      const localProf = scope ? getSavedUserProfile(scope) : null;
+      const phone = user.phone || userMeta.phone || localProf?.phone || '';
+      const name = userMeta.full_name || userMeta.name || userMeta.custom_claims?.name || localProf?.name || (user.email ? user.email.split('@')[0] : 'Customer');
+      const email = user.email || userMeta.email || localProf?.email || '';
+      const photoURL = userMeta.avatar_url || userMeta.picture || localProf?.photoURL || undefined;
       const emailVerified = !!user.email_confirmed_at || !!user.confirmed_at;
 
-      saveUserProfile({
-        phone,
-        name,
-        email,
-        photoURL,
-        emailVerified
-      });
+      saveUserProfile(
+        {
+          phone,
+          name,
+          email,
+          photoURL,
+          emailVerified
+        },
+        scope || undefined
+      );
 
       // Also upsert profile row to Supabase `user_profiles` table
       syncUserProfileToSupabase(user.id, {
@@ -378,55 +442,86 @@ export async function syncUserProfileToSupabase(
 /**
  * Get saved user profile from storage & current Supabase session
  */
-export function getSavedUserProfile(): UserProfile | null {
-  const phone = safeGetItem(USER_PHONE_KEY) || '';
-  const name = safeGetItem(USER_NAME_KEY) || '';
-  const email = safeGetItem(USER_EMAIL_KEY) || '';
-  const photoURL = safeGetItem(USER_PHOTO_KEY) || '';
-  const dob = safeGetItem(USER_DOB_KEY) || '';
-  const emailVerified = safeGetItem(USER_EMAIL_VERIFIED_KEY) === 'true';
-  const refundBalance = Number(safeGetItem(USER_REFUND_BALANCE_KEY)) || 0;
-  const cashbackBalance = Number(safeGetItem(USER_CASHBACK_BALANCE_KEY)) || 0;
-  const walletBalance = refundBalance + cashbackBalance;
-
-  if (!phone && !email && (!name || name === 'Kolkata Customer')) {
+export function getSavedUserProfile(userScopeOverride?: string): UserProfile | null {
+  const scope = userScopeOverride || activeUserScope;
+  if (!scope) {
     return null;
   }
 
-  return {
-    phone,
-    name: name || 'Customer',
-    email,
-    emailVerified,
-    photoURL: photoURL || undefined,
-    dob,
-    walletBalance,
-    refundBalance,
-    cashbackBalance
-  };
+  const raw = safeGetItem(`giriraj_profile_${scope}`);
+  if (!raw) {
+    return null;
+  }
+
+  try {
+    const prof: UserProfile = JSON.parse(raw);
+    if (!prof.phone && !prof.email && (!prof.name || prof.name === 'Customer')) {
+      return null;
+    }
+    const adminStatus = isUserAdmin(prof.email);
+    prof.isAdmin = adminStatus;
+    prof.role = adminStatus ? 'admin' : 'customer';
+    return prof;
+  } catch {
+    return null;
+  }
 }
 
 /**
  * Save user profile updates to local state and Supabase
  */
-export function saveUserProfile(data: {
-  phone?: string;
-  name?: string;
-  email?: string;
-  emailVerified?: boolean;
-  photoURL?: string;
-  dob?: string;
-  refundBalance?: number;
-  cashbackBalance?: number;
-}): void {
-  if (data.phone !== undefined) safeSetItem(USER_PHONE_KEY, data.phone);
-  if (data.name !== undefined) safeSetItem(USER_NAME_KEY, data.name);
-  if (data.email !== undefined) safeSetItem(USER_EMAIL_KEY, data.email);
-  if (data.photoURL !== undefined) safeSetItem(USER_PHOTO_KEY, data.photoURL);
-  if (data.dob !== undefined) safeSetItem(USER_DOB_KEY, data.dob);
-  if (data.emailVerified !== undefined) safeSetItem(USER_EMAIL_VERIFIED_KEY, String(data.emailVerified));
-  if (data.refundBalance !== undefined) safeSetItem(USER_REFUND_BALANCE_KEY, String(data.refundBalance));
-  if (data.cashbackBalance !== undefined) safeSetItem(USER_CASHBACK_BALANCE_KEY, String(data.cashbackBalance));
+export function saveUserProfile(
+  data: {
+    phone?: string;
+    name?: string;
+    email?: string;
+    emailVerified?: boolean;
+    photoURL?: string;
+    dob?: string;
+    refundBalance?: number;
+    cashbackBalance?: number;
+  },
+  userScopeOverride?: string
+): void {
+  const scope =
+    userScopeOverride ||
+    activeUserScope ||
+    (data.email ? getUserScopeKeyFromUser({ email: data.email }) : null) ||
+    (data.phone ? getUserScopeKeyFromUser({ phone: data.phone }) : null);
+
+  if (scope) {
+    const existing = getSavedUserProfile(scope) || {
+      name: 'Customer',
+      phone: '',
+      email: '',
+      emailVerified: false,
+      walletBalance: 0,
+      refundBalance: 0,
+      cashbackBalance: 0
+    };
+
+    const effectiveEmail = data.email !== undefined ? data.email : existing.email;
+    const adminStatus = isUserAdmin(effectiveEmail);
+
+    const updated: UserProfile = {
+      ...existing,
+      phone: data.phone !== undefined ? data.phone : existing.phone,
+      name: data.name !== undefined ? data.name : existing.name,
+      email: effectiveEmail,
+      emailVerified: data.emailVerified !== undefined ? data.emailVerified : existing.emailVerified,
+      photoURL: data.photoURL !== undefined ? data.photoURL : existing.photoURL,
+      dob: data.dob !== undefined ? data.dob : existing.dob,
+      refundBalance: data.refundBalance !== undefined ? data.refundBalance : existing.refundBalance,
+      cashbackBalance: data.cashbackBalance !== undefined ? data.cashbackBalance : existing.cashbackBalance,
+      walletBalance:
+        (data.refundBalance !== undefined ? data.refundBalance : existing.refundBalance || 0) +
+        (data.cashbackBalance !== undefined ? data.cashbackBalance : existing.cashbackBalance || 0),
+      isAdmin: adminStatus,
+      role: adminStatus ? 'admin' : 'customer'
+    };
+
+    safeSetItem(`giriraj_profile_${scope}`, JSON.stringify(updated));
+  }
 
   // Async sync to Supabase if authenticated
   supabase.auth.getUser().then(({ data: authData }) => {
@@ -442,15 +537,13 @@ export function saveUserProfile(data: {
 }
 
 export function clearUserProfile(): void {
-  safeRemoveItem(USER_PHONE_KEY);
-  safeRemoveItem(USER_NAME_KEY);
-  safeRemoveItem(USER_EMAIL_KEY);
-  safeRemoveItem(USER_PHOTO_KEY);
-  safeRemoveItem(USER_DOB_KEY);
-  safeRemoveItem(USER_EMAIL_VERIFIED_KEY);
-  safeRemoveItem(USER_WALLET_BALANCE_KEY);
-  safeRemoveItem(USER_REFUND_BALANCE_KEY);
-  safeRemoveItem(USER_CASHBACK_BALANCE_KEY);
+  if (activeUserScope) {
+    safeRemoveItem(`giriraj_profile_${activeUserScope}`);
+    safeRemoveItem(`giriraj_orders_${activeUserScope}`);
+    safeRemoveItem(`giriraj_addrs_${activeUserScope}`);
+    safeRemoveItem(`giriraj_upi_${activeUserScope}`);
+  }
+  activeUserScope = null;
 }
 
 // ============================================================================
@@ -459,7 +552,9 @@ export function clearUserProfile(): void {
 
 type OrderListener = (orders: Order[]) => void;
 const orderListeners: Set<OrderListener> = new Set();
+const adminOrderListeners: Set<OrderListener> = new Set();
 let ordersChannel: ReturnType<typeof supabase.channel> | null = null;
+let adminOrdersChannel: ReturnType<typeof supabase.channel> | null = null;
 
 function isRealOrder(order: Order): boolean {
   if (!order || !order.id) return false;
@@ -468,9 +563,11 @@ function isRealOrder(order: Order): boolean {
   return true;
 }
 
-export function getStoredOrders(): Order[] {
+export function getStoredOrders(userScopeOverride?: string): Order[] {
   try {
-    const raw = localStorage.getItem(ORDERS_STORAGE_KEY);
+    const scope = userScopeOverride || activeUserScope;
+    if (!scope) return [];
+    const raw = localStorage.getItem(`giriraj_orders_${scope}`);
     if (!raw) {
       return [];
     }
@@ -485,9 +582,9 @@ export function getStoredOrders(): Order[] {
 
 export function clearAllStoredOrders(): void {
   try {
-    localStorage.removeItem(ORDERS_STORAGE_KEY);
-    localStorage.removeItem('giriraj_customer_orders');
-    localStorage.removeItem('giriraj_orders_cache');
+    if (activeUserScope) {
+      localStorage.removeItem(`giriraj_orders_${activeUserScope}`);
+    }
     notifyOrderListeners([]);
   } catch (e) {
     console.error('Failed clearing orders', e);
@@ -532,24 +629,41 @@ function notifyOrderListeners(orders: Order[]) {
   });
 }
 
+function notifyAdminOrderListeners(orders: Order[]) {
+  adminOrderListeners.forEach((listener) => {
+    try {
+      listener(orders);
+    } catch (e) {
+      console.error('Error notifying admin order listener', e);
+    }
+  });
+}
+
 // Global fetch helper for orders - strictly isolates per authenticated user
-async function fetchUserOrders() {
+export async function fetchUserOrders(): Promise<Order[]> {
   try {
     const { data: userData } = await supabase.auth.getUser();
     
     // If not logged in, user has no authenticated orders
     if (!userData?.user?.id) {
-      localStorage.setItem(ORDERS_STORAGE_KEY, JSON.stringify([]));
+      activeUserScope = null;
       notifyOrderListeners([]);
-      return;
+      return [];
     }
 
-    const { data, error } = await supabase
-      .from('orders')
-      .select('*')
-      .eq('user_id', userData.user.id)
-      .order('created_at', { ascending: false })
-      .limit(50);
+    const scope = getUserScopeKeyFromUser(userData.user);
+    if (scope) {
+      activeUserScope = scope;
+    }
+
+    let query = supabase.from('orders').select('*');
+    if (userData.user.email && userData.user.email.includes('@')) {
+      query = query.or(`user_id.eq.${userData.user.id},customer_email.ilike.${userData.user.email.trim().toLowerCase()}`);
+    } else {
+      query = query.eq('user_id', userData.user.id);
+    }
+
+    const { data, error } = await query.order('created_at', { ascending: false }).limit(50);
 
     if (!error && data) {
       const liveOrders: Order[] = data.map((row) => ({
@@ -576,23 +690,101 @@ async function fetchUserOrders() {
         notes: row.notes || undefined
       })).filter(isRealOrder);
 
-      localStorage.setItem(ORDERS_STORAGE_KEY, JSON.stringify(liveOrders));
+      if (scope) {
+        safeSetItem(`giriraj_orders_${scope}`, JSON.stringify(liveOrders));
+      }
       notifyOrderListeners(liveOrders);
+      return liveOrders;
     }
   } catch (err) {
     console.warn('Supabase orders fetch notice:', err);
   }
+  return [];
 }
 
 /**
- * Fetch and Subscribe to Orders from Supabase with RLS & Realtime
+ * Fetch all orders strictly for Store Admin management
+ */
+export async function fetchAllAdminOrders(): Promise<Order[]> {
+  try {
+    const { data, error } = await supabase
+      .from('orders')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(100);
+
+    if (!error && data) {
+      const allOrders: Order[] = data.map((row) => ({
+        id: row.id,
+        customerName: row.customer_name || 'Customer',
+        phone: row.phone || '',
+        customerEmail: row.customer_email || undefined,
+        address: row.address || row.delivery_address || '',
+        area: row.area || 'Salt Lake Sector V',
+        landmark: row.landmark || undefined,
+        pincode: row.pincode || '700091',
+        items: row.items || [],
+        itemTotal: Number(row.item_total || 0),
+        deliveryFee: Number(row.delivery_fee || 0),
+        handlingFee: Number(row.handling_fee || 0),
+        discount: Number(row.discount || 0),
+        totalAmount: Number(row.total_amount || 0),
+        paymentMethod: row.payment_method || 'cod',
+        paymentStatus: row.payment_status || 'pending',
+        status: row.status || 'pending',
+        createdAt: row.created_at || new Date().toISOString(),
+        estimatedDeliveryTimestamp: Number(row.estimated_delivery_timestamp || Date.now() + 3600000),
+        deliveryPartner: row.delivery_partner || undefined,
+        notes: row.notes || undefined
+      })).filter(isRealOrder);
+
+      notifyAdminOrderListeners(allOrders);
+      return allOrders;
+    }
+  } catch (err) {
+    console.warn('Supabase admin orders fetch error:', err);
+  }
+  return [];
+}
+
+/**
+ * Subscribe to store-wide orders strictly for Store Admin Portal
+ */
+export function subscribeToAdminOrders(listener: OrderListener): () => void {
+  adminOrderListeners.add(listener);
+  fetchAllAdminOrders().then((orders) => listener(orders));
+
+  if (!adminOrdersChannel) {
+    adminOrdersChannel = supabase
+      .channel('admin_orders_realtime_feed')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'orders' },
+        () => {
+          fetchAllAdminOrders();
+        }
+      )
+      .subscribe();
+  }
+
+  return () => {
+    adminOrderListeners.delete(listener);
+    if (adminOrderListeners.size === 0 && adminOrdersChannel) {
+      supabase.removeChannel(adminOrdersChannel);
+      adminOrdersChannel = null;
+    }
+  };
+}
+
+/**
+ * Fetch and Subscribe to Orders from Supabase with per-user data isolation
  */
 export function subscribeToOrders(listener: OrderListener): () => void {
   orderListeners.add(listener);
-  // Send cached/stored state first for immediate UI display
+  // Send user-scoped cached state first for immediate UI display
   listener(getStoredOrders());
 
-  // Fetch initial orders
+  // Fetch initial orders for the active user
   fetchUserOrders();
 
   // Initialize singleton channel only once across all subscribers
@@ -622,20 +814,24 @@ export function subscribeToOrders(listener: OrderListener): () => void {
  * Creates an order in Supabase `orders` table attaching the user's ID
  */
 export async function createFirestoreOrder(order: Order): Promise<Order> {
-  const currentOrders = getStoredOrders();
-  const updatedOrders = [order, ...currentOrders];
-  localStorage.setItem(ORDERS_STORAGE_KEY, JSON.stringify(updatedOrders));
+  const { data: authData } = await supabase.auth.getUser();
+  const userId = authData?.user?.id || null;
+  const scope =
+    getUserScopeKeyFromUser(authData?.user) ||
+    (order.customerEmail ? getUserScopeKeyFromUser({ email: order.customerEmail }) : null) ||
+    (order.phone ? getUserScopeKeyFromUser({ phone: order.phone }) : null);
+
+  if (scope) {
+    const currentOrders = getStoredOrders(scope);
+    const updatedOrders = [order, ...currentOrders.filter((o) => o.id !== order.id)];
+    safeSetItem(`giriraj_orders_${scope}`, JSON.stringify(updatedOrders));
+    notifyOrderListeners(updatedOrders);
+  }
 
   // Sound chime alert
   soundService.playNewOrderChime();
 
-  // Notify UI
-  notifyOrderListeners(updatedOrders);
-
   try {
-    const { data: authData } = await supabase.auth.getUser();
-    const userId = authData?.user?.id || null;
-
     const rowPayload = {
       id: order.id,
       user_id: userId,
@@ -666,12 +862,14 @@ export async function createFirestoreOrder(order: Order): Promise<Order> {
       console.warn('Supabase order insert note:', error.message);
     }
 
+    // Refresh admin orders feed if admin portal is listening
+    fetchAllAdminOrders().catch(() => {});
+
     // Update product stock counts in backend database when items sell
     if (Array.isArray(order.items) && order.items.length > 0) {
       for (const item of order.items) {
         if (!item?.product?.id) continue;
         try {
-          // Fetch current stock from Supabase products table
           const { data: prodData } = await supabase
             .from('products')
             .select('id, stock_quantity, stock_count')
@@ -722,7 +920,6 @@ export async function createFirestoreOrder(order: Order): Promise<Order> {
  * Updates order status in Supabase
  */
 export async function updateOrderStatusInFirestore(orderId: string, newStatus: OrderStatus): Promise<void> {
-  const currentOrders = getStoredOrders();
   let updatedDeliveryPartner = undefined;
 
   if (newStatus === 'out_for_delivery') {
@@ -734,19 +931,22 @@ export async function updateOrderStatusInFirestore(orderId: string, newStatus: O
     };
   }
 
-  const updatedOrders = currentOrders.map((o) => {
-    if (o.id === orderId) {
-      return {
-        ...o,
-        status: newStatus,
-        deliveryPartner: updatedDeliveryPartner || o.deliveryPartner
-      };
-    }
-    return o;
-  });
+  if (activeUserScope) {
+    const currentOrders = getStoredOrders(activeUserScope);
+    const updatedOrders = currentOrders.map((o) => {
+      if (o.id === orderId) {
+        return {
+          ...o,
+          status: newStatus,
+          deliveryPartner: updatedDeliveryPartner || o.deliveryPartner
+        };
+      }
+      return o;
+    });
 
-  localStorage.setItem(ORDERS_STORAGE_KEY, JSON.stringify(updatedOrders));
-  notifyOrderListeners(updatedOrders);
+    safeSetItem(`giriraj_orders_${activeUserScope}`, JSON.stringify(updatedOrders));
+    notifyOrderListeners(updatedOrders);
+  }
 
   try {
     const updatePayload: Record<string, unknown> = {
@@ -756,6 +956,7 @@ export async function updateOrderStatusInFirestore(orderId: string, newStatus: O
       updatePayload.delivery_partner = updatedDeliveryPartner;
     }
     await supabase.from('orders').update(updatePayload).eq('id', orderId);
+    fetchAllAdminOrders().catch(() => {});
   } catch (error) {
     console.warn('Supabase update order error:', error);
   }
@@ -803,9 +1004,11 @@ type AddressListener = (addresses: SavedAddress[]) => void;
 const addressListeners: Set<AddressListener> = new Set();
 let addressesChannel: ReturnType<typeof supabase.channel> | null = null;
 
-export function getStoredAddresses(): SavedAddress[] {
+export function getStoredAddresses(userScopeOverride?: string): SavedAddress[] {
   try {
-    const raw = localStorage.getItem(SAVED_ADDRESSES_STORAGE_KEY);
+    const scope = userScopeOverride || activeUserScope;
+    if (!scope) return [];
+    const raw = localStorage.getItem(`giriraj_addrs_${scope}`);
     if (!raw) return [];
     const parsed = JSON.parse(raw);
     return Array.isArray(parsed) ? parsed : [];
@@ -815,15 +1018,26 @@ export function getStoredAddresses(): SavedAddress[] {
   }
 }
 
-async function fetchUserAddresses() {
+export async function fetchUserAddresses(): Promise<SavedAddress[]> {
   try {
     const { data: authData } = await supabase.auth.getUser();
-    let query = supabase.from('saved_addresses').select('*').order('created_at', { ascending: false }).limit(20);
-    if (authData?.user?.id) {
-      query = query.eq('user_id', authData.user.id);
+    if (!authData?.user?.id) {
+      notifyAddressListeners([]);
+      return [];
     }
 
-    const { data, error } = await query;
+    const scope = getUserScopeKeyFromUser(authData.user);
+    if (scope) {
+      activeUserScope = scope;
+    }
+
+    const { data, error } = await supabase
+      .from('saved_addresses')
+      .select('*')
+      .eq('user_id', authData.user.id)
+      .order('created_at', { ascending: false })
+      .limit(20);
+
     if (!error && data) {
       const list: SavedAddress[] = data.map((row) => ({
         id: row.id,
@@ -848,12 +1062,27 @@ async function fetchUserAddresses() {
         receiverPhone: row.receiver_phone,
         createdAt: row.created_at
       }));
-      localStorage.setItem(SAVED_ADDRESSES_STORAGE_KEY, JSON.stringify(list));
-      addressListeners.forEach((l) => l(list));
+
+      if (scope) {
+        safeSetItem(`giriraj_addrs_${scope}`, JSON.stringify(list));
+      }
+      notifyAddressListeners(list);
+      return list;
     }
   } catch (e) {
     console.warn('Addresses fetch notice:', e);
   }
+  return [];
+}
+
+function notifyAddressListeners(addresses: SavedAddress[]) {
+  addressListeners.forEach((l) => {
+    try {
+      l(addresses);
+    } catch (e) {
+      console.warn('Address listener notice:', e);
+    }
+  });
 }
 
 export function subscribeToAddresses(listener: AddressListener): () => void {
@@ -883,17 +1112,19 @@ export function subscribeToAddresses(listener: AddressListener): () => void {
 }
 
 export async function saveAddressToFirestore(address: SavedAddress): Promise<void> {
-  const current = getStoredAddresses().filter((a) => a.id !== address.id);
-  const updated = [address, ...current];
-  localStorage.setItem(SAVED_ADDRESSES_STORAGE_KEY, JSON.stringify(updated));
-  localStorage.setItem(ACTIVE_SAVED_ADDRESS_KEY, JSON.stringify(address));
+  const { data: authData } = await supabase.auth.getUser();
+  const userId = authData?.user?.id || null;
+  const scope = getUserScopeKeyFromUser(authData?.user) || activeUserScope;
 
-  addressListeners.forEach((l) => l(updated));
+  if (scope) {
+    const current = getStoredAddresses(scope).filter((a) => a.id !== address.id);
+    const updated = [address, ...current];
+    safeSetItem(`giriraj_addrs_${scope}`, JSON.stringify(updated));
+    safeSetItem(`giriraj_active_addr_${scope}`, JSON.stringify(address));
+    notifyAddressListeners(updated);
+  }
 
   try {
-    const { data: authData } = await supabase.auth.getUser();
-    const userId = authData?.user?.id || null;
-
     const rowPayload = {
       id: address.id,
       user_id: userId,
@@ -921,13 +1152,22 @@ export async function saveAddressToFirestore(address: SavedAddress): Promise<voi
 }
 
 export async function deleteAddressFromFirestore(id: string): Promise<void> {
-  const current = getStoredAddresses();
-  const updated = current.filter((a) => a.id !== id);
-  localStorage.setItem(SAVED_ADDRESSES_STORAGE_KEY, JSON.stringify(updated));
-  addressListeners.forEach((l) => l(updated));
+  const { data: authData } = await supabase.auth.getUser();
+  const scope = getUserScopeKeyFromUser(authData?.user) || activeUserScope;
+
+  if (scope) {
+    const current = getStoredAddresses(scope);
+    const updated = current.filter((a) => a.id !== id);
+    safeSetItem(`giriraj_addrs_${scope}`, JSON.stringify(updated));
+    notifyAddressListeners(updated);
+  }
 
   try {
-    await supabase.from('saved_addresses').delete().eq('id', id);
+    if (authData?.user?.id) {
+      await supabase.from('saved_addresses').delete().eq('id', id).eq('user_id', authData.user.id);
+    } else {
+      await supabase.from('saved_addresses').delete().eq('id', id);
+    }
   } catch (err) {
     console.warn('Supabase delete address error:', err);
   }
@@ -940,15 +1180,27 @@ export async function deleteAddressFromFirestore(id: string): Promise<void> {
 type UpiListener = (upis: string[]) => void;
 const upiListeners = new Set<UpiListener>();
 
-export function getStoredUpiIds(): string[] {
+export function getStoredUpiIds(userScopeOverride?: string): string[] {
   try {
-    const raw = localStorage.getItem(SAVED_UPI_STORAGE_KEY);
+    const scope = userScopeOverride || activeUserScope;
+    if (!scope) return [];
+    const raw = localStorage.getItem(`giriraj_upi_${scope}`);
     if (!raw) return [];
     const parsed = JSON.parse(raw);
     return Array.isArray(parsed) ? parsed : [];
   } catch (e) {
     return [];
   }
+}
+
+function notifyUpiListeners(upis: string[]) {
+  upiListeners.forEach((l) => {
+    try {
+      l(upis);
+    } catch (e) {
+      // ignore
+    }
+  });
 }
 
 export function subscribeToUpiIds(listener: UpiListener): () => void {
@@ -958,15 +1210,24 @@ export function subscribeToUpiIds(listener: UpiListener): () => void {
   async function fetchUpiIds() {
     try {
       const { data: authData } = await supabase.auth.getUser();
-      let query = supabase.from('saved_upi_ids').select('upi_id').order('created_at', { ascending: false }).limit(15);
-      if (authData?.user?.id) {
-        query = query.eq('user_id', authData.user.id);
+      if (!authData?.user?.id) {
+        notifyUpiListeners([]);
+        return;
       }
-      const { data, error } = await query;
+      const scope = getUserScopeKeyFromUser(authData.user);
+      const { data, error } = await supabase
+        .from('saved_upi_ids')
+        .select('upi_id')
+        .eq('user_id', authData.user.id)
+        .order('created_at', { ascending: false })
+        .limit(15);
+
       if (!error && data) {
         const list = data.map((r) => r.upi_id).filter(Boolean);
-        localStorage.setItem(SAVED_UPI_STORAGE_KEY, JSON.stringify(list));
-        upiListeners.forEach((l) => l(list));
+        if (scope) {
+          safeSetItem(`giriraj_upi_${scope}`, JSON.stringify(list));
+        }
+        notifyUpiListeners(list);
       }
     } catch (e) {
       console.warn('UPI fetch note:', e);
@@ -983,16 +1244,18 @@ export function subscribeToUpiIds(listener: UpiListener): () => void {
 export async function saveUpiToFirestore(upiId: string): Promise<void> {
   const cleanUpi = upiId.trim().toLowerCase();
   if (!cleanUpi) return;
-  const current = getStoredUpiIds().filter((u) => u.toLowerCase() !== cleanUpi);
-  const updated = [cleanUpi, ...current];
-  localStorage.setItem(SAVED_UPI_STORAGE_KEY, JSON.stringify(updated));
+  const { data: authData } = await supabase.auth.getUser();
+  const userId = authData?.user?.id || null;
+  const scope = getUserScopeKeyFromUser(authData?.user) || activeUserScope;
 
-  upiListeners.forEach((l) => l(updated));
+  if (scope) {
+    const current = getStoredUpiIds(scope).filter((u) => u.toLowerCase() !== cleanUpi);
+    const updated = [cleanUpi, ...current];
+    safeSetItem(`giriraj_upi_${scope}`, JSON.stringify(updated));
+    notifyUpiListeners(updated);
+  }
 
   try {
-    const { data: authData } = await supabase.auth.getUser();
-    const userId = authData?.user?.id || null;
-
     await supabase.from('saved_upi_ids').upsert({
       upi_id: cleanUpi,
       user_id: userId,
@@ -1005,14 +1268,22 @@ export async function saveUpiToFirestore(upiId: string): Promise<void> {
 
 export async function deleteUpiFromFirestore(upiId: string): Promise<void> {
   const cleanUpi = upiId.trim().toLowerCase();
-  const current = getStoredUpiIds();
-  const updated = current.filter((u) => u.toLowerCase() !== cleanUpi);
-  localStorage.setItem(SAVED_UPI_STORAGE_KEY, JSON.stringify(updated));
+  const { data: authData } = await supabase.auth.getUser();
+  const scope = getUserScopeKeyFromUser(authData?.user) || activeUserScope;
 
-  upiListeners.forEach((l) => l(updated));
+  if (scope) {
+    const current = getStoredUpiIds(scope);
+    const updated = current.filter((u) => u.toLowerCase() !== cleanUpi);
+    safeSetItem(`giriraj_upi_${scope}`, JSON.stringify(updated));
+    notifyUpiListeners(updated);
+  }
 
   try {
-    await supabase.from('saved_upi_ids').delete().eq('upi_id', cleanUpi);
+    if (authData?.user?.id) {
+      await supabase.from('saved_upi_ids').delete().eq('upi_id', cleanUpi).eq('user_id', authData.user.id);
+    } else {
+      await supabase.from('saved_upi_ids').delete().eq('upi_id', cleanUpi);
+    }
   } catch (err) {
     console.warn('Supabase delete upi error:', err);
   }

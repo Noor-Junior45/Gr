@@ -32,7 +32,7 @@ import {
 } from 'lucide-react';
 import { CartItem, KolkataArea, Order, SavedAddress, Product, UserProfile } from '../types';
 import { createFirestoreOrder } from '../services/supabaseService';
-import { sendOrderConfirmationEmail } from '../services/emailService';
+import { sendOrderConfirmationEmail, notifyOrderPlaced } from '../services/emailService';
 import { INDIAN_STANDARD_WIRE_COLORS } from '../data/wireColors';
 import { trackBeginCheckout, trackPurchase, trackRemoveFromCart } from '../utils/analytics';
 import {
@@ -370,12 +370,10 @@ export const CartView: React.FC<CartViewProps> = ({
       // Track GA4 Purchase Event
       trackPurchase(created, orderItems, finalTotalAmount, deliveryFee);
 
-      // Trigger email invoice if provided
-      if (email.trim()) {
-        sendOrderConfirmationEmail(created, email.trim()).catch((e) =>
-          console.warn('Email invoice notice:', e)
-        );
-      }
+      // Trigger backend automated Admin Alert (Email + WhatsApp) & Customer Invoice
+      notifyOrderPlaced(created, email.trim()).catch((e) =>
+        console.warn('Backend order notification notice:', e)
+      );
 
       // Celebrate with confetti
       try {

@@ -36,7 +36,8 @@ import {
   Wrench
 } from 'lucide-react';
 import { Product, CartItem } from '../types';
-import { INITIAL_PRODUCTS } from '../data/products';
+import { supabase } from '../lib/supabaseClient';
+import { fetchProductsFromSupabase } from '../services/supabaseService';
 import { OFFICIAL_BRANDS } from './BrandLogos';
 
 export interface HomePageProps {
@@ -46,6 +47,7 @@ export interface HomePageProps {
   onNavigateCategory: (categoryName: string) => void;
   onOpenBulkQuoteModal?: () => void;
   onOpenProductQuickView?: (product: Product) => void;
+  products?: Product[];
 }
 
 // ---------------------------------------------------------------------------
@@ -270,12 +272,63 @@ export const HomePage: React.FC<HomePageProps> = ({
   cartItems = [],
   onNavigateCategory,
   onOpenBulkQuoteModal,
-  onOpenProductQuickView
+  onOpenProductQuickView,
+  products
 }) => {
   const navigate = useNavigate();
   const [activePosterIndex, setActivePosterIndex] = useState(0);
+  const [dbProducts, setDbProducts] = useState<Product[]>([]);
+  const [isLoadingProducts, setIsLoadingProducts] = useState(false);
   const electricalScrollRef = useRef<HTMLDivElement>(null);
   const constructionScrollRef = useRef<HTMLDivElement>(null);
+
+  // Fetch live products directly from backend Supabase database
+  useEffect(() => {
+    let isMounted = true;
+    setIsLoadingProducts(true);
+
+    fetchProductsFromSupabase()
+      .then((data) => {
+        if (isMounted && data) {
+          setDbProducts(data);
+        }
+      })
+      .catch((err) => {
+        console.warn('Error fetching homepage products from database:', err);
+      })
+      .finally(() => {
+        if (isMounted) setIsLoadingProducts(false);
+      });
+
+    // Real-time listener: updates automatically whenever products table changes
+    const channel = supabase
+      .channel('homepage_products_realtime')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'products' },
+        () => {
+          fetchProductsFromSupabase()
+            .then((data) => {
+              if (isMounted && data) {
+                setDbProducts(data);
+              }
+            })
+            .catch(console.warn);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      isMounted = false;
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
+  // Compute live products source of truth
+  const liveProducts = useMemo(() => {
+    if (products && products.length > 0) return products;
+    return dbProducts;
+  }, [products, dbProducts]);
 
   const scrollRow = (ref: React.RefObject<HTMLDivElement | null>, offset: number) => {
     if (ref.current) {
@@ -298,27 +351,51 @@ export const HomePage: React.FC<HomePageProps> = ({
   };
 
   // -------------------------------------------------------------------------
-  // ROW 3: Restocked / Refilled items (Merged Electrical + Construction, 5-10 items)
+  // ROW 3: Restocked / Refilled items (Strictly from real backend database)
   // -------------------------------------------------------------------------
   const restockedProducts = useMemo(() => {
-    const electricalSubset = INITIAL_PRODUCTS.filter((p) => p.category === 'electrical').slice(0, 4);
-    const constructionSubset = INITIAL_PRODUCTS.filter((p) => p.category === 'construction').slice(0, 4);
-    return [...electricalSubset, ...constructionSubset].slice(0, 8);
-  }, []);
+    return liveProducts.filter((p) => p.inStock !== false).slice(0, 8);
+  }, [liveProducts]);
 
   // -------------------------------------------------------------------------
-  // ROW 4: Newly Launched Electrical Products (5-10 items)
+  // ROW 4: Newly Launched Electrical Products (Strictly from real backend database)
   // -------------------------------------------------------------------------
   const newlyLaunchedElectrical = useMemo(() => {
-    return INITIAL_PRODUCTS.filter((p) => p.category === 'electrical').slice(0, 8);
-  }, []);
+    return liveProducts.filter((p) => {
+      const cat = (p.category || '').toLowerCase();
+      return (
+        !cat ||
+        cat.includes('electrical') ||
+        cat.includes('wire') ||
+        cat.includes('cable') ||
+        cat.includes('switch') ||
+        cat.includes('fan') ||
+        cat.includes('light')
+      );
+    }).slice(0, 10);
+  }, [liveProducts]);
 
   // -------------------------------------------------------------------------
-  // ROW 5: Newly Launched Construction Products (5-10 items)
+  // ROW 5: Newly Launched Construction Products (Strictly from real backend database)
   // -------------------------------------------------------------------------
   const newlyLaunchedConstruction = useMemo(() => {
-    return INITIAL_PRODUCTS.filter((p) => p.category === 'construction').slice(0, 6);
-  }, []);
+    return liveProducts.filter((p) => {
+      const cat = (p.category || '').toLowerCase();
+      const sub = (p.subCategory || '').toLowerCase();
+      return (
+        cat.includes('construction') ||
+        cat.includes('cement') ||
+        cat.includes('plumbing') ||
+        cat.includes('paint') ||
+        cat.includes('hardware') ||
+        cat.includes('building') ||
+        sub.includes('cement') ||
+        sub.includes('tmt') ||
+        sub.includes('pipe') ||
+        sub.includes('waterproof')
+      );
+    }).slice(0, 10);
+  }, [liveProducts]);
 
   // -------------------------------------------------------------------------
   // ROW 8: Simple Calculator State
@@ -413,10 +490,14 @@ export const HomePage: React.FC<HomePageProps> = ({
         ? Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)
         : 0);
 
-    const isElectrical = product.category === 'electrical';
+    const isElectrical =
+      (product.category || '').toLowerCase().includes('electrical') ||
+      (product.category || '').toLowerCase().includes('wire') ||
+      (product.category || '').toLowerCase().includes('switch') ||
+      (product.category || '').toLowerCase().includes('cable');
     const detailLink = isElectrical
       ? `/electrical/product/${product.id}`
-      : `/construction`;
+      : `/construction/product/${product.id}`;
 
     return (
       <div
@@ -636,43 +717,103 @@ export const HomePage: React.FC<HomePageProps> = ({
         </section>
 
         {/* =====================================================================
-            ROW 3: RESTOCKED ITEMS (Refilled after out of stock - Merged Electrical & Construction)
+            ROW 3: RESTOCKED ITEMS (Refilled after out of stock - From Backend Database)
             ===================================================================== */}
-        <section id="row-3-restocked" className="space-y-3 pt-1">
-          <div className="border-b border-slate-100 pb-1.5">
-            <h2 className="text-sm sm:text-base font-bold text-slate-900 tracking-tight">
-              Back in Stock
-            </h2>
-          </div>
+        {restockedProducts.length > 0 && (
+          <section id="row-3-restocked" className="space-y-3 pt-1">
+            <div className="border-b border-slate-100 pb-1.5">
+              <h2 className="text-sm sm:text-base font-bold text-slate-900 tracking-tight">
+                Back in Stock
+              </h2>
+            </div>
 
-          {/* Product Grid (Merged Electrical & Construction) */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-x-4 sm:gap-x-6 gap-y-6 sm:gap-y-8">
-            {restockedProducts.map(renderProductCard)}
-          </div>
-        </section>
+            {/* Product Grid */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-x-4 sm:gap-x-6 gap-y-6 sm:gap-y-8">
+              {restockedProducts.map(renderProductCard)}
+            </div>
+          </section>
+        )}
 
         {/* =====================================================================
             ROW 4: NEWLY LAUNCHED / ELECTRICAL SEGMENT
             ===================================================================== */}
-        <section id="row-4-new-electrical" className="space-y-3 pt-1">
-          <div>
-            <h2 className="text-base sm:text-lg font-black text-slate-900 tracking-tight">
-              New Launched
-            </h2>
-            <div className="flex items-center justify-between border-b border-slate-100 pb-1.5 mt-1">
+        {newlyLaunchedElectrical.length > 0 && (
+          <section id="row-4-new-electrical" className="space-y-3 pt-1">
+            <div>
+              <h2 className="text-base sm:text-lg font-black text-slate-900 tracking-tight">
+                New Launched
+              </h2>
+              <div className="flex items-center justify-between border-b border-slate-100 pb-1.5 mt-1">
+                <h3 className="text-xs sm:text-sm font-bold text-amber-800 uppercase tracking-wider">
+                  Electrical
+                </h3>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    onClick={() => scrollRow(electricalScrollRef, -320)}
+                    className="w-7 h-7 rounded-full bg-slate-100 hover:bg-amber-100 text-slate-700 hover:text-amber-900 border border-slate-200 flex items-center justify-center transition-all cursor-pointer shadow-2xs active:scale-95"
+                    aria-label="Scroll left"
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={() => scrollRow(electricalScrollRef, 320)}
+                    className="w-7 h-7 rounded-full bg-slate-100 hover:bg-amber-100 text-slate-700 hover:text-amber-900 border border-slate-200 flex items-center justify-center transition-all cursor-pointer shadow-2xs active:scale-95"
+                    aria-label="Scroll right"
+                  >
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Horizontal Product Scroll Row */}
+            <div
+              ref={electricalScrollRef}
+              className="flex gap-3 sm:gap-4 overflow-x-auto no-scrollbar scroll-smooth py-1 -mx-4 px-4 sm:mx-0 sm:px-0 items-stretch"
+            >
+              {newlyLaunchedElectrical.map((p) => (
+                <div key={p.id} className="w-44 sm:w-56 shrink-0 flex flex-col">
+                  {renderProductCard(p)}
+                </div>
+              ))}
+              {/* See All Card at end of scroll */}
+              <div className="w-36 sm:w-44 shrink-0 flex flex-col">
+                <Link
+                  to="/electrical"
+                  className="h-full min-h-[250px] flex flex-col items-center justify-center rounded-2xl border border-slate-100/80 bg-white p-4 shadow-2xs hover:shadow-sm hover:border-blue-300 group transition-all cursor-pointer text-center"
+                >
+                  <div className="w-10 h-10 rounded-full bg-blue-50 group-hover:bg-blue-100 flex items-center justify-center mb-2 transition-colors">
+                    <ChevronRight className="w-5 h-5 text-blue-600 group-hover:translate-x-0.5 transition-transform" />
+                  </div>
+                  <span className="text-sm sm:text-base font-bold text-blue-600 group-hover:text-blue-700 transition-colors">
+                    See All
+                  </span>
+                </Link>
+              </div>
+            </div>
+          </section>
+        )}
+
+        {/* =====================================================================
+            ROW 5: NEWLY LAUNCHED / CONSTRUCTION SEGMENT
+            (Hidden when no construction products exist in database, auto-appears when products added)
+            ===================================================================== */}
+        {newlyLaunchedConstruction.length > 0 && (
+          <section id="row-5-new-construction" className="space-y-3 pt-1">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-1.5">
               <h3 className="text-xs sm:text-sm font-bold text-amber-800 uppercase tracking-wider">
-                Electrical
+                Construction
               </h3>
               <div className="flex items-center gap-1.5">
                 <button
-                  onClick={() => scrollRow(electricalScrollRef, -320)}
+                  onClick={() => scrollRow(constructionScrollRef, -320)}
                   className="w-7 h-7 rounded-full bg-slate-100 hover:bg-amber-100 text-slate-700 hover:text-amber-900 border border-slate-200 flex items-center justify-center transition-all cursor-pointer shadow-2xs active:scale-95"
                   aria-label="Scroll left"
                 >
                   <ChevronLeft className="w-4 h-4" />
                 </button>
                 <button
-                  onClick={() => scrollRow(electricalScrollRef, 320)}
+                  onClick={() => scrollRow(constructionScrollRef, 320)}
                   className="w-7 h-7 rounded-full bg-slate-100 hover:bg-amber-100 text-slate-700 hover:text-amber-900 border border-slate-200 flex items-center justify-center transition-all cursor-pointer shadow-2xs active:scale-95"
                   aria-label="Scroll right"
                 >
@@ -680,87 +821,34 @@ export const HomePage: React.FC<HomePageProps> = ({
                 </button>
               </div>
             </div>
-          </div>
 
-          {/* Horizontal Product Scroll Row */}
-          <div
-            ref={electricalScrollRef}
-            className="flex gap-3 sm:gap-4 overflow-x-auto no-scrollbar scroll-smooth py-1 -mx-4 px-4 sm:mx-0 sm:px-0 items-stretch"
-          >
-            {newlyLaunchedElectrical.map((p) => (
-              <div key={p.id} className="w-44 sm:w-56 shrink-0 flex flex-col">
-                {renderProductCard(p)}
-              </div>
-            ))}
-            {/* See All Card at end of scroll */}
-            <div className="w-36 sm:w-44 shrink-0 flex flex-col">
-              <Link
-                to="/electrical"
-                className="h-full min-h-[250px] flex flex-col items-center justify-center rounded-2xl border border-slate-100/80 bg-white p-4 shadow-2xs hover:shadow-sm hover:border-blue-300 group transition-all cursor-pointer text-center"
-              >
-                <div className="w-10 h-10 rounded-full bg-blue-50 group-hover:bg-blue-100 flex items-center justify-center mb-2 transition-colors">
-                  <ChevronRight className="w-5 h-5 text-blue-600 group-hover:translate-x-0.5 transition-transform" />
+            {/* Horizontal Product Scroll Row */}
+            <div
+              ref={constructionScrollRef}
+              className="flex gap-3 sm:gap-4 overflow-x-auto no-scrollbar scroll-smooth py-1 -mx-4 px-4 sm:mx-0 sm:px-0 items-stretch"
+            >
+              {newlyLaunchedConstruction.map((p) => (
+                <div key={p.id} className="w-44 sm:w-56 shrink-0 flex flex-col">
+                  {renderProductCard(p)}
                 </div>
-                <span className="text-sm sm:text-base font-bold text-blue-600 group-hover:text-blue-700 transition-colors">
-                  See All
-                </span>
-              </Link>
-            </div>
-          </div>
-        </section>
-
-        {/* =====================================================================
-            ROW 5: NEWLY LAUNCHED / CONSTRUCTION SEGMENT
-            ===================================================================== */}
-        <section id="row-5-new-construction" className="space-y-3 pt-1">
-          <div className="flex items-center justify-between border-b border-slate-100 pb-1.5">
-            <h3 className="text-xs sm:text-sm font-bold text-amber-800 uppercase tracking-wider">
-              Construction
-            </h3>
-            <div className="flex items-center gap-1.5">
-              <button
-                onClick={() => scrollRow(constructionScrollRef, -320)}
-                className="w-7 h-7 rounded-full bg-slate-100 hover:bg-amber-100 text-slate-700 hover:text-amber-900 border border-slate-200 flex items-center justify-center transition-all cursor-pointer shadow-2xs active:scale-95"
-                aria-label="Scroll left"
-              >
-                <ChevronLeft className="w-4 h-4" />
-              </button>
-              <button
-                onClick={() => scrollRow(constructionScrollRef, 320)}
-                className="w-7 h-7 rounded-full bg-slate-100 hover:bg-amber-100 text-slate-700 hover:text-amber-900 border border-slate-200 flex items-center justify-center transition-all cursor-pointer shadow-2xs active:scale-95"
-                aria-label="Scroll right"
-              >
-                <ChevronRight className="w-4 h-4" />
-              </button>
-            </div>
-          </div>
-
-          {/* Horizontal Product Scroll Row */}
-          <div
-            ref={constructionScrollRef}
-            className="flex gap-3 sm:gap-4 overflow-x-auto no-scrollbar scroll-smooth py-1 -mx-4 px-4 sm:mx-0 sm:px-0 items-stretch"
-          >
-            {newlyLaunchedConstruction.map((p) => (
-              <div key={p.id} className="w-44 sm:w-56 shrink-0 flex flex-col">
-                {renderProductCard(p)}
+              ))}
+              {/* See All Card at end of scroll */}
+              <div className="w-36 sm:w-44 shrink-0 flex flex-col">
+                <Link
+                  to="/construction"
+                  className="h-full min-h-[250px] flex flex-col items-center justify-center rounded-2xl border border-slate-100/80 bg-white p-4 shadow-2xs hover:shadow-sm hover:border-blue-300 group transition-all cursor-pointer text-center"
+                >
+                  <div className="w-10 h-10 rounded-full bg-blue-50 group-hover:bg-blue-100 flex items-center justify-center mb-2 transition-colors">
+                    <ChevronRight className="w-5 h-5 text-blue-600 group-hover:translate-x-0.5 transition-transform" />
+                  </div>
+                  <span className="text-sm sm:text-base font-bold text-blue-600 group-hover:text-blue-700 transition-colors">
+                    See All
+                  </span>
+                </Link>
               </div>
-            ))}
-            {/* See All Card at end of scroll */}
-            <div className="w-36 sm:w-44 shrink-0 flex flex-col">
-              <Link
-                to="/construction"
-                className="h-full min-h-[250px] flex flex-col items-center justify-center rounded-2xl border border-slate-100/80 bg-white p-4 shadow-2xs hover:shadow-sm hover:border-blue-300 group transition-all cursor-pointer text-center"
-              >
-                <div className="w-10 h-10 rounded-full bg-blue-50 group-hover:bg-blue-100 flex items-center justify-center mb-2 transition-colors">
-                  <ChevronRight className="w-5 h-5 text-blue-600 group-hover:translate-x-0.5 transition-transform" />
-                </div>
-                <span className="text-sm sm:text-base font-bold text-blue-600 group-hover:text-blue-700 transition-colors">
-                  See All
-                </span>
-              </Link>
             </div>
-          </div>
-        </section>
+          </section>
+        )}
 
         {/* =====================================================================
             ROW 6: WHY CHOOSE GIRIRAJ POWER (B2B Trust & Value Pillars)
