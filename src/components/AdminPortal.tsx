@@ -574,17 +574,30 @@ export const AdminPortal: React.FC<AdminPortalProps> = ({ isOpen, onClose, curre
                           <div className="text-[11px] font-bold uppercase text-slate-400 mb-1">
                             Ordered Items ({order.items.length})
                           </div>
-                          <div className="space-y-1.5 bg-slate-950 p-2.5 rounded-xl border border-slate-800 max-h-32 overflow-y-auto">
-                            {order.items.map((i, idx) => (
-                              <div key={idx} className="flex justify-between items-center text-[11px]">
-                                <span className="text-slate-200 truncate max-w-[200px]">
-                                  {i.quantity}x {i.product.name}
-                                </span>
-                                <span className="font-bold text-white shrink-0">
-                                  ₹{i.product.price * i.quantity}
-                                </span>
-                              </div>
-                            ))}
+                          <div className="space-y-2 bg-slate-950 p-2.5 rounded-xl border border-slate-800 max-h-36 overflow-y-auto">
+                            {order.items.map((i, idx) => {
+                              const color = i.selectedColor || i.product?.selectedColor;
+                              return (
+                                <div
+                                  key={idx}
+                                  className="flex justify-between items-center text-[11px] pb-1.5 border-b border-slate-900 last:border-b-0 last:pb-0 gap-2"
+                                >
+                                  <div className="flex flex-col min-w-0">
+                                    <span className="text-slate-200 truncate font-medium">
+                                      {i.quantity}x {i.product.name}
+                                    </span>
+                                    {color && (
+                                      <span className="inline-flex items-center gap-1 mt-0.5 text-[10px] font-black text-yellow-300 bg-yellow-400/20 px-1.5 py-0.5 rounded border border-yellow-400/30 w-fit">
+                                        🎨 Colour: {color}
+                                      </span>
+                                    )}
+                                  </div>
+                                  <span className="font-bold text-white shrink-0">
+                                    ₹{i.product.price * i.quantity}
+                                  </span>
+                                </div>
+                              );
+                            })}
                           </div>
                         </div>
                       </div>

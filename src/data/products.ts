@@ -426,6 +426,38 @@ export const INITIAL_PRODUCTS: Product[] = [
   // ELECTRICAL - CONDUITS & GI BOXES
   // =========================================================================
   {
+    "id": "p-dalda-pipe-3-4",
+    "name": "3/4\" Dalda PVC Conduit Pipe (10 Ft Length, Heavy Duty)",
+    "brand": "Dalda",
+    "category": "electrical",
+    "subCategory": "Pipes",
+    "price": 65,
+    "originalPrice": 80,
+    "discountPercentage": 19,
+    "unit": "1 Piece (10ft)",
+    "rating": 4.9,
+    "reviewsCount": 118,
+    "deliveryMinutes": 30,
+    "image": "https://i.imgur.com/G9LIx1R.jpeg",
+    "images": ["https://i.imgur.com/G9LIx1R.jpeg"],
+    "image_urls": ["https://i.imgur.com/G9LIx1R.jpeg"],
+    "inStock": true,
+    "stockCount": 350,
+    "tags": ["pipe", "dalda", "pvc", "conduit", "3/4 pipe", "dalda pipe", "electrical"],
+    "isBestSeller": true,
+    "isEmergency": false,
+    "specs": {
+      "Size": "3/4 Inch (20mm)",
+      "Brand": "Dalda",
+      "Length": "10 Feet (3 Metres)",
+      "Material": "Heavy Virgin Rigid PVC",
+      "Standard": "IS 9537 Part 3",
+      "Available Colors": "Ivory/White, Black, Grey, Blue, Red, Yellow",
+      "Application": "Concealed RCC Slab Casting & Wall Chasing Wiring"
+    },
+    "description": "High-durability 3/4\" Dalda rigid PVC conduit pipe with high impact strength, shock protection, and flame-retardant formulation for residential and commercial building electrical conduit routing."
+  },
+  {
     "id": "p10",
     "name": "25mm Heavy Duty PVC Conduit Straight Pipe (10 Ft Length, AKG)",
     "brand": "AKG",

@@ -15,7 +15,8 @@ import { ElectricalProduct, FilterState, SortOption } from '../../types/electric
 import { fetchElectricalProducts } from '../../services/electricalService';
 import { Product } from '../../types';
 import { supabase } from '../../lib/supabaseClient';
-import { INDIAN_STANDARD_WIRE_COLORS, isWireProduct } from '../../data/wireColors';
+import { INDIAN_STANDARD_WIRE_COLORS, isWireProduct, isPipeProduct, getProductColorOptions } from '../../data/wireColors';
+import { ProductCardImage } from '../ProductCardImage';
 
 interface ElectricalListingPageProps {
   onAddToCart: (product: Product) => void;
@@ -241,7 +242,7 @@ export const ElectricalListingPage: React.FC<ElectricalListingPageProps> = ({
     id: ep.id,
     name: ep.name,
     brand: ep.brand,
-    category: 'electrical',
+    category: (ep.category === 'construction' || ep.category === 'services' || ep.category === 'emergency' ? ep.category : 'electrical') as 'electrical' | 'construction' | 'services' | 'emergency',
     subCategory: ep.subcategory,
     price: ep.price,
     originalPrice: ep.mrp,
@@ -254,7 +255,7 @@ export const ElectricalListingPage: React.FC<ElectricalListingPageProps> = ({
     inStock: ep.stock_quantity > 0,
     stockCount: ep.stock_quantity,
     isEmergency: false,
-    specs: typeof ep.specifications?.Specifications === 'object' ? ep.specifications.Specifications : {},
+    specs: typeof ep.specifications === 'object' && ep.specifications !== null ? ep.specifications : {},
     description: ep.description,
     tags: [ep.brand, ep.subcategory, 'Electrical']
   });
@@ -480,11 +481,11 @@ export const ElectricalListingPage: React.FC<ElectricalListingPageProps> = ({
                       </span>
                     )}
 
-                    <img
-                      src={primaryImage}
+                    <ProductCardImage
+                      images={product.image_urls}
+                      imageUrl={primaryImage}
                       alt={product.name}
-                      className="max-h-full max-w-full object-contain group-hover:scale-105 transition-transform duration-300 drop-shadow-2xs"
-                      loading="lazy"
+                      className="group-hover:scale-105"
                     />
                   </Link>
 
@@ -511,15 +512,17 @@ export const ElectricalListingPage: React.FC<ElectricalListingPageProps> = ({
                         )}
                       </div>
 
-                      {/* Wire Standard Colours Indicator */}
-                      {isWireProduct(adapted) && (
+                      {/* Pipe & Wire Standard Colours Indicator */}
+                      {(isWireProduct(adapted) || isPipeProduct(adapted)) && (
                         <div className="mt-1.5 pt-1 border-t border-dashed border-slate-100 flex items-center justify-between gap-1">
-                          <span className="text-[10px] font-bold text-slate-500">IS 694 Colours:</span>
+                          <span className="text-[10px] font-bold text-slate-500">
+                            {isPipeProduct(adapted) ? 'Pipe Colours:' : 'IS 694 Colours:'}
+                          </span>
                           <div className="flex items-center gap-1">
-                            {INDIAN_STANDARD_WIRE_COLORS.map(c => (
+                            {getProductColorOptions(adapted).map(c => (
                               <span
                                 key={c.name}
-                                title={`${c.name} (${c.shortRole})`}
+                                title={`${c.name} (${c.shortRole || c.name})`}
                                 className="w-2.5 h-2.5 rounded-full border border-black/20"
                                 style={{ backgroundColor: c.hex }}
                               />

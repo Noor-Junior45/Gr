@@ -1,8 +1,15 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { X, Zap, Star, ShieldCheck, Check, Plus, Minus, Truck, Heart, RotateCcw, HelpCircle, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, CheckCircle2, Palette } from 'lucide-react';
+import { X, Zap, Star, ShieldCheck, Check, Plus, Minus, Truck, Heart, RotateCcw, HelpCircle, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, CheckCircle2, Palette, Share2 } from 'lucide-react';
 import { Product } from '../types';
 import { isProductFavorite, toggleProductFavorite } from '../services/favorites';
-import { INDIAN_STANDARD_WIRE_COLORS, isWireProduct } from '../data/wireColors';
+import {
+  INDIAN_STANDARD_WIRE_COLORS,
+  PIPE_COLOR_OPTIONS,
+  isWireProduct,
+  isPipeProduct,
+  getProductColorOptions,
+  getDefaultProductColor
+} from '../data/wireColors';
 import { trackProductView } from '../utils/analytics';
 
 interface ProductDetailModalProps {
@@ -21,11 +28,15 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
   onUpdateQuantity
 }) => {
   const [isFav, setIsFav] = useState(() => (product ? isProductFavorite(product.id) : false));
+  const [copiedLink, setCopiedLink] = useState(false);
   const [openFaq, setOpenFaq] = useState<number | null>(0);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const isWire = product ? isWireProduct(product) : false;
+  const isPipe = product ? isPipeProduct(product) : false;
+  const colorOptions = product ? getProductColorOptions(product) : [];
+  const hasColorOptions = colorOptions.length > 0;
   const [selectedWireColor, setSelectedWireColor] = useState<string>(
-    product?.selectedColor || (isWire ? 'Red' : '')
+    product?.selectedColor || (product ? getDefaultProductColor(product) : '')
   );
   const thumbnailContainerRef = useRef<HTMLDivElement>(null);
 
@@ -40,7 +51,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
   useEffect(() => {
     if (product) {
       setIsFav(isProductFavorite(product.id));
-      setSelectedWireColor(product.selectedColor || (isWireProduct(product) ? 'Red' : ''));
+      setSelectedWireColor(product.selectedColor || getDefaultProductColor(product));
       setSelectedImageIndex(0);
       trackProductView(product);
     }
@@ -62,49 +73,110 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
     setIsFav(updated);
   };
 
+  const handleShare = () => {
+    if (navigator.clipboard) {
+      const shareUrl = `${window.location.origin}/electrical/product/${product.id}`;
+      navigator.clipboard.writeText(shareUrl);
+      setCopiedLink(true);
+      setTimeout(() => setCopiedLink(false), 2200);
+    }
+  };
+
   const handleAdd = () => {
     onAddToCart({
       ...product,
-      selectedColor: isWire ? selectedWireColor : undefined
+      selectedColor: hasColorOptions ? selectedWireColor : undefined
     });
   };
 
-  const activeColorObj = INDIAN_STANDARD_WIRE_COLORS.find(c => c.name === selectedWireColor);
+  const activeColorObj = colorOptions.find((c) => c.name === selectedWireColor);
   const currentImage = allImages[selectedImageIndex] || product.image;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
       <div className="bg-white rounded-2xl max-w-2xl w-full p-5 sm:p-7 shadow-2xl border border-slate-200 relative max-h-[90vh] overflow-y-auto">
         
-        {/* Actions Top Right: Favorite & Close Button */}
+        {/* Actions Top Right: Wishlist Heart, Share & Close Button */}
         <div className="absolute top-4 right-4 flex items-center gap-1.5 z-10">
+          {/* Wishlist Heart Button */}
           <button
             type="button"
             onClick={handleToggleFav}
-            className={`p-2 rounded-full transition-colors cursor-pointer ${
-              isFav ? 'bg-pink-50 text-pink-600' : 'hover:bg-slate-100 text-slate-400 hover:text-pink-600'
+            className={`p-2 rounded-full transition-all cursor-pointer border active:scale-90 flex items-center justify-center ${
+              isFav
+                ? 'bg-rose-50 border-rose-200 text-rose-600 hover:bg-rose-100 shadow-xs'
+                : 'bg-slate-100/80 border-slate-200 text-slate-500 hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200'
             }`}
-            title={isFav ? 'Remove from favourites' : 'Add to favourites'}
+            title={isFav ? 'Remove from wishlist' : 'Add to wishlist'}
+            aria-label={isFav ? 'Remove from wishlist' : 'Add to wishlist'}
           >
-            <Heart className={`w-5 h-5 ${isFav ? 'fill-pink-500 text-pink-500' : ''}`} />
+            <Heart className={`w-4 h-4 transition-transform ${isFav ? 'fill-rose-500 text-rose-500 scale-110' : ''}`} />
           </button>
+
+          {/* Share Button */}
+          <button
+            type="button"
+            onClick={handleShare}
+            className="p-2 rounded-full bg-slate-100/80 hover:bg-yellow-400 hover:text-slate-950 text-slate-500 border border-slate-200 transition-all cursor-pointer active:scale-90 flex items-center justify-center relative"
+            title={copiedLink ? "Link copied!" : "Share product"}
+            aria-label="Share product"
+          >
+            {copiedLink ? (
+              <Check className="w-4 h-4 text-emerald-600 stroke-[2.5]" />
+            ) : (
+              <Share2 className="w-4 h-4" />
+            )}
+            {copiedLink && (
+              <span className="absolute -top-7 right-0 px-2 py-0.5 rounded bg-slate-900 text-white text-[10px] font-bold whitespace-nowrap shadow-md z-30">
+                Copied!
+              </span>
+            )}
+          </button>
+
+          {/* Close Button */}
           <button
             onClick={onClose}
-            className="p-2 rounded-full hover:bg-slate-100 text-slate-500 transition-colors"
+            className="p-2 rounded-full bg-slate-100/80 hover:bg-slate-200 text-slate-500 border border-slate-200 transition-colors cursor-pointer"
+            aria-label="Close modal"
           >
-            <X className="w-5 h-5" />
+            <X className="w-4 h-4" />
           </button>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
           {/* Image & Quick Guarantee */}
           <div>
-            <div className="relative rounded-2xl overflow-hidden bg-slate-50 border border-slate-200 aspect-square">
+            <div className="relative rounded-2xl overflow-hidden bg-slate-50 border border-slate-200 aspect-square group select-none">
               <img
                 src={currentImage}
                 alt={product.name}
                 className="w-full h-full object-contain p-2"
               />
+
+              {allImages.length > 1 && (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedImageIndex((prev) => (prev === 0 ? allImages.length - 1 : prev - 1))}
+                    className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white/90 hover:bg-white text-slate-800 flex items-center justify-center shadow-md border border-slate-200 cursor-pointer active:scale-90 transition-all opacity-0 group-hover:opacity-100 z-10"
+                    title="Previous image"
+                  >
+                    <ChevronLeft className="w-4 h-4 stroke-[2.5]" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedImageIndex((prev) => (prev + 1) % allImages.length)}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white/90 hover:bg-white text-slate-800 flex items-center justify-center shadow-md border border-slate-200 cursor-pointer active:scale-90 transition-all opacity-0 group-hover:opacity-100 z-10"
+                    title="Next image"
+                  >
+                    <ChevronRight className="w-4 h-4 stroke-[2.5]" />
+                  </button>
+                  <div className="absolute bottom-2 right-2 bg-slate-900/70 text-white text-[10px] font-bold px-2 py-0.5 rounded-full backdrop-blur-xs">
+                    {selectedImageIndex + 1} / {allImages.length}
+                  </div>
+                </>
+              )}
+
               {(!product.inStock || (product.stockCount !== undefined && product.stockCount <= 0)) && (
                 <span className="absolute top-3 left-3 px-2.5 py-1 rounded-md bg-red-600 text-white text-xs font-black flex items-center gap-1 shadow-sm">
                   <span>OUT OF STOCK</span>
@@ -222,13 +294,17 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                 </div>
               </div>
 
-              {/* Wire Colour Selection under IS 694 Indian Standards */}
-              {isWire && (
+              {/* Colour Selection */}
+              {hasColorOptions && (
                 <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 mb-4">
                   <div className="flex items-center justify-between gap-2 mb-2">
                     <span className="text-xs font-black text-slate-900 flex items-center gap-1.5">
                       <Palette className="w-3.5 h-3.5 text-blue-600" />
-                      Select Wire Colour (IS 694 Indian Standard)
+                      {isPipe
+                        ? 'Select Pipe Colour'
+                        : isWire
+                        ? 'Select Wire Colour (IS 694 Indian Standard)'
+                        : 'Select Colour Option'}
                     </span>
                     <span className="text-[11px] font-black text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
                       {selectedWireColor}
@@ -237,7 +313,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
 
                   {/* Swatches Row */}
                   <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 mb-2.5">
-                    {INDIAN_STANDARD_WIRE_COLORS.map((opt) => {
+                    {colorOptions.map((opt) => {
                       const isSelected = selectedWireColor === opt.name;
                       return (
                         <button
@@ -259,7 +335,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                             {isSelected && (
                               <Check
                                 className={`w-3.5 h-3.5 stroke-[3] ${
-                                  opt.name === 'White' ? 'text-slate-900' : 'text-white'
+                                  opt.name === 'White' || opt.name === 'Ivory / Off-White' ? 'text-slate-900' : 'text-white'
                                 }`}
                               />
                             )}
@@ -278,7 +354,10 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                   {/* Active Standard Role Explanation */}
                   {activeColorObj && (
                     <div className="p-2 rounded-lg bg-white border border-slate-200/80 text-[11px] text-slate-700 flex items-start gap-2">
-                      <span className="w-2.5 h-2.5 rounded-full shrink-0 mt-0.5" style={{ backgroundColor: activeColorObj.hex }}></span>
+                      <span
+                        className="w-2.5 h-2.5 rounded-full shrink-0 mt-0.5 border border-black/20"
+                        style={{ backgroundColor: activeColorObj.hex }}
+                      />
                       <div>
                         <strong className="text-slate-900">{activeColorObj.label}:</strong> {activeColorObj.description}
                       </div>

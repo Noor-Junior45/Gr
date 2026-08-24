@@ -200,10 +200,11 @@ export async function simulateInboundEmail(params?: {
  */
 export function formatOrderWhatsAppMessage(order: Order): string {
   const itemsText = (order.items || [])
-    .map(
-      (it, idx) =>
-        `${idx + 1}. *${it.product?.name || 'Product'}* (${it.product?.brand || 'Giriraj'}) × ${it.quantity} ${it.product?.unit || 'pc'} = ₹${((it.product?.price || 0) * it.quantity).toLocaleString('en-IN')}`
-    )
+    .map((it, idx) => {
+      const color = it.selectedColor || it.product?.selectedColor;
+      const colorTag = color ? ` [🎨 Colour: ${color}]` : '';
+      return `${idx + 1}. *${it.product?.name || 'Product'}* (${it.product?.brand || 'Giriraj'})${colorTag} × ${it.quantity} ${it.product?.unit || 'pc'} = ₹${((it.product?.price || 0) * it.quantity).toLocaleString('en-IN')}`;
+    })
     .join('\n');
 
   return (

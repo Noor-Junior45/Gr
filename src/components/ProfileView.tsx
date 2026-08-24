@@ -46,7 +46,8 @@ import {
   deleteAddressFromFirestore,
   subscribeToUpiIds,
   saveUpiToFirestore,
-  deleteUpiFromFirestore
+  deleteUpiFromFirestore,
+  fetchProductsFromSupabase
 } from '../services/supabaseService';
 import { WIRING_SERVICES } from '../data/services';
 import { INITIAL_PRODUCTS } from '../data/products';
@@ -88,6 +89,15 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
 
   // Favorites state
   const [favoriteProductIds, setFavoriteProductIds] = useState<string[]>(() => getFavoriteProductIds());
+  const [allCatalogProducts, setAllCatalogProducts] = useState<Product[]>([]);
+
+  useEffect(() => {
+    fetchProductsFromSupabase().then((prods) => {
+      if (prods && prods.length > 0) {
+        setAllCatalogProducts(prods);
+      }
+    });
+  }, []);
 
   useEffect(() => {
     const handleFavsChanged = () => {
@@ -102,7 +112,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
     setFavoriteProductIds(getFavoriteProductIds());
   };
 
-  const favoriteProducts = INITIAL_PRODUCTS.filter((p) => favoriteProductIds.includes(p.id));
+  const favoriteProducts = allCatalogProducts.filter((p) => favoriteProductIds.includes(String(p.id)));
 
   // Edit Profile Modal
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);

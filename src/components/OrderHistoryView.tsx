@@ -113,29 +113,36 @@ export const OrderHistoryView: React.FC<OrderHistoryViewProps> = ({
 
                 {/* Items preview */}
                 <div className="py-3 text-xs space-y-1.5">
-                  {order.items.slice(0, isExpanded ? order.items.length : 2).map((item, idx) => (
-                    <div key={idx} className="flex items-center justify-between text-slate-700 bg-slate-50/80 px-3 py-2 rounded-xl">
-                      <div className="flex items-center gap-2 min-w-0">
-                        {item.product?.image && (
-                          <img
-                            src={item.product.image}
-                            alt=""
-                            className="w-7 h-7 object-contain bg-white rounded border border-slate-200 p-0.5 shrink-0"
-                            referrerPolicy="no-referrer"
-                          />
-                        )}
-                        <span className="truncate text-xs font-semibold text-slate-800">
-                          {item.quantity}× {item.product?.name || 'Item'}
-                          {item.selectedColor && (
-                            <span className="text-[10px] text-slate-400 ml-1">({item.selectedColor})</span>
+                  {order.items.slice(0, isExpanded ? order.items.length : 2).map((item, idx) => {
+                    const color = item.selectedColor || item.product?.selectedColor;
+                    return (
+                      <div key={idx} className="flex items-center justify-between text-slate-700 bg-slate-50/80 px-3 py-2 rounded-xl">
+                        <div className="flex items-center gap-2 min-w-0">
+                          {item.product?.image && (
+                            <img
+                              src={item.product.image}
+                              alt=""
+                              className="w-7 h-7 object-contain bg-white rounded border border-slate-200 p-0.5 shrink-0"
+                              referrerPolicy="no-referrer"
+                            />
                           )}
+                          <div className="flex flex-col min-w-0">
+                            <span className="truncate text-xs font-semibold text-slate-800">
+                              {item.quantity}× {item.product?.name || 'Item'}
+                            </span>
+                            {color && (
+                              <span className="inline-flex items-center gap-1 text-[10px] font-bold text-blue-700 bg-blue-50 px-1.5 py-0.2 rounded border border-blue-200 w-fit mt-0.5">
+                                🎨 Colour: {color}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        <span className="font-bold text-slate-900 shrink-0 ml-2">
+                          ₹{((item.product?.price || 0) * item.quantity).toLocaleString('en-IN')}
                         </span>
                       </div>
-                      <span className="font-bold text-slate-900 shrink-0 ml-2">
-                        ₹{((item.product?.price || 0) * item.quantity).toLocaleString('en-IN')}
-                      </span>
-                    </div>
-                  ))}
+                    );
+                  })}
                   {!isExpanded && order.items.length > 2 && (
                     <div className="text-[11px] text-slate-500 font-medium pl-1">
                       + {order.items.length - 2} more item{order.items.length - 2 > 1 ? 's' : ''}

@@ -26,7 +26,8 @@ import {
   Send,
   Check,
   HelpCircle,
-  Palette
+  Palette,
+  Heart
 } from 'lucide-react';
 import { ElectricalProduct, ProductReview } from '../../types/electrical';
 import {
@@ -36,9 +37,18 @@ import {
   submitProductReview,
   fetchProductFaqs
 } from '../../services/electricalService';
+import { isProductFavorite, toggleProductFavorite } from '../../services/favorites';
 import { Product, UserProfile } from '../../types';
 import { supabase } from '../../lib/supabaseClient';
-import { INDIAN_STANDARD_WIRE_COLORS, isWireProduct } from '../../data/wireColors';
+import { ProductCardImage } from '../ProductCardImage';
+import {
+  INDIAN_STANDARD_WIRE_COLORS,
+  PIPE_COLOR_OPTIONS,
+  isWireProduct,
+  isPipeProduct,
+  getProductColorOptions,
+  getDefaultProductColor
+} from '../../data/wireColors';
 import { trackProductView } from '../../utils/analytics';
 import { SEOHead } from '../SEOHead';
 
@@ -105,12 +115,39 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
   // Reviews Pagination State
   const [visibleReviewsCount, setVisibleReviewsCount] = useState(4);
   const [copiedLink, setCopiedLink] = useState(false);
+  const [isWishlisted, setIsWishlisted] = useState(false);
+  const [wishlistToast, setWishlistToast] = useState<string | null>(null);
 
   // FAQ Accordion State (first item open by default)
   const [openFaq, setOpenFaq] = useState<number | null>(0);
   const [faqs, setFaqs] = useState<Array<{ q: string; a: string }>>([]);
 
   const reviewsSectionRef = useRef<HTMLDivElement>(null);
+
+  // Sync wishlist status
+  useEffect(() => {
+    if (product?.id) {
+      setIsWishlisted(isProductFavorite(String(product.id)));
+    }
+  }, [product?.id]);
+
+  useEffect(() => {
+    const handleFavChange = () => {
+      if (product?.id) {
+        setIsWishlisted(isProductFavorite(String(product.id)));
+      }
+    };
+    window.addEventListener('giriraj_favorites_changed', handleFavChange);
+    return () => window.removeEventListener('giriraj_favorites_changed', handleFavChange);
+  }, [product?.id]);
+
+  const handleToggleWishlist = () => {
+    if (!product) return;
+    const newState = toggleProductFavorite(String(product.id));
+    setIsWishlisted(newState);
+    setWishlistToast(newState ? 'Added to wishlist!' : 'Removed from wishlist');
+    setTimeout(() => setWishlistToast(null), 2200);
+  };
 
   // Fetch product, reviews, and similar items
   useEffect(() => {
@@ -163,13 +200,24 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
   }, [id]);
 
   const isWire = product ? isWireProduct(product) : false;
+  const isPipe = product ? isPipeProduct(product) : false;
+  const colorOptions = useMemo(() => (product ? getProductColorOptions(product) : []), [product]);
+  const hasColorOptions = colorOptions.length > 0;
+
+  // Set default color when product changes
+  useEffect(() => {
+    if (product) {
+      const def = getDefaultProductColor(product);
+      if (def) setSelectedWireColor(def);
+    }
+  }, [product]);
 
   // Adapt for App's Cart system
   const adaptToCartProduct = (ep: ElectricalProduct): Product => ({
     id: ep.id,
     name: ep.name,
     brand: ep.brand,
-    category: 'electrical',
+    category: isPipe ? 'construction' : 'electrical',
     subCategory: ep.subcategory,
     price: ep.price,
     originalPrice: ep.mrp,
@@ -184,8 +232,8 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
     isEmergency: false,
     specs: typeof ep.specifications?.Specifications === 'object' ? ep.specifications.Specifications : {},
     description: ep.description,
-    tags: [ep.brand, ep.subcategory, 'Electrical'],
-    selectedColor: isWire ? selectedWireColor : undefined
+    tags: [ep.brand, ep.subcategory, isPipe ? 'Pipes' : 'Electrical'],
+    selectedColor: hasColorOptions ? selectedWireColor : undefined
   });
 
   const cartQty = product
@@ -445,15 +493,42 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
                 </div>
               )}
 
-              {/* Main Product Image (Clean display without distracting hover zoom) */}
+              {/* Main Product Image (Clean display with on-hover navigation arrows and zoom transitions) */}
               <div
-                className="flex-1 aspect-square relative bg-slate-50 border border-slate-200 rounded-xl overflow-hidden flex items-center justify-center p-4"
+                className="flex-1 aspect-square relative bg-slate-50 border border-slate-200 rounded-xl overflow-hidden flex items-center justify-center p-4 group select-none"
               >
                 <img
                   src={currentImage}
                   alt={product.name}
-                  className="w-full h-full object-contain"
+                  className="w-full h-full object-contain transition-transform duration-300 group-hover:scale-102"
                 />
+
+                {/* Left & Right on-image navigation buttons if multiple images exist */}
+                {product.image_urls.length > 1 && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedImageIndex((prev) => (prev === 0 ? product.image_urls.length - 1 : prev - 1))}
+                      className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white/90 hover:bg-white text-slate-800 flex items-center justify-center shadow-md border border-slate-200 cursor-pointer active:scale-90 transition-all opacity-0 group-hover:opacity-100 z-10"
+                      title="Previous image"
+                    >
+                      <ChevronLeft className="w-4 h-4 stroke-[2.5]" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedImageIndex((prev) => (prev + 1) % product.image_urls.length)}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-white/90 hover:bg-white text-slate-800 flex items-center justify-center shadow-md border border-slate-200 cursor-pointer active:scale-90 transition-all opacity-0 group-hover:opacity-100 z-10"
+                      title="Next image"
+                    >
+                      <ChevronRight className="w-4 h-4 stroke-[2.5]" />
+                    </button>
+
+                    {/* Image indicator pill */}
+                    <div className="absolute bottom-2 right-2 bg-slate-900/70 text-white text-[10px] font-bold px-2 py-0.5 rounded-full backdrop-blur-xs">
+                      {selectedImageIndex + 1} / {product.image_urls.length}
+                    </div>
+                  </>
+                )}
               </div>
             </div>
 
@@ -542,24 +617,51 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
                   {product.name}
                 </h1>
 
-                {/* Share Button (Earlier design positioned at the right margin on the same line) */}
-                <button
-                  type="button"
-                  onClick={handleShareProduct}
-                  className="p-2 sm:p-2.5 rounded-full bg-slate-100 hover:bg-yellow-400 hover:text-slate-950 text-slate-700 transition-all cursor-pointer shadow-xs border border-slate-200 active:scale-90 flex items-center justify-center shrink-0 relative mt-0.5"
-                  title={copiedLink ? "Link copied!" : "Share product link"}
-                >
-                  {copiedLink ? (
-                    <Check className="w-4 h-4 text-emerald-600 stroke-[2.5]" />
-                  ) : (
-                    <Share2 className="w-4 h-4 text-slate-700" />
-                  )}
-                  {copiedLink && (
-                    <span className="absolute -top-7 right-0 px-2 py-0.5 rounded bg-slate-900 text-white text-[10px] font-bold whitespace-nowrap shadow-md">
-                      Copied!
-                    </span>
-                  )}
-                </button>
+                <div className="flex items-center gap-2 shrink-0 mt-0.5">
+                  {/* Wishlist / Heart Button */}
+                  <button
+                    type="button"
+                    onClick={handleToggleWishlist}
+                    className={`p-2 sm:p-2.5 rounded-full transition-all cursor-pointer shadow-xs border active:scale-90 flex items-center justify-center relative ${
+                      isWishlisted
+                        ? 'bg-rose-50 border-rose-200 text-rose-600 hover:bg-rose-100 shadow-rose-100'
+                        : 'bg-slate-100 border-slate-200 text-slate-700 hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200'
+                    }`}
+                    title={isWishlisted ? "Remove from wishlist" : "Add to wishlist"}
+                    aria-label={isWishlisted ? "Remove from wishlist" : "Add to wishlist"}
+                  >
+                    <Heart
+                      className={`w-4 h-4 transition-transform duration-200 ${
+                        isWishlisted ? 'fill-rose-500 text-rose-500 scale-110' : 'text-slate-700 hover:text-rose-600'
+                      }`}
+                    />
+                    {wishlistToast && (
+                      <span className="absolute -top-7 right-0 px-2 py-0.5 rounded bg-slate-900 text-white text-[10px] font-bold whitespace-nowrap shadow-md z-30">
+                        {wishlistToast}
+                      </span>
+                    )}
+                  </button>
+
+                  {/* Share Button */}
+                  <button
+                    type="button"
+                    onClick={handleShareProduct}
+                    className="p-2 sm:p-2.5 rounded-full bg-slate-100 hover:bg-yellow-400 hover:text-slate-950 text-slate-700 transition-all cursor-pointer shadow-xs border border-slate-200 active:scale-90 flex items-center justify-center relative"
+                    title={copiedLink ? "Link copied!" : "Share product link"}
+                    aria-label="Share product link"
+                  >
+                    {copiedLink ? (
+                      <Check className="w-4 h-4 text-emerald-600 stroke-[2.5]" />
+                    ) : (
+                      <Share2 className="w-4 h-4 text-slate-700" />
+                    )}
+                    {copiedLink && (
+                      <span className="absolute -top-7 right-0 px-2 py-0.5 rounded bg-slate-900 text-white text-[10px] font-bold whitespace-nowrap shadow-md z-30">
+                        Copied!
+                      </span>
+                    )}
+                  </button>
+                </div>
               </div>
 
               {/* Real Rating & Reviews Count (Cleaned without Giriraj Assured tag) */}
@@ -610,8 +712,8 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
               </p>
             </div>
 
-            {/* Wire Colour Options (IS 694 Indian Standards) */}
-            {isWire && (
+            {/* Colour Options (IS 694 Indian Standards / Conduit Standards) */}
+            {hasColorOptions && (
               <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-br from-slate-50 to-blue-50/40 border border-slate-200/90 shadow-xs space-y-3">
                 <div className="flex items-center justify-between gap-3">
                   <div className="flex items-center gap-2">
@@ -620,10 +722,14 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
                     </div>
                     <div>
                       <h3 className="text-xs sm:text-sm font-black text-slate-900 leading-tight">
-                        Select Wire Colour
+                        {isPipe ? 'Select Pipe Colour' : isWire ? 'Select Wire Colour' : 'Select Colour Option'}
                       </h3>
                       <p className="text-[11px] text-slate-500 font-medium">
-                        Indian Standard (IS 694 / IS 732) Colour Coding
+                        {isPipe
+                          ? 'Standard PVC Conduit & Casting Colour Coding'
+                          : isWire
+                          ? 'Indian Standard (IS 694 / IS 732) Colour Coding'
+                          : 'Available Manufacturer Colours'}
                       </p>
                     </div>
                   </div>
@@ -634,7 +740,7 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
 
                 {/* Interactive Colour Swatches Grid */}
                 <div className="grid grid-cols-3 sm:grid-cols-6 gap-2.5 pt-1">
-                  {INDIAN_STANDARD_WIRE_COLORS.map((opt) => {
+                  {colorOptions.map((opt) => {
                     const isSelected = selectedWireColor === opt.name;
                     return (
                       <button
@@ -656,7 +762,7 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
                           {isSelected && (
                             <Check
                               className={`w-4 h-4 stroke-[3] ${
-                                opt.name === 'White' ? 'text-slate-900' : 'text-white'
+                                opt.name === 'White' || opt.name === 'Ivory / Off-White' ? 'text-slate-900' : 'text-white'
                               }`}
                             />
                           )}
@@ -676,11 +782,14 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
 
                 {/* Selected Color Purpose Banner */}
                 {(() => {
-                  const activeColor = INDIAN_STANDARD_WIRE_COLORS.find(c => c.name === selectedWireColor);
+                  const activeColor = colorOptions.find((c) => c.name === selectedWireColor);
                   if (!activeColor) return null;
                   return (
                     <div className="p-2.5 rounded-xl bg-white border border-blue-100 text-xs text-slate-700 flex items-start gap-2.5 shadow-2xs">
-                      <span className="w-3.5 h-3.5 rounded-full shrink-0 mt-0.5 border border-black/20" style={{ backgroundColor: activeColor.hex }}></span>
+                      <span
+                        className="w-3.5 h-3.5 rounded-full shrink-0 mt-0.5 border border-black/20"
+                        style={{ backgroundColor: activeColor.hex }}
+                      />
                       <div className="leading-snug">
                         <span className="font-extrabold text-slate-900">{activeColor.label}:</span>{' '}
                         <span className="text-slate-600">{activeColor.description}</span>
@@ -1081,11 +1190,12 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
                   to={`/electrical/product/${sp.id}`}
                   className="group bg-white rounded-lg border border-slate-200 p-3 hover:shadow-md transition-all flex flex-col justify-between"
                 >
-                  <div className="aspect-square bg-slate-50 rounded-md p-2 mb-2 flex items-center justify-center overflow-hidden">
-                    <img
-                      src={sp.image_urls[0] || 'https://images.unsplash.com/photo-1558223616-e5d79faebdd6?q=80&w=800&auto=format&fit=crop'}
+                  <div className="aspect-square bg-slate-50 rounded-md p-2 mb-2 flex items-center justify-center overflow-hidden relative">
+                    <ProductCardImage
+                      images={sp.image_urls}
+                      imageUrl={sp.image_urls[0]}
                       alt={sp.name}
-                      className="w-full h-full object-contain group-hover:scale-105 transition-transform"
+                      className="group-hover:scale-105"
                     />
                   </div>
                   <div>

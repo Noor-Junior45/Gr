@@ -39,6 +39,7 @@ import { Product, CartItem } from '../types';
 import { supabase } from '../lib/supabaseClient';
 import { fetchProductsFromSupabase } from '../services/supabaseService';
 import { OFFICIAL_BRANDS } from './BrandLogos';
+import { ProductCardImage } from './ProductCardImage';
 
 export interface HomePageProps {
   onAddToCart: (product: Product) => void;
@@ -51,9 +52,62 @@ export interface HomePageProps {
 }
 
 // ---------------------------------------------------------------------------
-// 22 Visual Categories for Row 2 (Matching Reference Design)
+// 24 Visual Categories for Row 2 (Electrical Categories First, followed by Construction)
 // ---------------------------------------------------------------------------
 export const REFERENCE_CATEGORIES = [
+  // --- ELECTRICAL CATEGORIES (FIRST) ---
+  {
+    id: 'cat-wires-house',
+    name: 'Wires & House Cables',
+    badge: 'IS 694 Certified',
+    image: 'https://i.imgur.com/sG7lW2b.jpeg',
+    targetRoute: '/electrical?subcategory=Wiring'
+  },
+  {
+    id: 'cat-mcb-distribution',
+    name: 'MCBs & Distribution Boards',
+    badge: 'Top Protection',
+    image: 'https://i.imgur.com/4rthrow.jpeg',
+    targetRoute: '/electrical?subcategory=MCBs'
+  },
+  {
+    id: 'cat-switches',
+    name: 'Switches & Sockets',
+    image: 'https://i.imgur.com/K4vzOY8.jpeg',
+    targetRoute: '/electrical?subcategory=Switches'
+  },
+  {
+    id: 'cat-conduits-gi',
+    name: 'Conduits, Dalda Pipes & Boxes',
+    image: 'https://i.imgur.com/G9LIx1R.jpeg',
+    targetRoute: '/electrical?subcategory=PVC%20Items'
+  },
+  {
+    id: 'cat-lighting',
+    name: 'Lighting & Fixtures',
+    image: 'https://i.imgur.com/QhdLqOq.jpeg',
+    targetRoute: '/electrical?subcategory=Lights'
+  },
+  {
+    id: 'cat-fans-exhaust',
+    name: 'Ceiling Fans & Exhaust',
+    image: 'https://i.imgur.com/iirlNS3.png',
+    targetRoute: '/electrical?subcategory=Fans'
+  },
+  {
+    id: 'cat-cctv',
+    name: 'CCTV & Surveillance',
+    image: 'https://i.imgur.com/SQXJ1g6.jpeg',
+    targetRoute: '/electrical?subcategory=CCTV%20%26%20Surveillance'
+  },
+  {
+    id: 'cat-appliances-power',
+    name: 'Home Appliances & Inverters',
+    image: 'https://i.imgur.com/Kz3Hn96.jpeg',
+    targetRoute: '/electrical?subcategory=Home%20Appliances'
+  },
+
+  // --- CONSTRUCTION CATEGORIES (FOLLOWING ELECTRICAL) ---
   {
     id: 'cat-cement',
     name: 'Cement',
@@ -93,16 +147,10 @@ export const REFERENCE_CATEGORIES = [
     targetRoute: '/construction?subcategory=Adhesives%20%26%20Fevicol'
   },
   {
-    id: 'cat-wires-mcb',
-    name: 'Wires, MCB & Distribution Boards',
-    image: 'https://i.imgur.com/eBSEgi0.jpeg',
-    targetRoute: '/electrical?subcategory=Wiring'
-  },
-  {
-    id: 'cat-kitchen-sinks',
-    name: 'Kitchen Sinks & Faucets',
-    image: 'https://i.imgur.com/3jGz1Lk.jpeg',
-    targetRoute: '/construction?subcategory=Kitchen%20Sinks%20%26%20Faucets'
+    id: 'cat-cpvc-tanks',
+    name: 'CPVC Pipes & Overhead Tanks',
+    image: 'https://i.imgur.com/UOMAmSr.png',
+    targetRoute: '/construction?subcategory=Plumbing%20%26%20Pipes'
   },
   {
     id: 'cat-sanitary',
@@ -111,22 +159,22 @@ export const REFERENCE_CATEGORIES = [
     targetRoute: '/construction?subcategory=Sanitary%20%26%20Bath%20Fittings'
   },
   {
-    id: 'cat-switches',
-    name: 'Switches & Sockets',
-    image: 'https://i.imgur.com/K4vzOY8.jpeg',
-    targetRoute: '/electrical?subcategory=Switches'
-  },
-  {
-    id: 'cat-hinges-hardware',
-    name: 'Hinges, Channels & Handles',
-    image: 'https://i.imgur.com/mnLdVng.jpeg',
-    targetRoute: '/construction?subcategory=Hinges%20%26%20Hardware'
+    id: 'cat-kitchen-sinks',
+    name: 'Kitchen Sinks & Faucets',
+    image: 'https://i.imgur.com/3jGz1Lk.jpeg',
+    targetRoute: '/construction?subcategory=Kitchen%20Sinks%20%26%20Faucets'
   },
   {
     id: 'cat-kitchen-systems',
     name: 'Kitchen Systems & Accessories',
     image: 'https://i.imgur.com/DYdlXEY.jpeg',
     targetRoute: '/construction?subcategory=Kitchen%20Systems%20%26%20Accessories'
+  },
+  {
+    id: 'cat-hinges-hardware',
+    name: 'Hinges, Channels & Handles',
+    image: 'https://i.imgur.com/mnLdVng.jpeg',
+    targetRoute: '/construction?subcategory=Hinges%20%26%20Hardware'
   },
   {
     id: 'cat-wardrobe-fittings',
@@ -141,46 +189,10 @@ export const REFERENCE_CATEGORIES = [
     targetRoute: '/construction?subcategory=Door%20Locks%20%26%20Hardware'
   },
   {
-    id: 'cat-conduits-gi',
-    name: 'Conduits & GI Boxes',
-    image: 'https://i.imgur.com/wvzR0RE.jpeg',
-    targetRoute: '/electrical?subcategory=PVC%20Items'
-  },
-  {
-    id: 'cat-lighting',
-    name: 'Lighting',
-    image: 'https://i.imgur.com/QhdLqOq.jpeg',
-    targetRoute: '/electrical?subcategory=Lights'
-  },
-  {
-    id: 'cat-cpvc-tanks',
-    name: 'CPVC Pipes & Overhead Tanks',
-    image: 'https://i.imgur.com/UOMAmSr.png',
-    targetRoute: '/construction?subcategory=Plumbing%20%26%20Pipes'
-  },
-  {
-    id: 'cat-fans-exhaust',
-    name: 'Ceiling Fans & Exhaust',
-    image: 'https://i.imgur.com/iirlNS3.png',
-    targetRoute: '/electrical?subcategory=Fans'
-  },
-  {
     id: 'cat-power-tools',
     name: 'Power Tools & Accessories',
     image: 'https://i.imgur.com/41cqlhr.jpeg',
     targetRoute: '/construction?subcategory=Power%20Tools'
-  },
-  {
-    id: 'cat-cctv',
-    name: 'CCTV & Surveillance',
-    image: 'https://i.imgur.com/SQXJ1g6.jpeg',
-    targetRoute: '/electrical?subcategory=CCTV%20%26%20Surveillance'
-  },
-  {
-    id: 'cat-appliances-power',
-    name: 'Home Appliances & Power Backup',
-    image: 'https://i.imgur.com/Kz3Hn96.jpeg',
-    targetRoute: '/electrical?subcategory=Home%20Appliances'
   },
   {
     id: 'cat-general-hardware',
@@ -363,6 +375,8 @@ export const HomePage: React.FC<HomePageProps> = ({
   const newlyLaunchedElectrical = useMemo(() => {
     return liveProducts.filter((p) => {
       const cat = (p.category || '').toLowerCase();
+      const sub = (p.subCategory || '').toLowerCase();
+      const name = (p.name || '').toLowerCase();
       return (
         !cat ||
         cat.includes('electrical') ||
@@ -370,7 +384,19 @@ export const HomePage: React.FC<HomePageProps> = ({
         cat.includes('cable') ||
         cat.includes('switch') ||
         cat.includes('fan') ||
-        cat.includes('light')
+        cat.includes('light') ||
+        cat.includes('pipe') ||
+        cat.includes('conduit') ||
+        cat.includes('pvc') ||
+        sub.includes('pipe') ||
+        sub.includes('conduit') ||
+        sub.includes('pvc') ||
+        sub.includes('mcb') ||
+        sub.includes('light') ||
+        sub.includes('fan') ||
+        name.includes('pipe') ||
+        name.includes('dalda') ||
+        name.includes('conduit')
       );
     }).slice(0, 10);
   }, [liveProducts]);
@@ -517,11 +543,11 @@ export const HomePage: React.FC<HomePageProps> = ({
               </span>
             )}
 
-            <img
-              src={product.image}
+            <ProductCardImage
+              images={product.images || product.image_urls}
+              imageUrl={product.image}
               alt={product.name}
-              className="max-h-full max-w-full object-contain group-hover:scale-105 transition-transform duration-300 drop-shadow-2xs"
-              loading="lazy"
+              className="group-hover:scale-105"
             />
           </Link>
 

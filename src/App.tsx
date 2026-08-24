@@ -38,6 +38,7 @@ import { Footer } from './components/Footer';
 import { LegalView } from './components/LegalViews';
 import { ResetPassword } from './components/ResetPassword';
 import { ElectricalListingPage } from './components/electrical/ElectricalListingPage';
+import { supabase } from './lib/supabaseClient';
 import { ProductDetailPage } from './components/electrical/ProductDetailPage';
 import { ConstructionPage } from './components/ConstructionPage';
 import { HomePage } from './components/HomePage';
@@ -258,10 +259,33 @@ export default function App() {
     });
 
     // Load live catalog directly from Supabase (Strict Database Mode)
-    fetchProductsFromSupabase().then(setProducts).catch(console.warn);
+    fetchProductsFromSupabase()
+      .then((data) => {
+        if (data && data.length > 0) setProducts(data);
+      })
+      .catch(console.warn);
+
+    // Real-time listener: updates automatically whenever products table changes in Supabase
+    const prodChannel = supabase
+      .channel('app_products_realtime')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'products' },
+        () => {
+          fetchProductsFromSupabase()
+            .then((data) => {
+              if (data && data.length > 0) {
+                setProducts(data);
+              }
+            })
+            .catch(console.warn);
+        }
+      )
+      .subscribe();
 
     return () => {
       unsubAuth();
+      supabase.removeChannel(prodChannel);
       window.removeEventListener('giriraj_user_logged_out', handleLogoutEvent);
       if (unsubscribeOrders) unsubscribeOrders();
       if (unsubscribeAddresses) unsubscribeAddresses();
@@ -681,16 +705,14 @@ export default function App() {
         </Routes>
       </main>
 
-      {/* Row 11: Company, Policy & Contact Footer */}
+      {/* Row 11: Company, Policy & Contact Footer (Hidden on Electrical and Construction pages) */}
       {(location.pathname === '/' ||
         location.pathname.startsWith('/about') ||
         location.pathname.startsWith('/faq') ||
         location.pathname.startsWith('/refund') ||
         location.pathname.startsWith('/shipping') ||
         location.pathname.startsWith('/privacy') ||
-        location.pathname.startsWith('/terms') ||
-        location.pathname.startsWith('/construction') ||
-        location.pathname.startsWith('/electrical')) && (
+        location.pathname.startsWith('/terms')) && (
         <Footer
           onOpenInstallApp={() => setIsInstallModalOpen(true)}
         />

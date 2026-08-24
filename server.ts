@@ -198,13 +198,19 @@ async function dispatchResendEmail(options: ResendDispatchOptions): Promise<Rese
 function generateOrderEmailHtml(order: any, customerName: string): string {
   const itemsListHtml = (order.items || [])
     .map(
-      (item: any) => `
+      (item: any) => {
+        const color = item.selectedColor || item.product?.selectedColor;
+        const colorHtml = color
+          ? `<div style="margin-top: 4px;"><span style="display: inline-block; background-color: #fef08a; color: #854d0e; font-size: 11px; font-weight: 700; padding: 2px 6px; border-radius: 4px; border: 1px solid #fde047;">🎨 Colour: ${color}</span></div>`
+          : '';
+        return `
       <tr style="border-bottom: 1px solid #e2e8f0;">
         <td style="padding: 12px 8px; font-size: 14px; color: #1e293b; font-weight: 600;">
           ${item.product?.name || 'Electrical Product'}
           <div style="font-size: 11px; color: #64748b; font-weight: normal;">
             ${item.product?.brand || 'Giriraj Genuine'} • Unit: ${item.product?.unit || '1 pc'}
           </div>
+          ${colorHtml}
         </td>
         <td style="padding: 12px 8px; font-size: 14px; color: #475569; text-align: center;">
           ${item.quantity}
@@ -213,7 +219,8 @@ function generateOrderEmailHtml(order: any, customerName: string): string {
           ₹${((item.product?.price || 0) * item.quantity).toLocaleString('en-IN')}
         </td>
       </tr>
-    `
+    `;
+      }
     )
     .join('');
 
@@ -468,13 +475,19 @@ function generateAdminOrderAlertHtml(order: any): string {
   const phoneClean = (order.phone || "").replace(/\D/g, "").slice(-10);
   const itemsListHtml = (order.items || [])
     .map(
-      (item: any, idx: number) => `
+      (item: any, idx: number) => {
+        const color = item.selectedColor || item.product?.selectedColor;
+        const colorHtml = color
+          ? `<div style="margin-top: 3px;"><span style="display: inline-block; background-color: #fef08a; color: #854d0e; font-size: 10px; font-weight: 800; padding: 1px 5px; border-radius: 4px; border: 1px solid #fde047;">🎨 Colour: ${color}</span></div>`
+          : '';
+        return `
       <tr style="border-bottom: 1px solid #e2e8f0;">
         <td style="padding: 10px 8px; font-size: 13px; color: #0f172a; font-weight: 700;">
           ${idx + 1}. ${item.product?.name || 'Item'}
           <div style="font-size: 11px; color: #64748b; font-weight: normal;">
             Brand: ${item.product?.brand || 'Giriraj'} | Unit: ${item.product?.unit || '1 pc'}
           </div>
+          ${colorHtml}
         </td>
         <td style="padding: 10px 8px; font-size: 13px; color: #334155; text-align: center; font-weight: 700;">
           ${item.quantity}
@@ -483,7 +496,8 @@ function generateAdminOrderAlertHtml(order: any): string {
           ₹${((item.product?.price || 0) * item.quantity).toLocaleString('en-IN')}
         </td>
       </tr>
-    `
+    `;
+      }
     )
     .join('');
 

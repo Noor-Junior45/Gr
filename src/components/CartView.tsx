@@ -33,7 +33,7 @@ import {
 import { CartItem, KolkataArea, Order, SavedAddress, Product, UserProfile } from '../types';
 import { createFirestoreOrder } from '../services/supabaseService';
 import { sendOrderConfirmationEmail, notifyOrderPlaced } from '../services/emailService';
-import { INDIAN_STANDARD_WIRE_COLORS } from '../data/wireColors';
+import { INDIAN_STANDARD_WIRE_COLORS, PIPE_COLOR_OPTIONS } from '../data/wireColors';
 import { trackBeginCheckout, trackPurchase, trackRemoveFromCart } from '../utils/analytics';
 import {
   syncCartItemToSupabase,
@@ -622,19 +622,22 @@ export const CartView: React.FC<CartViewProps> = ({
                       Brand: <span className="text-slate-600 font-semibold">{product.brand || 'Giriraj Genuine'}</span>
                     </p>
 
-                    {/* Wire color indicator if any */}
+                    {/* Color indicator if any */}
                     {item.selectedColor && (
                       <div className="flex items-center gap-1.5 mt-1">
-                        <span className="text-[11px] text-slate-500">Color:</span>
+                        <span className="text-[11px] font-bold text-slate-500">Colour:</span>
                         <span
-                          className="w-3 h-3 rounded-full border border-slate-300"
+                          className="w-3 h-3 rounded-full border border-slate-300 shrink-0"
                           style={{
                             backgroundColor:
-                              INDIAN_STANDARD_WIRE_COLORS.find((c) => c.name === item.selectedColor)?.hex ||
-                              '#000'
+                              [...INDIAN_STANDARD_WIRE_COLORS, ...PIPE_COLOR_OPTIONS].find(
+                                (c) => c.name === item.selectedColor
+                              )?.hex || '#000'
                           }}
                         />
-                        <span className="text-[11px] font-bold text-slate-700">{item.selectedColor}</span>
+                        <span className="text-[11px] font-black text-blue-900 bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
+                          {item.selectedColor}
+                        </span>
                       </div>
                     )}
 

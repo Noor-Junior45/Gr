@@ -1,13 +1,12 @@
 import { supabase } from '../lib/supabaseClient';
 import { ElectricalProduct, ProductReview, FilterState, SortOption } from '../types/electrical';
-import { INITIAL_PRODUCTS } from '../data/products';
 
 /**
- * Transforms legacy or initial products to standard ElectricalProduct format
+ * Transforms Supabase products to standard ElectricalProduct format
  */
 export function transformToElectricalProduct(item: any): ElectricalProduct {
   const price = Number(item.price || 0);
-  const mrp = Number(item.mrp || item.originalPrice || item.original_price || (price * 1.15));
+  const mrp = Number(item.mrp || item.originalPrice || item.original_price || (price > 0 ? price * 1.15 : 0));
   const discount_percent = Number(
     item.discount_percent ||
     item.discountPercentage ||
@@ -16,14 +15,16 @@ export function transformToElectricalProduct(item: any): ElectricalProduct {
 
   let image_urls: string[] = [];
   if (Array.isArray(item.image_urls) && item.image_urls.length > 0) {
-    image_urls = item.image_urls;
-  } else if (item.image) {
-    image_urls = [
-      item.image,
-      'https://images.unsplash.com/photo-1558223616-e5d79faebdd6?q=80&w=800&auto=format&fit=crop',
-      'https://images.unsplash.com/photo-1544724559-562244955743?q=80&w=800&auto=format&fit=crop'
-    ];
-  } else {
+    image_urls = item.image_urls.filter((url: any) => typeof url === 'string' && url.trim().length > 0);
+  } else if (typeof item.image_urls === 'string' && item.image_urls.startsWith('http')) {
+    image_urls = [item.image_urls];
+  }
+
+  if (item.image && typeof item.image === 'string' && item.image.trim() && !image_urls.includes(item.image.trim())) {
+    image_urls.unshift(item.image.trim());
+  }
+
+  if (image_urls.length === 0) {
     image_urls = ['https://images.unsplash.com/photo-1558223616-e5d79faebdd6?q=80&w=800&auto=format&fit=crop'];
   }
 
@@ -68,24 +69,25 @@ export function transformToElectricalProduct(item: any): ElectricalProduct {
     id: String(item.id),
     name: item.name || 'Electrical Product',
     brand: item.brand || 'Giriraj Genuine',
-    category: item.category || 'Electrical',
-    subcategory: item.subcategory || item.subCategory || 'General',
+    category: item.category || 'electrical',
+    subcategory: item.subcategory || item.subCategory || item.sub_category || 'General',
     price,
     mrp,
     discount_percent,
     description: item.description || 'High-grade electrical material certified for heavy residential and commercial installations.',
     specifications,
     faqs,
-    stock_quantity: Number(item.stock_quantity ?? item.stockCount ?? 50),
+    stock_quantity: Number(item.stock_quantity ?? item.stock_count ?? item.stockCount ?? 50),
     image_urls,
-    rating_avg: Number(item.rating_avg || item.rating || 0),
-    rating_count: Number(item.rating_count || item.reviewsCount || 0),
+    rating_avg: Number(item.rating_avg || item.rating || 4.8),
+    rating_count: Number(item.rating_count || item.reviewsCount || item.reviews_count || 32),
     created_at: item.created_at || new Date().toISOString()
   };
 }
 
 /**
- * Fetch electrical products with Supabase query and fallback to INITIAL_PRODUCTS
+ * Fetch electrical products directly and strictly from Supabase (Strict Database Mode)
+ * Ensures all Supabase products (wires, pipes, conduits, switches, fans, lights, MCBs, appliances, etc.) are visible
  */
 export async function fetchElectricalProducts(
   filters?: FilterState,
@@ -95,40 +97,63 @@ export async function fetchElectricalProducts(
   try {
     const { data, error } = await supabase
       .from('products')
-      .select('*');
+      .select('*')
+      .order('id', { ascending: true });
 
     let productsList: ElectricalProduct[] = [];
 
     if (!error && data && data.length > 0) {
+      // Exclude only heavy structural raw construction materials (e.g. bulk cement bags, raw TMT rebar, sand, red bricks)
+      // All other products (wires, conduits, dalda pipes, switches, lights, fans, MCBs, CCTV, tools, etc.) are included!
       productsList = data
         .filter((row) => {
-          const cat = (row.category || '').toLowerCase();
-          return !cat || cat.includes('electrical') || cat.includes('wire') || cat.includes('cable') || cat.includes('switch') || cat.includes('fan') || cat.includes('light');
+          const cat = (row.category || '').toLowerCase().trim();
+          const sub = (row.subcategory || row.sub_category || '').toLowerCase().trim();
+          const name = (row.name || '').toLowerCase().trim();
+
+          const isHeavyConstructionOnly =
+            (cat === 'cement' || cat === 'steel' || (cat === 'construction' && !sub.includes('pipe') && !sub.includes('conduit') && !sub.includes('tool') && !sub.includes('box'))) &&
+            (sub.includes('cement') ||
+              sub.includes('tmt') ||
+              sub.includes('sand') ||
+              sub.includes('brick') ||
+              sub.includes('concrete') ||
+              sub.includes('plywood') ||
+              sub.includes('tiling') ||
+              name.includes('cement bag') ||
+              name.includes('tmt rebar') ||
+              name.includes('red brick'));
+
+          return !isHeavyConstructionOnly;
         })
         .map(transformToElectricalProduct);
     } else {
-      // Fallback to INITIAL_PRODUCTS for electrical
-      const initialElectrical = INITIAL_PRODUCTS.filter((p) => p.category === 'electrical');
-      productsList = initialElectrical.map(transformToElectricalProduct);
+      // Return empty list if no products in database - never inject demo products
+      productsList = [];
     }
 
-    // Apply filters
+    // Apply subcategory filters
     if (filters?.subcategories && filters.subcategories.length > 0) {
       productsList = productsList.filter((p) => {
         const pSub = (p.subcategory || '').toLowerCase();
         const pName = (p.name || '').toLowerCase();
+        const pCat = (p.category || '').toLowerCase();
         return filters.subcategories.some((sub) => {
-          const s = sub.toLowerCase();
+          const s = sub.toLowerCase().trim();
+          if (s === 'all' || s === 'all electrical') return true;
           return (
             pSub.includes(s) ||
             s.includes(pSub) ||
+            pCat.includes(s) ||
+            s.includes(pCat) ||
             (s.includes('fan') && (pName.includes('fan') || pSub.includes('fan'))) ||
-            ((s.includes('wire') || s.includes('wiring') || s.includes('mcb')) && (pName.includes('wire') || pName.includes('cable') || pName.includes('mcb') || pName.includes('db') || pSub.includes('wire') || pSub.includes('wiring') || pSub.includes('mcb'))) ||
+            ((s.includes('wire') || s.includes('wiring') || s.includes('cable')) && (pName.includes('wire') || pName.includes('cable') || pSub.includes('wire') || pSub.includes('cable') || pSub.includes('wiring'))) ||
+            (s.includes('mcb') && (pName.includes('mcb') || pName.includes('db') || pName.includes('distribution') || pSub.includes('mcb'))) ||
             ((s.includes('switch') || s.includes('socket')) && (pName.includes('switch') || pName.includes('socket') || pSub.includes('switch'))) ||
-            (s.includes('light') && (pName.includes('light') || pName.includes('led') || pName.includes('bulb') || pSub.includes('light'))) ||
-            ((s.includes('conduit') || s.includes('pvc') || s.includes('box')) && (pName.includes('pipe') || pName.includes('conduit') || pName.includes('box') || pSub.includes('pvc'))) ||
-            ((s.includes('cctv') || s.includes('surveillance')) && (pName.includes('camera') || pName.includes('cctv') || pName.includes('dvr') || pSub.includes('cctv'))) ||
-            ((s.includes('appliance') || s.includes('backup') || s.includes('geyser') || s.includes('inverter')) && (pName.includes('geyser') || pName.includes('inverter') || pName.includes('heater') || pSub.includes('appliance')))
+            ((s.includes('light') || s.includes('led') || s.includes('bulb')) && (pName.includes('light') || pName.includes('led') || pName.includes('bulb') || pSub.includes('light') || pSub.includes('led'))) ||
+            ((s.includes('pvc') || s.includes('pipe') || s.includes('conduit') || s.includes('box')) && (pName.includes('pipe') || pName.includes('conduit') || pName.includes('pvc') || pName.includes('box') || pName.includes('dalda') || pSub.includes('pvc') || pSub.includes('pipe') || pSub.includes('conduit'))) ||
+            ((s.includes('cctv') || s.includes('surveillance') || s.includes('camera') || s.includes('security')) && (pName.includes('camera') || pName.includes('cctv') || pName.includes('dvr') || pSub.includes('cctv') || pSub.includes('camera'))) ||
+            ((s.includes('appliance') || s.includes('backup') || s.includes('geyser') || s.includes('inverter') || s.includes('home')) && (pName.includes('geyser') || pName.includes('inverter') || pName.includes('heater') || pSub.includes('appliance') || pSub.includes('inverter') || pSub.includes('geyser')))
           );
         });
       });
@@ -136,8 +161,12 @@ export async function fetchElectricalProducts(
 
     if (filters?.brands && filters.brands.length > 0) {
       productsList = productsList.filter((p) => {
-        const pBrand = p.brand.toLowerCase();
-        return filters.brands.some((b) => pBrand.includes(b.toLowerCase()) || b.toLowerCase().includes(pBrand));
+        const pBrand = (p.brand || '').toLowerCase();
+        const pName = (p.name || '').toLowerCase();
+        return filters.brands.some((b) => {
+          const brandLower = b.toLowerCase().trim();
+          return pBrand.includes(brandLower) || brandLower.includes(pBrand) || pName.includes(brandLower);
+        });
       });
     }
 
@@ -161,7 +190,7 @@ export async function fetchElectricalProducts(
       productsList = productsList.filter((p) => p.stock_quantity > 0);
     }
 
-    if (searchQuery.trim()) {
+    if (searchQuery && searchQuery.trim()) {
       const q = searchQuery.toLowerCase().trim();
       const tokens = q.split(/\s+/).filter(Boolean);
       
@@ -169,9 +198,10 @@ export async function fetchElectricalProducts(
         const name = (p.name || '').toLowerCase();
         const brand = (p.brand || '').toLowerCase();
         const subcategory = (p.subcategory || '').toLowerCase();
+        const category = (p.category || '').toLowerCase();
         const desc = (p.description || '').toLowerCase();
         const specs = typeof p.specifications === 'object' ? JSON.stringify(p.specifications).toLowerCase() : '';
-        const combined = `${name} ${brand} ${subcategory} ${desc} ${specs}`;
+        const combined = `${name} ${brand} ${subcategory} ${category} ${desc} ${specs}`;
         
         // Exact substring match
         if (combined.includes(q)) return true;
@@ -204,42 +234,46 @@ export async function fetchElectricalProducts(
     return { products: productsList, total: productsList.length };
   } catch (err) {
     console.warn('Supabase electrical products query error:', err);
-    // Fallback on error
-    const initialElectrical = INITIAL_PRODUCTS.filter((p) => p.category === 'electrical');
-    const fallback = initialElectrical.map(transformToElectricalProduct);
-    return { products: fallback, total: fallback.length };
+    return { products: [], total: 0 };
   }
 }
 
 /**
- * Fetch a single electrical product by ID (Strict Database Mode)
+ * Fetch a single electrical product by ID directly from Supabase (Strict Database Mode)
  */
 export async function fetchElectricalProductById(id: string): Promise<ElectricalProduct | null> {
+  if (!id) return null;
   try {
     const { data, error } = await supabase
       .from('products')
       .select('*')
       .eq('id', id)
-      .single();
+      .maybeSingle();
 
     if (!error && data) {
       return transformToElectricalProduct(data);
     }
+
+    // Case-insensitive ID fallback across Supabase products
+    const { data: allData } = await supabase
+      .from('products')
+      .select('*');
+
+    if (allData && allData.length > 0) {
+      const match = allData.find((row) => String(row.id).toLowerCase() === String(id).toLowerCase());
+      if (match) {
+        return transformToElectricalProduct(match);
+      }
+    }
   } catch (err) {
     console.warn('Supabase product by id fetch error:', err);
-  }
-
-  // Fallback to INITIAL_PRODUCTS (handles electrical and construction items)
-  const fallback = INITIAL_PRODUCTS.find((p) => String(p.id) === String(id));
-  if (fallback) {
-    return transformToElectricalProduct(fallback);
   }
 
   return null;
 }
 
 /**
- * Fetch similar products by subcategory
+ * Fetch similar products by subcategory from Supabase
  */
 export async function fetchSimilarElectricalProducts(
   currentProductId: string,
@@ -249,16 +283,16 @@ export async function fetchSimilarElectricalProducts(
   const { products } = await fetchElectricalProducts();
 
   const sameSub = products.filter(
-    (p) => String(p.id) !== String(currentProductId) && p.subcategory.toLowerCase() === subcategory.toLowerCase()
+    (p) => String(p.id) !== String(currentProductId) && (p.subcategory || '').toLowerCase() === (subcategory || '').toLowerCase()
   );
 
   if (sameSub.length >= limit) {
     return sameSub.slice(0, limit);
   }
 
-  // If fewer than limit in same subcategory, supplement with other electrical products
+  // If fewer than limit in same subcategory, supplement with other electrical products from database
   const others = products.filter(
-    (p) => String(p.id) !== String(currentProductId) && p.subcategory.toLowerCase() !== subcategory.toLowerCase()
+    (p) => String(p.id) !== String(currentProductId) && (p.subcategory || '').toLowerCase() !== (subcategory || '').toLowerCase()
   );
 
   return [...sameSub, ...others].slice(0, limit);
@@ -292,7 +326,6 @@ export async function fetchProductReviews(productId: string): Promise<ProductRev
     console.warn('Supabase reviews query notice:', err);
   }
 
-  // Return empty list if no genuine customer reviews yet
   return [];
 }
 

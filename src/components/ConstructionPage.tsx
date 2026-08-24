@@ -21,7 +21,7 @@ import {
 } from 'lucide-react';
 import { Product } from '../types';
 import { supabase } from '../lib/supabaseClient';
-import { INITIAL_PRODUCTS } from '../data/products';
+import { ProductCardImage } from './ProductCardImage';
 
 interface ConstructionPageProps {
   onAddToCart: (product: Product) => void;
@@ -160,7 +160,7 @@ export const ConstructionPage: React.FC<ConstructionPageProps> = ({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Fetch Construction Products directly from Supabase with robust fallback
+  // Fetch Construction Products directly and exclusively from Supabase backend
   const loadConstructionProducts = async () => {
     try {
       setLoading(true);
@@ -168,12 +168,24 @@ export const ConstructionPage: React.FC<ConstructionPageProps> = ({
         .from('products')
         .select('*');
 
-      if (!error && data && data.length > 0) {
+      if (error) {
+        console.warn('Error loading construction products from Supabase:', error);
+        setRawProducts([]);
+        return;
+      }
+
+      if (data && data.length > 0) {
         // Filter rows that belong to construction category
         const constructionRows = data.filter((row) => {
-          const cat = (row.category || '').toLowerCase();
-          const sub = (row.subcategory || row.sub_category || '').toLowerCase();
-          const name = (row.name || '').toLowerCase();
+          const cat = (row.category || '').toLowerCase().trim();
+          const sub = (row.subcategory || row.sub_category || '').toLowerCase().trim();
+          const name = (row.name || '').toLowerCase().trim();
+
+          // Exclude pure electrical products
+          if (cat === 'electrical') {
+            return false;
+          }
+
           return (
             cat.includes('construction') ||
             cat.includes('cement') ||
@@ -181,10 +193,26 @@ export const ConstructionPage: React.FC<ConstructionPageProps> = ({
             cat.includes('paint') ||
             cat.includes('hardware') ||
             cat.includes('building') ||
+            cat.includes('material') ||
+            cat.includes('steel') ||
+            cat.includes('tmt') ||
+            cat.includes('tile') ||
+            cat.includes('bath') ||
+            cat.includes('sanitary') ||
+            cat.includes('wood') ||
+            cat.includes('plywood') ||
             sub.includes('cement') ||
             sub.includes('tmt') ||
             sub.includes('pipe') ||
-            sub.includes('waterproof')
+            sub.includes('waterproof') ||
+            sub.includes('paint') ||
+            sub.includes('plywood') ||
+            sub.includes('steel') ||
+            sub.includes('bath') ||
+            sub.includes('hardware') ||
+            sub.includes('sink') ||
+            sub.includes('fitting') ||
+            sub.includes('adhesive')
           );
         });
 
@@ -199,11 +227,19 @@ export const ConstructionPage: React.FC<ConstructionPageProps> = ({
               (originalPrice > price ? Math.round(((originalPrice - price) / originalPrice) * 100) : 0)
             );
 
-            let imageUrl = 'https://images.unsplash.com/photo-1541888946425-d0fbb18086f6?q=80&w=800&auto=format&fit=crop';
+            let imageList: string[] = [];
             if (Array.isArray(row.image_urls) && row.image_urls.length > 0) {
-              imageUrl = row.image_urls[0];
-            } else if (row.image) {
-              imageUrl = row.image;
+              imageList = row.image_urls.filter((u: any) => typeof u === 'string' && u.trim().length > 0);
+            } else if (typeof row.image_urls === 'string' && row.image_urls.startsWith('http')) {
+              imageList = [row.image_urls];
+            }
+            if (row.image && typeof row.image === 'string' && row.image.trim() && !imageList.includes(row.image.trim())) {
+              imageList.unshift(row.image.trim());
+            }
+
+            let imageUrl = imageList[0] || 'https://images.unsplash.com/photo-1541888946425-d0fbb18086f6?q=80&w=800&auto=format&fit=crop';
+            if (imageList.length === 0) {
+              imageList = [imageUrl];
             }
 
             return {
@@ -220,28 +256,27 @@ export const ConstructionPage: React.FC<ConstructionPageProps> = ({
               reviewsCount: Number(row.rating_count || row.reviewsCount || 18),
               deliveryMinutes: Number(row.delivery_minutes || 60),
               image: imageUrl,
-              inStock: (row.stock_quantity ?? row.stockCount ?? 10) > 0,
-              stockCount: Number(row.stock_quantity ?? row.stockCount ?? 10),
-              tags: row.tags || [row.brand || 'Giriraj', 'Construction'],
+              images: imageList,
+              image_urls: imageList,
+              inStock: (row.stock_quantity ?? row.stock_count ?? row.stockCount ?? 10) > 0,
+              stockCount: Number(row.stock_quantity ?? row.stock_count ?? row.stockCount ?? 10),
+              tags: Array.isArray(row.tags) ? row.tags : (typeof row.tags === 'string' ? row.tags.split(',').map((t: string) => t.trim()) : [row.brand || 'Giriraj', 'Construction']),
               isEmergency: false,
-              specs: typeof row.specifications === 'object' ? row.specifications : (typeof row.specs === 'object' ? row.specs : {}),
+              specs: typeof row.specifications === 'object' && row.specifications !== null ? row.specifications : (typeof row.specs === 'object' && row.specs !== null ? row.specs : {}),
               description: row.description || 'Premium grade certified construction supplies delivered direct to site in Kolkata.'
             };
           });
 
           setRawProducts(parsed);
         } else {
-          const fallback = INITIAL_PRODUCTS.filter((p) => p.category === 'construction');
-          setRawProducts(fallback);
+          setRawProducts([]);
         }
       } else {
-        const fallback = INITIAL_PRODUCTS.filter((p) => p.category === 'construction');
-        setRawProducts(fallback);
+        setRawProducts([]);
       }
     } catch (err) {
-      console.warn('Error loading construction products:', err);
-      const fallback = INITIAL_PRODUCTS.filter((p) => p.category === 'construction');
-      setRawProducts(fallback);
+      console.warn('Error loading construction products from Supabase:', err);
+      setRawProducts([]);
     } finally {
       setLoading(false);
     }
@@ -322,6 +357,16 @@ export const ConstructionPage: React.FC<ConstructionPageProps> = ({
     newParams.delete('q');
     setSearchParams(newParams);
   };
+
+  const displaySubcategories = useMemo(() => {
+    const liveSubs = rawProducts.map((p) => p.subCategory).filter(Boolean);
+    return Array.from(new Set([...liveSubs, ...ALL_CONSTRUCTION_SUBCATEGORIES]));
+  }, [rawProducts]);
+
+  const displayBrands = useMemo(() => {
+    const liveBrands = rawProducts.map((p) => p.brand).filter(Boolean);
+    return Array.from(new Set([...liveBrands, ...ALL_CONSTRUCTION_BRANDS]));
+  }, [rawProducts]);
 
   const hasActiveFilters = useMemo(() => {
     return (
@@ -785,12 +830,11 @@ export const ConstructionPage: React.FC<ConstructionPageProps> = ({
                       </span>
                     )}
 
-                    <img
-                      src={primaryImage}
+                    <ProductCardImage
+                      images={product.images || product.image_urls}
+                      imageUrl={primaryImage}
                       alt={product.name}
-                      referrerPolicy="no-referrer"
-                      className="max-h-full max-w-full object-contain group-hover:scale-105 transition-transform duration-300 drop-shadow-2xs"
-                      loading="lazy"
+                      className="group-hover:scale-105"
                     />
                   </Link>
 
@@ -905,7 +949,7 @@ export const ConstructionPage: React.FC<ConstructionPageProps> = ({
                   Categories
                 </h3>
                 <div className="grid grid-cols-2 gap-2">
-                  {ALL_CONSTRUCTION_SUBCATEGORIES.map((sub) => {
+                  {displaySubcategories.map((sub) => {
                     const checked = filters.subcategories.includes(sub);
                     return (
                       <button
@@ -931,7 +975,7 @@ export const ConstructionPage: React.FC<ConstructionPageProps> = ({
                   Brands
                 </h3>
                 <div className="grid grid-cols-2 gap-2">
-                  {ALL_CONSTRUCTION_BRANDS.map((brand) => {
+                  {displayBrands.map((brand) => {
                     const checked = filters.brands.includes(brand);
                     return (
                       <button
