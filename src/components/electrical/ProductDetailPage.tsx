@@ -692,7 +692,7 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
 
             {/* Price Block */}
             <div className="p-4 bg-slate-50/80 rounded-xl border border-slate-200/80 space-y-1">
-              <div className="flex items-baseline gap-3">
+              <div className="flex items-baseline gap-3 flex-wrap">
                 <span className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
                   ₹{product.price.toLocaleString('en-IN')}
                 </span>
@@ -707,6 +707,7 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
                   </span>
                 )}
               </div>
+
               <p className="text-[11px] text-slate-500">
                 Inclusive of all taxes • GST invoice available on checkout
               </p>

@@ -17,6 +17,8 @@ import { Product } from '../../types';
 import { supabase } from '../../lib/supabaseClient';
 import { INDIAN_STANDARD_WIRE_COLORS, isWireProduct, isPipeProduct, getProductColorOptions } from '../../data/wireColors';
 import { ProductCardImage } from '../ProductCardImage';
+import { OfferBadge } from '../OfferBadge';
+import { getApplicableOfferForProduct } from '../../services/offerService';
 
 interface ElectricalListingPageProps {
   onAddToCart: (product: Product) => void;
@@ -463,6 +465,7 @@ export const ElectricalListingPage: React.FC<ElectricalListingPageProps> = ({
               const primaryImage =
                 product.image_urls[0] ||
                 'https://images.unsplash.com/photo-1558223616-e5d79faebdd6?q=80&w=800&auto=format&fit=crop';
+              const applicableOffer = getApplicableOfferForProduct(String(product.id), product.category || 'electrical');
 
               return (
                 <div
@@ -511,6 +514,13 @@ export const ElectricalListingPage: React.FC<ElectricalListingPageProps> = ({
                           </span>
                         )}
                       </div>
+
+                      {/* Applicable Offer Coupon Badge */}
+                      {applicableOffer && (
+                        <div className="pt-0.5">
+                          <OfferBadge offer={applicableOffer} variant="card" />
+                        </div>
+                      )}
 
                       {/* Pipe & Wire Standard Colours Indicator */}
                       {(isWireProduct(adapted) || isPipeProduct(adapted)) && (

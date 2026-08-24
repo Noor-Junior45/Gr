@@ -22,6 +22,8 @@ import {
 import { Product } from '../types';
 import { supabase } from '../lib/supabaseClient';
 import { ProductCardImage } from './ProductCardImage';
+import { OfferBadge } from './OfferBadge';
+import { getApplicableOfferForProduct } from '../services/offerService';
 
 interface ConstructionPageProps {
   onAddToCart: (product: Product) => void;
@@ -812,6 +814,7 @@ export const ConstructionPage: React.FC<ConstructionPageProps> = ({
             {paginatedProducts.map((product) => {
               const cartQty = getProductCartQty(product.id);
               const primaryImage = product.image;
+              const applicableOffer = getApplicableOfferForProduct(String(product.id), product.category || 'construction');
 
               return (
                 <div
@@ -860,6 +863,13 @@ export const ConstructionPage: React.FC<ConstructionPageProps> = ({
                           </span>
                         )}
                       </div>
+
+                      {/* Applicable Offer Coupon Badge */}
+                      {applicableOffer && (
+                        <div className="pt-1">
+                          <OfferBadge offer={applicableOffer} variant="card" />
+                        </div>
+                      )}
                     </div>
 
                     {/* Add to Cart / Quick Quantity Controls */}

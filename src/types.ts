@@ -185,3 +185,5 @@ export interface ReceivedEmail {
     text: string;
   };
 }
+
+export type { Offer, OfferProduct, ProductOfferEvaluation } from './services/offerService';

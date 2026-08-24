@@ -40,6 +40,8 @@ import { supabase } from '../lib/supabaseClient';
 import { fetchProductsFromSupabase } from '../services/supabaseService';
 import { OFFICIAL_BRANDS } from './BrandLogos';
 import { ProductCardImage } from './ProductCardImage';
+import { OfferBadge } from './OfferBadge';
+import { getApplicableOfferForProduct } from '../services/offerService';
 
 export interface HomePageProps {
   onAddToCart: (product: Product) => void;
@@ -515,6 +517,7 @@ export const HomePage: React.FC<HomePageProps> = ({
       (product.originalPrice && product.originalPrice > product.price
         ? Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)
         : 0);
+    const applicableOffer = getApplicableOfferForProduct(String(product.id), product.category || 'electrical');
 
     const isElectrical =
       (product.category || '').toLowerCase().includes('electrical') ||
@@ -571,7 +574,7 @@ export const HomePage: React.FC<HomePageProps> = ({
           </Link>
 
           {/* Price & MRP */}
-          <div className="flex items-baseline gap-2 pt-0.5 h-6">
+          <div className="flex items-baseline gap-2 pt-0.5">
             <span className="text-sm sm:text-base font-black text-slate-950">
               ₹{product.price.toLocaleString('en-IN')}
             </span>
@@ -581,6 +584,13 @@ export const HomePage: React.FC<HomePageProps> = ({
               </span>
             )}
           </div>
+
+          {/* Applicable Offer Coupon Badge */}
+          {applicableOffer && (
+            <div className="pt-1">
+              <OfferBadge offer={applicableOffer} variant="card" />
+            </div>
+          )}
         </div>
 
         {/* Bottom Segment: Add to Cart / Quick Quantity Controls (Always aligned in identical sequence) */}

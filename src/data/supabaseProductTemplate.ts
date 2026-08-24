@@ -104,11 +104,76 @@ BEGIN
     CREATE POLICY "Allow service_role full access" ON public.products FOR ALL USING (true);
   END IF;
 END $$;
+-- 4. Offers and Promotional Coupons Table
+CREATE TABLE IF NOT EXISTS public.offers (
+  id TEXT PRIMARY KEY,
+  code TEXT NOT NULL UNIQUE,
+  title TEXT NOT NULL,
+  description TEXT,
+  discount_type TEXT DEFAULT 'percentage', -- 'percentage' | 'fixed'
+  discount_value NUMERIC NOT NULL,
+  category_scope TEXT DEFAULT 'all', -- 'all' | 'electrical' | 'construction' | etc.
+  min_order_value NUMERIC DEFAULT 0,
+  max_discount NUMERIC,
+  is_active BOOLEAN DEFAULT true,
+  valid_from TIMESTAMPTZ,
+  valid_until TIMESTAMPTZ,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 5. Offer Products Mapping (Specific Products tied to specific offers)
+CREATE TABLE IF NOT EXISTS public.offer_products (
+  id BIGSERIAL PRIMARY KEY,
+  offer_id TEXT NOT NULL REFERENCES public.offers(id) ON DELETE CASCADE,
+  product_id TEXT NOT NULL REFERENCES public.products(id) ON DELETE CASCADE,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(offer_id, product_id)
+);
+
+ALTER TABLE public.offers ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.offer_products ENABLE ROW LEVEL SECURITY;
+
+DO $$ 
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies WHERE tablename = 'offers' AND policyname = 'Allow public read access to offers'
+  ) THEN
+    CREATE POLICY "Allow public read access to offers" ON public.offers FOR SELECT USING (true);
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies WHERE tablename = 'offer_products' AND policyname = 'Allow public read access to offer_products'
+  ) THEN
+    CREATE POLICY "Allow public read access to offer_products" ON public.offer_products FOR SELECT USING (true);
+  END IF;
+END $$;
 `;
 
 /**
- * SAMPLE SQL INSERT STATEMENTS FOR DIRECT SUPABASE USE
+ * SAMPLE SQL INSERT STATEMENTS FOR OFFERS & PROMOTIONS
  */
+export const SAMPLE_OFFERS_SQL_TEMPLATE = `
+-- Insert Active Promotional Offers
+INSERT INTO public.offers (id, code, title, description, discount_type, discount_value, category_scope, min_order_value, max_discount, is_active, valid_until)
+VALUES 
+  ('off_giriraj10', 'GIRIRAJ10', '10% OFF Storewide', 'Flat 10% instant discount across all products', 'percentage', 10, 'all', 0, 1000, true, NOW() + INTERVAL '180 days'),
+  ('off_kolkata60', 'KOLKATA60', '₹100 Off Express', '₹100 instant discount on orders above ₹500', 'fixed', 100, 'all', 500, NULL, true, NOW() + INTERVAL '180 days'),
+  ('off_power15', 'POWER15', '15% Off Electricals', 'Special 15% discount on electrical and wiring supplies', 'percentage', 15, 'electrical', 800, 1500, true, NOW() + INTERVAL '180 days'),
+  ('off_build10', 'BUILD10', '10% Off Construction', '10% instant discount on building materials', 'percentage', 10, 'construction', 1200, 2500, true, NOW() + INTERVAL '180 days'),
+  ('off_express50', 'EXPRESS50', '₹50 Express Coupon', '₹50 off on orders above ₹300', 'fixed', 50, 'all', 300, NULL, true, NOW() + INTERVAL '180 days')
+ON CONFLICT (id) DO UPDATE SET
+  is_active = EXCLUDED.is_active,
+  discount_value = EXCLUDED.discount_value;
+
+-- Optional: Link specific products to offers
+INSERT INTO public.offer_products (offer_id, product_id)
+VALUES 
+  ('off_power15', 'p1'),
+  ('off_power15', 'p2')
+ON CONFLICT (offer_id, product_id) DO NOTHING;
+`;
+
 export const SAMPLE_SUPABASE_SQL_TEMPLATE = `
 -- Step 1: Run table alterations to ensure all columns exist
 ALTER TABLE public.products ADD COLUMN IF NOT EXISTS delivery_minutes INTEGER DEFAULT 30;

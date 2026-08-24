@@ -1,8 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Plus, Minus, Zap, Star, ShieldCheck, Eye, Heart, Check, ShoppingCart } from 'lucide-react';
 import { Product } from '../types';
 import { isProductFavorite, toggleProductFavorite } from '../services/favorites';
 import { INDIAN_STANDARD_WIRE_COLORS, isWireProduct } from '../data/wireColors';
+import { OfferBadge } from './OfferBadge';
+import { getApplicableOfferForProduct } from '../services/offerService';
 
 interface ProductCardProps {
   product: Product;
@@ -25,6 +27,10 @@ export const ProductCard: React.FC<ProductCardProps> = ({
   const [selectedWireColor, setSelectedWireColor] = useState<string>(
     product.selectedColor || (isWire ? 'Red' : '')
   );
+
+  const applicableOffer = useMemo(() => {
+    return getApplicableOfferForProduct(String(product.id), product.category || 'electrical');
+  }, [product.id, product.category]);
 
   useEffect(() => {
     const handleFavChange = () => {
@@ -137,6 +143,13 @@ export const ProductCard: React.FC<ProductCardProps> = ({
           <div className="text-[11px] font-semibold text-slate-500 mb-1.5">
             Unit: <span className="text-slate-800">{product.unit}</span>
           </div>
+
+          {/* Applicable Offer Coupon Badge */}
+          {applicableOffer && (
+            <div className="mb-2">
+              <OfferBadge offer={applicableOffer} variant="card" />
+            </div>
+          )}
 
           {/* IS 694 Indian Standard Wire Color Options */}
           {isWire && (

@@ -38,6 +38,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
   const [selectedWireColor, setSelectedWireColor] = useState<string>(
     product?.selectedColor || (product ? getDefaultProductColor(product) : '')
   );
+
   const thumbnailContainerRef = useRef<HTMLDivElement>(null);
 
   const allImages = product

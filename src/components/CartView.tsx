@@ -36,6 +36,12 @@ import { sendOrderConfirmationEmail, notifyOrderPlaced } from '../services/email
 import { INDIAN_STANDARD_WIRE_COLORS, PIPE_COLOR_OPTIONS } from '../data/wireColors';
 import { trackBeginCheckout, trackPurchase, trackRemoveFromCart } from '../utils/analytics';
 import {
+  Offer,
+  validateAndCalculateCoupon,
+  fetchActiveStorefrontOffers,
+  getCachedOffers
+} from '../services/offerService';
+import {
   syncCartItemToSupabase,
   removeCartItemFromSupabase,
   clearCartInSupabase,
@@ -121,7 +127,9 @@ export const CartView: React.FC<CartViewProps> = ({
   const [paymentMethod, setPaymentMethod] = useState<'cod' | 'upi' | 'card'>('cod');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [promoCode, setPromoCode] = useState('');
+  const [isApplyingPromo, setIsApplyingPromo] = useState(false);
   const [discountApplied, setDiscountApplied] = useState(0);
+  const [appliedOffer, setAppliedOffer] = useState<Offer | null>(null);
   const [couponError, setCouponError] = useState<string | null>(null);
   const [couponSuccess, setCouponSuccess] = useState<string | null>(null);
 
@@ -301,26 +309,56 @@ export const CartView: React.FC<CartViewProps> = ({
     setIsCheckoutOpen(true);
   };
 
-  // Apply Promo Coupon
-  const handleApplyPromo = (e: React.FormEvent) => {
-    e.preventDefault();
+  // Apply Dynamic Promo Coupon fresh from store at the moment of submission
+  const handleApplyPromo = async (e?: React.FormEvent, customCode?: string) => {
+    if (e) e.preventDefault();
     setCouponError(null);
     setCouponSuccess(null);
-    const code = promoCode.trim().toUpperCase();
-    if (code === 'KOLKATA60' || code === 'GIRIRAJ100') {
-      setDiscountApplied(100);
-      setCouponSuccess('Coupon applied! ₹100 instant discount added.');
-    } else if (code === 'EXPRESS50') {
-      setDiscountApplied(50);
-      setCouponSuccess('Coupon applied! ₹50 express discount added.');
-    } else if (code === 'BUILD10') {
-      const discount = Math.round(totalSellingPrice * 0.1);
-      setDiscountApplied(discount);
-      setCouponSuccess(`Coupon BUILD10 applied! ₹${discount} saved.`);
-    } else {
-      setCouponError('Invalid coupon code. Try "KOLKATA60" for ₹100 off!');
-      setDiscountApplied(0);
+    const code = (customCode !== undefined ? customCode : promoCode).trim().toUpperCase();
+    if (!code) {
+      setCouponError('Please enter a coupon code.');
+      return;
     }
+
+    setIsApplyingPromo(true);
+    try {
+      // 1. Fetch fresh active offers directly from database at submit time (not relying on stale state)
+      const freshOffersData = await fetchActiveStorefrontOffers();
+
+      // 2. Validate and calculate discount with fresh offers
+      const orderItems = checkoutMode === 'single' && singleCheckoutItem ? [singleCheckoutItem] : items;
+      const result = validateAndCalculateCoupon(
+        code,
+        orderItems,
+        totalSellingPrice,
+        freshOffersData.offers,
+        freshOffersData.offerProducts
+      );
+
+      if (!result.success) {
+        setCouponError(result.message || 'Invalid coupon code or not applicable to items in cart.');
+        setDiscountApplied(0);
+        setAppliedOffer(null);
+      } else {
+        setPromoCode(code);
+        setDiscountApplied(result.discountAmount);
+        setAppliedOffer(result.offer || null);
+        setCouponSuccess(result.message || `Coupon ${code} applied successfully! Saved ₹${result.discountAmount}.`);
+      }
+    } catch (err) {
+      console.error('Error validating coupon with fresh storefront offers:', err);
+      setCouponError('Unable to validate coupon at this moment. Please try again.');
+    } finally {
+      setIsApplyingPromo(false);
+    }
+  };
+
+  const handleRemoveCoupon = () => {
+    setDiscountApplied(0);
+    setAppliedOffer(null);
+    setPromoCode('');
+    setCouponSuccess(null);
+    setCouponError(null);
   };
 
   // Place Order Submission
@@ -1056,27 +1094,98 @@ export const CartView: React.FC<CartViewProps> = ({
                 </div>
               </div>
 
-              {/* Promo Code Input */}
+              {/* Promo Code Input & Dynamic Offers */}
               <div className="pt-2">
-                <label className="block text-xs font-bold text-slate-700 mb-1">Have a Promo Coupon?</label>
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    value={promoCode}
-                    onChange={(e) => setPromoCode(e.target.value)}
-                    placeholder="Try 'KOLKATA60'"
-                    className="flex-1 px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold uppercase focus:bg-white focus:border-amber-400 focus:outline-none"
-                  />
-                  <button
-                    type="button"
-                    onClick={handleApplyPromo}
-                    className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition cursor-pointer"
-                  >
-                    Apply
-                  </button>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-xs font-bold text-slate-700">Have a Promo Coupon?</label>
+                  {appliedOffer && (
+                    <button
+                      type="button"
+                      onClick={handleRemoveCoupon}
+                      className="text-[11px] font-bold text-rose-600 hover:text-rose-700 flex items-center gap-1 cursor-pointer"
+                    >
+                      <X className="w-3 h-3" />
+                      <span>Remove Coupon</span>
+                    </button>
+                  )}
                 </div>
-                {couponError && <p className="text-xs text-rose-500 font-bold mt-1">{couponError}</p>}
-                {couponSuccess && <p className="text-xs text-emerald-600 font-bold mt-1">{couponSuccess}</p>}
+
+                {appliedOffer ? (
+                  <div className="p-3 bg-emerald-50/80 border border-emerald-300 rounded-xl flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-lg bg-emerald-600 text-white flex items-center justify-center font-black text-xs">
+                        <Tag className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-black text-emerald-950 uppercase tracking-wide">
+                            {appliedOffer.code}
+                          </span>
+                          <span className="text-[10px] font-bold bg-emerald-200/80 text-emerald-800 px-1.5 py-0.2 rounded">
+                            APPLIED
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-emerald-700 font-semibold">
+                          {appliedOffer.title} · Saved ₹{discountApplied}
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleRemoveCoupon}
+                      className="p-1.5 hover:bg-emerald-200/60 rounded-lg text-emerald-800 transition cursor-pointer"
+                      title="Remove coupon"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                ) : (
+                  <div>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={promoCode}
+                        onChange={(e) => setPromoCode(e.target.value)}
+                        placeholder="e.g. GIRIRAJ10 or KOLKATA60"
+                        className="flex-1 px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold uppercase focus:bg-white focus:border-amber-400 focus:outline-none"
+                      />
+                      <button
+                        type="button"
+                        onClick={(e) => handleApplyPromo(e)}
+                        disabled={isApplyingPromo}
+                        className="px-4 py-2 bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded-xl text-xs font-bold transition cursor-pointer disabled:cursor-not-allowed"
+                      >
+                        {isApplyingPromo ? 'Applying...' : 'Apply'}
+                      </button>
+                    </div>
+
+                    {/* Quick Available Coupons Chips */}
+                    <div className="mt-2 flex items-center gap-1.5 flex-wrap">
+                      <span className="text-[10px] font-bold text-slate-400">Available Offers:</span>
+                      {getCachedOffers()
+                        .offers.filter(o => o.is_active)
+                        .slice(0, 3)
+                        .map(o => (
+                          <button
+                            key={o.id}
+                            type="button"
+                            onClick={() => handleApplyPromo(undefined, o.code)}
+                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-50 hover:bg-amber-100 border border-amber-200 text-[10px] font-black text-amber-900 transition-colors cursor-pointer"
+                            title={`Min Order: ₹${o.min_order_value || 0}`}
+                          >
+                            <Tag className="w-2.5 h-2.5 text-amber-600" />
+                            <span>{o.code}</span>
+                            <span className="text-slate-500 font-semibold">
+                              ({o.discount_type === 'percentage' ? `${o.discount_value}%` : `₹${o.discount_value}`})
+                            </span>
+                          </button>
+                        ))}
+                    </div>
+                  </div>
+                )}
+
+                {couponError && <p className="text-xs text-rose-500 font-bold mt-1.5">{couponError}</p>}
+                {couponSuccess && !appliedOffer && <p className="text-xs text-emerald-600 font-bold mt-1.5">{couponSuccess}</p>}
               </div>
 
               {/* Payment Method Selector */}
