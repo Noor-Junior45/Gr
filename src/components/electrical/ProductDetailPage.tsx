@@ -49,6 +49,7 @@ import {
   getProductColorOptions,
   getDefaultProductColor
 } from '../../data/wireColors';
+import { checkKolkataDeliveryService, isKolkataServiceable } from '../../data/kolkataAreas';
 import { trackProductView } from '../../utils/analytics';
 import { SEOHead } from '../SEOHead';
 
@@ -840,24 +841,37 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
             </div>
 
             {/* Delivery & Pincode Checker */}
-            <div className="p-4 rounded-xl border border-slate-200 space-y-3">
-              <div className="flex items-center justify-between gap-4">
+            <div className="p-4 rounded-xl border border-slate-200 bg-white space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
                 <div className="flex items-center gap-2 text-xs font-black text-slate-900">
-                  <MapPin className="w-4 h-4 text-blue-600" />
-                  Delivery &amp; Services
+                  <MapPin className="w-4 h-4 text-blue-600 shrink-0" />
+                  <span>Delivery &amp; Service Availability</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <input
                     type="text"
                     value={pincode}
-                    onChange={(e) => setPincode(e.target.value)}
+                    onChange={(e) => {
+                      const val = e.target.value.replace(/\D/g, '').slice(0, 6);
+                      setPincode(val);
+                      if (val.length === 6) {
+                        setPincodeChecked(true);
+                      }
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        setPincodeChecked(true);
+                      }
+                    }}
                     placeholder="Enter 6-digit Pincode"
-                    className="w-32 px-2.5 py-1 text-xs border border-slate-300 rounded font-mono font-bold focus:ring-1 focus:ring-blue-500 outline-hidden"
+                    className="w-36 px-3 py-1.5 text-xs border border-slate-300 rounded-lg font-mono font-bold focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
                     maxLength={6}
                   />
                   <button
+                    type="button"
                     onClick={() => setPincodeChecked(true)}
-                    className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded cursor-pointer"
+                    className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-lg cursor-pointer transition shadow-xs"
                   >
                     Check
                   </button>
@@ -865,17 +879,66 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
               </div>
 
               {pincodeChecked && (
-                <div className="text-xs text-slate-600 space-y-1 pt-1 border-t border-slate-100">
-                  <p className="flex items-center gap-1.5 text-emerald-700 font-bold">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                    Express Delivery Available (Pincode: {pincode})
-                  </p>
-                  <p className="text-[11px] text-slate-500 pl-5">
-                    Dispatched from Giriraj Power Kasba Kolkata warehouse • Free delivery on orders above ₹499
-                  </p>
-                </div>
+                (() => {
+                  const check = checkKolkataDeliveryService(pincode);
+                  if (check.isServiceable) {
+                    return (
+                      <div className="p-3 bg-emerald-50/80 border border-emerald-200 rounded-lg space-y-1 text-xs animate-in fade-in duration-150">
+                        <div className="flex items-center gap-1.5 text-emerald-800 font-bold">
+                          <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                          <span>Express Delivery Available in {check.areaName} ({pincode})</span>
+                        </div>
+                        <p className="text-[11px] text-emerald-700/90 pl-5 leading-relaxed">
+                          Dispatched directly from <strong className="font-semibold text-emerald-950">{check.hub}</strong> • Free delivery on orders above ₹499
+                        </p>
+                        <div className="flex items-center gap-2 pl-5 pt-0.5">
+                          <span className="inline-flex items-center gap-1 text-[10px] font-bold bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded">
+                            <Zap className="w-3 h-3 fill-emerald-700" />
+                            Kolkata Express Service Hub
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <div className="p-3 bg-rose-50/90 border border-rose-200 rounded-lg space-y-1.5 text-xs animate-in fade-in duration-150">
+                      <div className="flex items-start gap-1.5 text-rose-800 font-bold">
+                        <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+                        <div>
+                          <span>Delivery Not Available for PIN: {pincode || 'Entered Area'}</span>
+                          <p className="text-[11px] font-normal text-rose-700 mt-0.5 leading-relaxed">
+                            Giriraj Power currently delivers <strong>exclusively to Kolkata &amp; Howrah region</strong> (PIN 700001–700160 &amp; 711101–711106). We do not deliver to other states or outside Kolkata at this time.
+                          </p>
+                        </div>
+                      </div>
+                      <div className="pl-5 pt-1 border-t border-rose-200/60 flex items-center gap-1.5 flex-wrap">
+                        <span className="text-[10px] font-bold text-rose-600">Try Kolkata Pincode:</span>
+                        {[
+                          { code: '700091', label: 'Salt Lake' },
+                          { code: '700001', label: 'Central' },
+                          { code: '700019', label: 'Ballygunge' },
+                          { code: '700156', label: 'New Town' }
+                        ].map((sample) => (
+                          <button
+                            key={sample.code}
+                            type="button"
+                            onClick={() => {
+                              setPincode(sample.code);
+                              setPincodeChecked(true);
+                            }}
+                            className="px-1.5 py-0.5 bg-white hover:bg-rose-100/70 border border-rose-300 text-rose-900 rounded text-[10px] font-mono font-bold cursor-pointer transition"
+                          >
+                            {sample.code} ({sample.label})
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })()
               )}
             </div>
+
 
             {/* Stock Status */}
             <div>

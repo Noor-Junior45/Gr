@@ -30,3 +30,51 @@ export function isKolkataServiceable(pincode: string): boolean {
   // Check exact list or valid range (700001 - 700160 Kolkata Municipal/Metropolitan & 711101-711106 Howrah)
   return (pinNum >= 700001 && pinNum <= 700160) || (pinNum >= 711101 && pinNum <= 711106);
 }
+
+export function getKolkataAreaByPincode(pincode: string): KolkataArea | undefined {
+  const clean = pincode.trim();
+  return KOLKATA_AREAS.find((a) => a.pincode === clean);
+}
+
+export function checkKolkataDeliveryService(pincode: string): {
+  isServiceable: boolean;
+  areaName: string;
+  deliveryMins: number;
+  hub: string;
+  message: string;
+} {
+  const clean = pincode.trim();
+  if (!clean || clean.length !== 6 || !/^\d{6}$/.test(clean)) {
+    return {
+      isServiceable: false,
+      areaName: '',
+      deliveryMins: 0,
+      hub: '',
+      message: 'Please enter a valid 6-digit PIN code.'
+    };
+  }
+
+  const matchedArea = getKolkataAreaByPincode(clean);
+  const serviceable = isKolkataServiceable(clean);
+
+  if (serviceable) {
+    const areaName = matchedArea ? matchedArea.name : 'Kolkata Metropolitan Area';
+    const hub = matchedArea ? matchedArea.hub : 'Giriraj Power Kasba Kolkata Warehouse Hub';
+    const deliveryMins = matchedArea ? matchedArea.deliveryMinutes : 60;
+    return {
+      isServiceable: true,
+      areaName,
+      deliveryMins,
+      hub,
+      message: `Express Delivery Available in ${areaName}`
+    };
+  }
+
+  return {
+    isServiceable: false,
+    areaName: '',
+    deliveryMins: 0,
+    hub: '',
+    message: 'Currently, Giriraj Power delivers exclusively across Kolkata & Howrah (PIN 700001–700160 & 711101–711106). Delivery is not available for this area.'
+  };
+}

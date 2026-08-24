@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { X, Zap, Star, ShieldCheck, Check, Plus, Minus, Truck, Heart, RotateCcw, HelpCircle, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, CheckCircle2, Palette, Share2 } from 'lucide-react';
+import { X, Zap, Star, ShieldCheck, Check, Plus, Minus, Truck, Heart, RotateCcw, HelpCircle, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, CheckCircle2, Palette, Share2, MapPin, AlertCircle } from 'lucide-react';
 import { Product } from '../types';
 import { isProductFavorite, toggleProductFavorite } from '../services/favorites';
 import {
@@ -10,6 +10,7 @@ import {
   getProductColorOptions,
   getDefaultProductColor
 } from '../data/wireColors';
+import { checkKolkataDeliveryService } from '../data/kolkataAreas';
 import { trackProductView } from '../utils/analytics';
 
 interface ProductDetailModalProps {
@@ -38,6 +39,8 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
   const [selectedWireColor, setSelectedWireColor] = useState<string>(
     product?.selectedColor || (product ? getDefaultProductColor(product) : '')
   );
+  const [pincode, setPincode] = useState('700091');
+  const [pincodeChecked, setPincodeChecked] = useState(true);
 
   const thumbnailContainerRef = useRef<HTMLDivElement>(null);
 
@@ -390,6 +393,78 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                     </div>
                   ))}
                 </div>
+              </div>
+
+              {/* Delivery & Pincode Checker */}
+              <div className="p-3.5 rounded-xl border border-slate-200 bg-white mb-5 space-y-2.5">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <div className="flex items-center gap-1.5 text-xs font-black text-slate-900">
+                    <MapPin className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+                    <span>Delivery &amp; Service Availability</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <input
+                      type="text"
+                      value={pincode}
+                      onChange={(e) => {
+                        const val = e.target.value.replace(/\D/g, '').slice(0, 6);
+                        setPincode(val);
+                        if (val.length === 6) {
+                          setPincodeChecked(true);
+                        }
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          setPincodeChecked(true);
+                        }
+                      }}
+                      placeholder="6-digit PIN"
+                      className="w-28 px-2.5 py-1 text-xs border border-slate-300 rounded-lg font-mono font-bold focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                      maxLength={6}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setPincodeChecked(true)}
+                      className="px-2.5 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-lg cursor-pointer transition shadow-xs"
+                    >
+                      Check
+                    </button>
+                  </div>
+                </div>
+
+                {pincodeChecked && (
+                  (() => {
+                    const check = checkKolkataDeliveryService(pincode);
+                    if (check.isServiceable) {
+                      return (
+                        <div className="p-2.5 bg-emerald-50/80 border border-emerald-200 rounded-lg space-y-0.5 text-xs animate-in fade-in duration-150">
+                          <div className="flex items-center gap-1 text-emerald-800 font-bold text-[11px]">
+                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                            <span>Express Delivery Available in {check.areaName} ({pincode})</span>
+                          </div>
+                          <p className="text-[10px] text-emerald-700 pl-4.5">
+                            Dispatched from {check.hub} • Free delivery on orders above ₹499
+                          </p>
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <div className="p-2.5 bg-rose-50/90 border border-rose-200 rounded-lg space-y-1 text-xs animate-in fade-in duration-150">
+                        <div className="flex items-start gap-1 text-rose-800 font-bold text-[11px]">
+                          <AlertCircle className="w-3.5 h-3.5 text-rose-600 shrink-0 mt-0.5" />
+                          <div>
+                            <span>Delivery Not Available for PIN: {pincode || 'Entered Area'}</span>
+                            <p className="text-[10px] font-normal text-rose-700 mt-0.5 leading-relaxed">
+                              Giriraj Power provides delivery services <strong>exclusively within Kolkata &amp; Howrah region</strong> (PIN 700001–700160 &amp; 711101–711106).
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()
+                )}
               </div>
 
               {/* Return Policy Section */}
