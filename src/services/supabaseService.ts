@@ -705,27 +705,39 @@ export async function fetchUserOrders(): Promise<Order[]> {
 
     if (!error && Array.isArray(data)) {
       const dbOrders: Order[] = data.map((row) => ({
-        id: row.id,
-        customerName: row.customer_name || 'Customer',
-        phone: row.phone || '',
-        customerEmail: row.customer_email || undefined,
-        address: row.address || row.delivery_address || '',
-        area: row.area || 'Salt Lake Sector V',
-        landmark: row.landmark || undefined,
+        id: String(row.id),
+        customerName: row.recipient_name || row.customer_name || 'Customer',
+        recipientName: row.recipient_name || row.customer_name || 'Customer',
+        phone: row.recipient_phone || row.phone || '',
+        recipientPhone: row.recipient_phone || row.phone || '',
+        customerEmail: row.recipient_email || row.customer_email || undefined,
+        recipientEmail: row.recipient_email || row.customer_email || undefined,
+        address: [row.address_line1, row.address_line2, row.city, row.pincode].filter(Boolean).join(', ') || row.address || row.delivery_address || '',
+        addressLine1: row.address_line1,
+        addressLine2: row.address_line2,
+        city: row.city || 'Kolkata',
+        state: row.state || 'West Bengal',
+        area: row.address_line2 || row.area || 'Salt Lake Sector V',
+        landmark: row.delivery_notes || row.landmark || undefined,
+        deliveryNotes: row.delivery_notes || row.landmark || undefined,
         pincode: row.pincode || '700091',
         items: row.items || [],
-        itemTotal: Number(row.item_total || 0),
+        itemTotal: Number(row.subtotal ?? row.item_total ?? 0),
+        subtotal: Number(row.subtotal ?? row.item_total ?? 0),
         deliveryFee: Number(row.delivery_fee || 0),
         handlingFee: Number(row.handling_fee || 0),
-        discount: Number(row.discount || 0),
+        fees: Number(row.fees ?? ((row.delivery_fee || 0) + (row.handling_fee || 0))),
+        discount: Number(row.discount_amount ?? row.discount ?? 0),
+        discountAmount: Number(row.discount_amount ?? row.discount ?? 0),
+        couponCode: row.coupon_code || null,
         totalAmount: Number(row.total_amount || 0),
-        paymentMethod: row.payment_method || 'cod',
-        paymentStatus: row.payment_status || 'pending',
+        paymentMethod: (row.payment_method || 'cod').toLowerCase() as any,
+        paymentStatus: (row.payment_status || 'pending').toLowerCase() as any,
         status: row.status || 'pending',
-        createdAt: row.placed_at || row.updated_at || new Date().toISOString(),
+        createdAt: row.placed_at || row.updated_at || row.created_at || new Date().toISOString(),
         estimatedDeliveryTimestamp: Number(row.estimated_delivery_timestamp || Date.now() + 3600000),
         deliveryPartner: row.delivery_partner || undefined,
-        notes: row.notes || undefined
+        notes: row.delivery_notes || row.notes || undefined
       })).filter(isRealOrder);
 
       // Merge DB orders and local orders to ensure no orders are missing
@@ -871,8 +883,49 @@ export async function createFirestoreOrder(order: Order): Promise<Order> {
     console.warn('Backend /api/order pipeline notice (direct client sync active):', apiErr);
   }
 
-  try {
-    const rowPayload = {
+  // 2. Insert into Supabase `orders` and `order_items` tables
+  const orderRowPayload: Record<string, any> = {
+    user_id: userId,
+    status: 'pending',
+    recipient_name: order.recipientName || order.customerName,
+    recipient_phone: order.recipientPhone || order.phone,
+    recipient_email: order.recipientEmail || order.customerEmail || null,
+    address_line1: order.addressLine1 || order.address,
+    address_line2: order.addressLine2 || order.area || '',
+    city: order.city || 'Kolkata',
+    state: order.state || 'West Bengal',
+    pincode: order.pincode,
+    address_label: order.addressLabel || 'Home',
+    delivery_notes: order.deliveryNotes || order.landmark || order.notes || null,
+    subtotal: order.subtotal ?? order.itemTotal,
+    discount_amount: order.discountAmount ?? order.discount ?? 0,
+    fees: order.fees ?? ((order.deliveryFee || 0) + (order.handlingFee || 0)),
+    total_amount: order.totalAmount,
+    coupon_code: order.couponCode || null,
+    payment_method: (order.paymentMethod || 'COD').toUpperCase(),
+    payment_status: order.paymentStatus || 'pending',
+    placed_at: order.createdAt || new Date().toISOString(),
+    updated_at: order.createdAt || new Date().toISOString(),
+    packed_at: null,
+    delivered_at: null,
+    estimated_delivery_timestamp: order.estimatedDeliveryTimestamp,
+    delivery_partner: order.deliveryPartner || null,
+    notes: order.notes || null
+  };
+
+  let insertedOrder: any = null;
+
+  // Step 1: Insert into `orders` table
+  const { data: orderData, error: orderInsertError } = await supabase
+    .from('orders')
+    .insert(orderRowPayload)
+    .select()
+    .single();
+
+  if (orderInsertError) {
+    console.warn('Primary orders insert returned error, testing compatibility format:', orderInsertError.message);
+    // Compatibility fallback in case table has legacy column names
+    const legacyRowPayload: Record<string, any> = {
       id: order.id,
       user_id: userId,
       customer_name: order.customerName,
@@ -900,59 +953,66 @@ export async function createFirestoreOrder(order: Order): Promise<Order> {
       notes: order.notes || null
     };
 
-    const { error } = await supabase.from('orders').insert(rowPayload);
-    if (error) {
-      console.warn('Supabase order insert note:', error.message);
-    } else {
-      // Insert items into order_items table
-      if (Array.isArray(order.items) && order.items.length > 0) {
-        const orderItemsPayload = order.items.map((item) => ({
-          order_id: order.id,
-          product_id: item.product?.id ? String(item.product.id) : null,
-          product_name: item.product?.name || 'Item',
-          quantity: item.quantity || 1,
-          price_at_purchase: item.product?.price || 0,
-          product_image: item.product?.image || null,
-          brand: item.product?.brand || null,
-          unit: item.product?.unit || null
-        }));
+    const { data: legacyData, error: legacyError } = await supabase
+      .from('orders')
+      .insert(legacyRowPayload)
+      .select()
+      .single();
 
-        try {
-          const { error: itemsError } = await supabase.from('order_items').insert(orderItemsPayload);
-          if (itemsError) {
-            console.warn('Supabase order_items insert note:', itemsError.message);
-          }
-        } catch (itemInsertErr) {
-          console.warn('Exception inserting order items into order_items table:', itemInsertErr);
-        }
-      }
+    if (legacyError) {
+      console.error('Fatal error inserting into orders table:', legacyError);
+      throw new Error(`Failed to save order to Supabase: ${legacyError.message || orderInsertError.message}`);
     }
-
-    // Secure stock decrement via PostgreSQL function (prevents race conditions)
-    if (Array.isArray(order.items) && order.items.length > 0) {
-      for (const item of order.items) {
-        if (!item?.product?.id) continue;
-        try {
-          const { error: stockError } = await supabase.rpc(
-            'decrement_stock',
-            {
-              p_product_id: String(item.product.id),
-              p_quantity: item.quantity || 1,
-              p_order_id: order.id
-            }
-          );
-
-          if (stockError) {
-            console.warn(`Stock decrement failed for ${item.product.id}:`, stockError.message);
-          }
-        } catch (stockErr) {
-          console.warn(`Stock decrement exception for ${item.product.id}:`, stockErr);
-        }
-      }
-    }
-  } catch (error) {
-    console.warn('Order database insert error:', error);
+    insertedOrder = legacyData;
+  } else {
+    insertedOrder = orderData;
   }
+
+  const savedOrderId = insertedOrder?.id || order.id;
+
+  // Step 2: Insert one row into `order_items` for EACH item in cart
+  if (Array.isArray(order.items) && order.items.length > 0) {
+    const orderItemsPayload = order.items.map((item) => ({
+      order_id: savedOrderId,
+      product_id: item.product?.id ? String(item.product.id) : null,
+      product_name: item.product?.name || 'Item',
+      product_image: item.product?.image || (Array.isArray(item.product?.images) && item.product.images[0]) || null,
+      brand: item.product?.brand || 'Giriraj Power',
+      unit: item.product?.unit || 'piece',
+      quantity: item.quantity || 1,
+      price_at_purchase: item.product?.price || 0
+    }));
+
+    const { error: itemsError } = await supabase
+      .from('order_items')
+      .insert(orderItemsPayload);
+
+    if (itemsError) {
+      console.error('Fatal error inserting into order_items table:', itemsError);
+      throw new Error(`Failed to save order items to database: ${itemsError.message}`);
+    }
+  }
+
+  // Secure stock decrement via PostgreSQL function
+  if (Array.isArray(order.items) && order.items.length > 0) {
+    for (const item of order.items) {
+      if (!item?.product?.id) continue;
+      try {
+        await supabase.rpc('decrement_stock', {
+          p_product_id: String(item.product.id),
+          p_quantity: item.quantity || 1,
+          p_order_id: String(savedOrderId)
+        });
+      } catch (stockErr) {
+        console.warn(`Stock decrement note for ${item.product.id}:`, stockErr);
+      }
+    }
+  }
+
+  const finalSavedOrder: Order = {
+    ...order,
+    id: String(savedOrderId)
+  };
 
   // Analytics event
   if (typeof (window as unknown as { trackGirirajEvent?: (name: string, p: object) => void }).trackGirirajEvent === 'function') {
@@ -1023,6 +1083,145 @@ export async function updateOrderStatusInFirestore(orderId: string, newStatus: O
 export const updateOrderStatusInSupabase = updateOrderStatusInFirestore;
 
 /**
+ * Delete a specific order from Supabase (orders + order_items) and local caches
+ */
+export async function deleteFirestoreOrder(orderId: string): Promise<boolean> {
+  if (!orderId) return false;
+
+  // 1. Remove from local storage keys immediately for responsive UI
+  try {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      // Clean active user scope
+      if (activeUserScope) {
+        const currentOrders = getStoredOrders(activeUserScope);
+        const filtered = currentOrders.filter((o) => String(o.id) !== String(orderId));
+        safeSetItem(`giriraj_orders_${activeUserScope}`, JSON.stringify(filtered));
+        notifyOrderListeners(filtered);
+      }
+
+      // Clean all localStorage matching order keys
+      const totalKeys = localStorage.length;
+      for (let i = 0; i < totalKeys; i++) {
+        const key = localStorage.key(i);
+        if (key && key.startsWith('giriraj_orders_')) {
+          const raw = localStorage.getItem(key);
+          if (raw) {
+            try {
+              const list = JSON.parse(raw);
+              if (Array.isArray(list)) {
+                const remaining = list.filter((o) => String(o?.id) !== String(orderId));
+                safeSetItem(key, JSON.stringify(remaining));
+              }
+            } catch {
+              // ignore
+            }
+          }
+        }
+      }
+
+      // Clean master orders cache
+      const masterRaw = safeGetItem('giriraj_master_orders');
+      if (masterRaw) {
+        try {
+          const masterList = JSON.parse(masterRaw);
+          if (Array.isArray(masterList)) {
+            const updatedMaster = masterList.filter((entry) => String(entry.id) !== String(orderId));
+            safeSetItem('giriraj_master_orders', JSON.stringify(updatedMaster));
+          }
+        } catch {
+          // ignore
+        }
+      }
+    }
+  } catch (storageErr) {
+    console.warn('Local storage order deletion notice:', storageErr);
+  }
+
+  // 2. Delete from Supabase Database (`order_items` then `orders`)
+  try {
+    // Delete associated order items first
+    try {
+      await supabase.from('order_items').delete().eq('order_id', orderId);
+    } catch (itemDelErr) {
+      console.warn('Supabase order_items delete note:', itemDelErr);
+    }
+
+    // Delete the order record
+    const { error } = await supabase.from('orders').delete().eq('id', orderId);
+    if (error) {
+      console.warn('Supabase order delete error:', error.message);
+    }
+
+    // Re-fetch remaining orders to ensure sync
+    const remaining = await fetchUserOrders();
+    notifyOrderListeners(remaining);
+    return true;
+  } catch (error) {
+    console.warn('Error deleting order from database:', error);
+    return true;
+  }
+}
+
+export const deleteOrder = deleteFirestoreOrder;
+export const deleteOrderFromFirestore = deleteFirestoreOrder;
+
+/**
+ * Clear all order history for the current user across Supabase and local storage
+ */
+export async function clearAllUserOrders(): Promise<boolean> {
+  try {
+    const { data: authData } = await supabase.auth.getUser();
+    const userId = authData?.user?.id;
+
+    // 1. Delete all user orders from Supabase if logged in
+    if (userId) {
+      try {
+        // Fetch order IDs first to delete child order_items
+        const { data: userOrderRows } = await supabase
+          .from('orders')
+          .select('id')
+          .eq('user_id', userId);
+
+        if (userOrderRows && userOrderRows.length > 0) {
+          const orderIds = userOrderRows.map((r) => r.id);
+          await supabase.from('order_items').delete().in('order_id', orderIds);
+        }
+
+        await supabase.from('orders').delete().eq('user_id', userId);
+      } catch (dbErr) {
+        console.warn('Supabase clear user orders notice:', dbErr);
+      }
+    }
+
+    // 2. Clear all local storage order records
+    if (typeof window !== 'undefined' && window.localStorage) {
+      const keysToRemove: string[] = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && (key.startsWith('giriraj_orders_') || key === 'giriraj_master_orders')) {
+          keysToRemove.push(key);
+        }
+      }
+      keysToRemove.forEach((k) => {
+        try {
+          localStorage.removeItem(k);
+        } catch {
+          // ignore
+        }
+      });
+    }
+
+    // 3. Notify listeners with empty array
+    notifyOrderListeners([]);
+    return true;
+  } catch (error) {
+    console.warn('Error clearing all user orders:', error);
+    notifyOrderListeners([]);
+    return true;
+  }
+}
+
+/**
  * Service Booking in Supabase
  */
 export async function createFirestoreServiceBooking(booking: WiringServiceBooking): Promise<void> {
@@ -1067,11 +1266,65 @@ let addressesChannel: ReturnType<typeof supabase.channel> | null = null;
 export function getStoredAddresses(userScopeOverride?: string): SavedAddress[] {
   try {
     const scope = userScopeOverride || activeUserScope;
-    if (!scope) return [];
-    const raw = localStorage.getItem(`giriraj_addrs_${scope}`);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : [];
+    const collected: SavedAddress[] = [];
+    const seenIds = new Set<string>();
+
+    const addAddresses = (list: any) => {
+      if (!Array.isArray(list)) return;
+      for (const a of list) {
+        if (a && a.id && !seenIds.has(a.id)) {
+          seenIds.add(a.id);
+          collected.push(a);
+        }
+      }
+    };
+
+    // 1. Check scoped storage if scope is known
+    if (scope) {
+      const raw = localStorage.getItem(`giriraj_addrs_${scope}`);
+      if (raw) {
+        try {
+          addAddresses(JSON.parse(raw));
+        } catch {}
+      }
+    }
+
+    // 2. Check general fallback storage
+    const generalRaw = localStorage.getItem('giriraj_saved_addresses');
+    if (generalRaw) {
+      try {
+        addAddresses(JSON.parse(generalRaw));
+      } catch {}
+    }
+
+    // 3. Check any other address keys in localStorage
+    if (typeof window !== 'undefined' && window.localStorage) {
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (k && k.startsWith('giriraj_addrs_')) {
+          const rawK = localStorage.getItem(k);
+          if (rawK) {
+            try {
+              addAddresses(JSON.parse(rawK));
+            } catch {}
+          }
+        }
+      }
+    }
+
+    // 4. Check active address key as single fallback
+    const activeStored = localStorage.getItem(ACTIVE_SAVED_ADDRESS_KEY);
+    if (activeStored) {
+      try {
+        const activeObj = JSON.parse(activeStored);
+        if (activeObj && activeObj.id && !seenIds.has(activeObj.id)) {
+          seenIds.add(activeObj.id);
+          collected.push(activeObj);
+        }
+      } catch {}
+    }
+
+    return collected;
   } catch (e) {
     console.error('Error reading saved addresses:', e);
     return [];
@@ -1176,13 +1429,16 @@ export async function saveAddressToFirestore(address: SavedAddress): Promise<voi
   const userId = authData?.user?.id || null;
   const scope = getUserScopeKeyFromUser(authData?.user) || activeUserScope;
 
+  const current = getStoredAddresses(scope || undefined).filter((a) => a.id !== address.id);
+  const updated = [address, ...current];
+
   if (scope) {
-    const current = getStoredAddresses(scope).filter((a) => a.id !== address.id);
-    const updated = [address, ...current];
     safeSetItem(`giriraj_addrs_${scope}`, JSON.stringify(updated));
     safeSetItem(`giriraj_active_addr_${scope}`, JSON.stringify(address));
-    notifyAddressListeners(updated);
   }
+  safeSetItem('giriraj_saved_addresses', JSON.stringify(updated));
+  safeSetItem(ACTIVE_SAVED_ADDRESS_KEY, JSON.stringify(address));
+  notifyAddressListeners(updated);
 
   try {
     const rowPayload = {
@@ -1215,12 +1471,28 @@ export async function deleteAddressFromFirestore(id: string): Promise<void> {
   const { data: authData } = await supabase.auth.getUser();
   const scope = getUserScopeKeyFromUser(authData?.user) || activeUserScope;
 
+  const current = getStoredAddresses(scope || undefined);
+  const updated = current.filter((a) => a.id !== id);
   if (scope) {
-    const current = getStoredAddresses(scope);
-    const updated = current.filter((a) => a.id !== id);
     safeSetItem(`giriraj_addrs_${scope}`, JSON.stringify(updated));
-    notifyAddressListeners(updated);
   }
+  safeSetItem('giriraj_saved_addresses', JSON.stringify(updated));
+
+  const activeRaw = safeGetItem(ACTIVE_SAVED_ADDRESS_KEY);
+  if (activeRaw) {
+    try {
+      const activeObj = JSON.parse(activeRaw);
+      if (activeObj?.id === id) {
+        if (updated.length > 0) {
+          safeSetItem(ACTIVE_SAVED_ADDRESS_KEY, JSON.stringify(updated[0]));
+        } else {
+          localStorage.removeItem(ACTIVE_SAVED_ADDRESS_KEY);
+        }
+      }
+    } catch {}
+  }
+
+  notifyAddressListeners(updated);
 
   try {
     if (authData?.user?.id) {

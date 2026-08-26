@@ -2014,6 +2014,112 @@ Respond ONLY with a valid JSON object matching the following structure:
     }
   });
 
+  // =========================================================================
+  // CLOUDFLARE TURNSTILE TOKEN VERIFICATION
+  // Validates challenges securely against https://challenges.cloudflare.com/turnstile/v0/siteverify
+  // =========================================================================
+  async function verifyTurnstileToken(
+    token: string,
+    remoteip?: string
+  ): Promise<{ success: boolean; message: string; challengeTs?: string; hostname?: string; errorCodes?: string[] }> {
+    if (!token || typeof token !== "string" || token.trim() === "") {
+      return {
+        success: false,
+        message: "Missing or empty Turnstile token."
+      };
+    }
+
+    const secretKey = (process.env.TURNSTILE_SECRET_KEY || process.env.CLOUDFLARE_TURNSTILE_SECRET_KEY || "").trim();
+
+    // If secret key is not yet configured in environment variables, allow bypass in development/sandbox
+    if (!secretKey) {
+      return {
+        success: true,
+        message: "Turnstile secret key not configured in environment variables. Allowing bypass for development."
+      };
+    }
+
+    try {
+      const formData = new URLSearchParams();
+      formData.append("secret", secretKey);
+      formData.append("response", token.trim());
+      if (remoteip) {
+        formData.append("remoteip", remoteip);
+      }
+
+      const verifyRes = await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded"
+        },
+        body: formData.toString()
+      });
+
+      const data: any = await verifyRes.json().catch(() => ({}));
+
+      if (data && data.success) {
+        return {
+          success: true,
+          message: "Turnstile challenge verified successfully.",
+          challengeTs: data.challenge_ts,
+          hostname: data.hostname
+        };
+      }
+
+      return {
+        success: false,
+        message: "Turnstile challenge verification failed.",
+        errorCodes: data?.["error-codes"] || ["invalid_token"]
+      };
+    } catch (err: any) {
+      console.error("[Turnstile siteverify error]:", err);
+      return {
+        success: false,
+        message: "Unable to reach Cloudflare Turnstile verification servers.",
+        errorCodes: [err?.message || "network_error"]
+      };
+    }
+  }
+
+  // Turnstile verification API endpoint
+  app.post(["/api/turnstile/verify", "/api/verify-turnstile"], strictLimiter, async (req, res) => {
+    res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate");
+    try {
+      const { token } = req.body || {};
+      const clientIp = getClientIp(req);
+
+      if (!token) {
+        return res.status(400).json({
+          success: false,
+          message: "Token is required for Turnstile challenge verification."
+        });
+      }
+
+      const result = await verifyTurnstileToken(token, clientIp);
+      if (result.success) {
+        return res.status(200).json(result);
+      } else {
+        return res.status(400).json(result);
+      }
+    } catch (err: any) {
+      return res.status(500).json({
+        success: false,
+        message: err.message || "Failed to process Turnstile verification."
+      });
+    }
+  });
+
+  // Turnstile status endpoint
+  app.get("/api/turnstile/status", (req, res) => {
+    const secretKey = (process.env.TURNSTILE_SECRET_KEY || process.env.CLOUDFLARE_TURNSTILE_SECRET_KEY || "").trim();
+    const siteKey = (process.env.VITE_TURNSTILE_SITE_KEY || "0x4AAAAAAEcy2mjDUpBjQT4a").trim();
+    res.json({
+      configured: Boolean(secretKey),
+      siteKey: siteKey,
+      hasSecretKey: Boolean(secretKey)
+    });
+  });
+
   // Vite middleware for development vs Production Static Serving with Intelligent Caching
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({

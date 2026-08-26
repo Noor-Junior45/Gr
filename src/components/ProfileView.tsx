@@ -43,6 +43,8 @@ import {
   saveUserProfile,
   signOutUser,
   deleteAddressFromFirestore,
+  deleteFirestoreOrder,
+  clearAllUserOrders,
   subscribeToUpiIds,
   saveUpiToFirestore,
   deleteUpiFromFirestore,
@@ -141,6 +143,36 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
   const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null);
   const [visibleOrdersCount, setVisibleOrdersCount] = useState(4);
   const [ratingsState, setRatingsState] = useState<{ [orderId: string]: { userRating?: number; deliveryRating?: number } }>({});
+  const [deletingOrderId, setDeletingOrderId] = useState<string | null>(null);
+  const [orderToDelete, setOrderToDelete] = useState<Order | null>(null);
+  const [confirmClearAllOrders, setConfirmClearAllOrders] = useState(false);
+  const [isClearingOrders, setIsClearingOrders] = useState(false);
+
+  const handleDeleteSingleOrder = async (order: Order) => {
+    try {
+      setDeletingOrderId(order.id);
+      await deleteFirestoreOrder(order.id);
+      setOrderToDelete(null);
+    } catch (err) {
+      console.error('Failed to delete order:', err);
+      alert('Failed to delete the order. Please try again.');
+    } finally {
+      setDeletingOrderId(null);
+    }
+  };
+
+  const handleClearAllOrders = async () => {
+    try {
+      setIsClearingOrders(true);
+      await clearAllUserOrders();
+      setConfirmClearAllOrders(false);
+    } catch (err) {
+      console.error('Failed to clear order history:', err);
+      alert('Failed to clear order history. Please try again.');
+    } finally {
+      setIsClearingOrders(false);
+    }
+  };
 
   // Payment state (Stored on server & Firestore)
   const [savedUpi, setSavedUpi] = useState<string[]>([]);
@@ -458,6 +490,18 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
               </p>
             </div>
           </div>
+
+          {sortedOrders.length > 0 && (
+            <button
+              type="button"
+              onClick={() => setConfirmClearAllOrders(true)}
+              className="px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-700 font-bold text-xs rounded-xl border border-red-200 transition-colors flex items-center gap-1.5 cursor-pointer"
+              title="Clear all orders history"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              <span>Clear History</span>
+            </button>
+          )}
         </div>
 
         <div className="max-w-2xl mx-auto p-4 sm:p-6 space-y-4">
@@ -822,6 +866,15 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                       <div className="flex items-center gap-2">
                         <button
                           type="button"
+                          onClick={() => setOrderToDelete(order)}
+                          className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-colors cursor-pointer"
+                          title="Delete this order"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+
+                        <button
+                          type="button"
                           onClick={() => setExpandedOrderId(isExpanded ? null : order.id)}
                           className="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-colors cursor-pointer flex items-center gap-1"
                         >
@@ -846,6 +899,90 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
             </div>
           )}
         </div>
+
+        {/* Confirmation Modal: Delete Single Order */}
+        {orderToDelete && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-200">
+            <div className="bg-white rounded-2xl max-w-sm w-full p-5 sm:p-6 shadow-2xl border border-slate-200 space-y-4">
+              <div className="w-12 h-12 rounded-xl bg-red-50 text-red-600 flex items-center justify-center mx-auto">
+                <Trash2 className="w-6 h-6" />
+              </div>
+              <div className="text-center space-y-1">
+                <h3 className="text-base font-black text-slate-900">Delete Order #{orderToDelete.id}?</h3>
+                <p className="text-xs text-slate-500 leading-relaxed">
+                  Are you sure you want to delete this order from your history? This action cannot be undone.
+                </p>
+              </div>
+              <div className="flex items-center gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setOrderToDelete(null)}
+                  disabled={Boolean(deletingOrderId)}
+                  className="flex-1 py-2.5 px-4 rounded-xl border border-slate-300 text-slate-700 font-bold text-xs hover:bg-slate-50 transition-colors cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleDeleteSingleOrder(orderToDelete)}
+                  disabled={Boolean(deletingOrderId)}
+                  className="flex-1 py-2.5 px-4 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold text-xs transition-colors flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
+                >
+                  {deletingOrderId === orderToDelete.id ? (
+                    <>
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      <span>Deleting...</span>
+                    </>
+                  ) : (
+                    <span>Delete Order</span>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Confirmation Modal: Clear All Orders */}
+        {confirmClearAllOrders && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-200">
+            <div className="bg-white rounded-2xl max-w-sm w-full p-5 sm:p-6 shadow-2xl border border-slate-200 space-y-4">
+              <div className="w-12 h-12 rounded-xl bg-red-50 text-red-600 flex items-center justify-center mx-auto">
+                <AlertCircle className="w-6 h-6" />
+              </div>
+              <div className="text-center space-y-1">
+                <h3 className="text-base font-black text-slate-900">Clear All Order History?</h3>
+                <p className="text-xs text-slate-500 leading-relaxed">
+                  This will permanently remove all {sortedOrders.length} order record{sortedOrders.length > 1 ? 's' : ''} from your account history.
+                </p>
+              </div>
+              <div className="flex items-center gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setConfirmClearAllOrders(false)}
+                  disabled={isClearingOrders}
+                  className="flex-1 py-2.5 px-4 rounded-xl border border-slate-300 text-slate-700 font-bold text-xs hover:bg-slate-50 transition-colors cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleClearAllOrders}
+                  disabled={isClearingOrders}
+                  className="flex-1 py-2.5 px-4 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold text-xs transition-colors flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
+                >
+                  {isClearingOrders ? (
+                    <>
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      <span>Clearing...</span>
+                    </>
+                  ) : (
+                    <span>Clear All</span>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
   }

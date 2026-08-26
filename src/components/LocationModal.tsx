@@ -141,9 +141,10 @@ export const LocationModal: React.FC<LocationModalProps> = ({
     return () => unsub();
   }, []);
 
-  // Reset state whenever modal opens
+  // Reset state and refresh saved addresses whenever modal opens
   useEffect(() => {
     if (isOpen) {
+      setSavedAddresses(getStoredAddresses());
       setStep('search_home');
       setSearchQuery('');
       setFormError(null);
@@ -706,68 +707,59 @@ export const LocationModal: React.FC<LocationModalProps> = ({
               </div>
             ) : (
               <>
-                {/* Clean "Detect My Current Location" Box (matches reference image & auto-populates map) */}
+                {/* Clean, Animated "Detect Location" Button */}
                 <div 
                   id="detect-my-current-location-btn"
                   onClick={() => handleDetectCurrentLocation(true)}
-                  className="bg-white border border-slate-300 hover:border-slate-800 p-4 transition-all cursor-pointer shadow-2xs group flex items-center justify-between"
+                  className="relative overflow-hidden bg-white border border-slate-200 hover:border-slate-900 rounded-xl p-3.5 transition-all duration-200 cursor-pointer shadow-2xs hover:shadow-xs group flex items-center justify-between"
                   title="Detect my current location using GPS"
                 >
-                  <div className="flex items-center gap-3.5">
-                    <div className="text-slate-800 group-hover:text-black shrink-0">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="relative flex items-center justify-center w-9 h-9 rounded-lg bg-blue-50 text-blue-600 group-hover:bg-blue-600 group-hover:text-white transition-colors duration-200 shrink-0">
+                      {/* Radar pulse ping ring */}
+                      <span className="absolute inset-0 rounded-lg bg-blue-400/30 animate-ping opacity-60 group-hover:opacity-100" />
+                      <span className="absolute -inset-1 rounded-xl bg-blue-500/10 animate-pulse" />
                       {gpsLoading ? (
-                        <Loader2 className="w-5 h-5 animate-spin text-slate-800" />
+                        <Loader2 className="w-4 h-4 animate-spin relative z-10" />
                       ) : (
-                        <Crosshair className="w-5 h-5 stroke-[2] text-slate-900 group-hover:scale-110 transition-transform" />
+                        <LocateFixed className="w-4 h-4 stroke-[2.2] relative z-10 group-hover:scale-110 transition-transform duration-200" />
                       )}
                     </div>
-                    <div>
-                      <div className="text-sm font-bold text-slate-900 group-hover:text-black flex items-center gap-1.5">
-                        <span>Detect My Current Location</span>
-                      </div>
-                      <div className="text-xs text-slate-500 mt-0.5 font-normal">
-                        Using GPS • Auto-populates map to your area
-                      </div>
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="text-sm font-bold text-slate-900 group-hover:text-black tracking-tight truncate">
+                        {gpsLoading ? 'Detecting Location...' : 'Detect Location'}
+                      </span>
+                      <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-blue-50 text-blue-700 uppercase tracking-wider group-hover:bg-blue-100 transition-colors shrink-0">
+                        GPS
+                      </span>
                     </div>
                   </div>
 
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleDetectCurrentLocation(true);
-                    }}
-                    className="text-xs font-semibold text-slate-700 hover:text-black px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 transition-colors cursor-pointer shrink-0"
-                    title="Detect GPS & open interactive map"
-                  >
-                    {gpsLoading ? 'Detecting...' : 'Detect & Open Map'}
-                  </button>
+                  <div className="flex items-center text-slate-400 group-hover:text-slate-900 transition-colors shrink-0 pl-2">
+                    <ChevronRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform duration-200" />
+                  </div>
                 </div>
 
-                {/* Add New / Saved Address Action Button */}
+                {/* Add Address Action Button */}
                 <div
                   id="add-saved-address-btn"
                   onClick={() => {
                     setMapEntrySource('add_saved_address');
                     setStep('map_pin');
                   }}
-                  className="mt-3.5 bg-white border border-slate-300 hover:border-slate-800 p-4 transition-all cursor-pointer shadow-2xs group flex items-center justify-between"
+                  className="mt-2.5 bg-white border border-slate-200 hover:border-slate-900 rounded-xl p-3.5 transition-all duration-200 cursor-pointer shadow-2xs hover:shadow-xs group flex items-center justify-between"
+                  title="Add new address"
                 >
-                  <div className="flex items-center gap-3.5">
-                    <div className="w-9 h-9 bg-slate-900 text-white flex items-center justify-center shrink-0 group-hover:bg-black transition-colors">
-                      <Plus className="w-4 h-4 stroke-[2.5]" />
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-slate-900 text-white group-hover:bg-black transition-colors duration-200 shrink-0">
+                      <Plus className="w-4 h-4 stroke-[2.5] group-hover:rotate-90 transition-transform duration-300" />
                     </div>
-                    <div>
-                      <div className="text-sm font-bold text-slate-900 group-hover:text-black flex items-center gap-1.5">
-                        <span>Add Saved Address</span>
-                      </div>
-                      <div className="text-xs text-slate-500 mt-0.5 font-normal">
-                        Pin house on map &amp; save complete delivery details
-                      </div>
-                    </div>
+                    <span className="text-sm font-bold text-slate-900 group-hover:text-black tracking-tight truncate">
+                      Add Address
+                    </span>
                   </div>
 
-                  <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-slate-900 group-hover:translate-x-0.5 transition-all shrink-0" />
+                  <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-slate-900 group-hover:translate-x-0.5 transition-transform duration-200 shrink-0" />
                 </div>
 
                 {/* Saved Addresses Section (Clean, without demo or popular tags) */}

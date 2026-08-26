@@ -232,6 +232,21 @@ export default function App() {
 
     unsubscribeAddresses = subscribeToAddresses((allAddrs) => {
       setSavedAddresses(allAddrs);
+      if (allAddrs.length > 0) {
+        setActiveSavedAddress((curr) => {
+          if (curr && allAddrs.some((a) => a.id === curr.id)) {
+            return curr;
+          }
+          const defaultAddr = allAddrs[0];
+          try {
+            localStorage.setItem(ACTIVE_SAVED_ADDRESS_KEY, JSON.stringify(defaultAddr));
+          } catch {}
+          if (defaultAddr.area) {
+            setCurrentArea(defaultAddr.area);
+          }
+          return defaultAddr;
+        });
+      }
     });
 
     // Load live catalog directly from Supabase (Strict Database Mode)
@@ -511,6 +526,7 @@ export default function App() {
                 onClearCart={handleClearCart}
                 currentArea={currentArea}
                 activeAddress={activeSavedAddress}
+                savedAddresses={savedAddresses}
                 onOpenLocationModal={() => setIsLocationModalOpen(true)}
                 userPhone={userPhone}
                 userProfile={userProfile}

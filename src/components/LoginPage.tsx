@@ -16,6 +16,7 @@ import {
   saveUserProfile,
   signInWithGoogle
 } from '../services/supabaseService';
+import { TurnstileWidget } from './TurnstileWidget';
 
 interface LoginPageProps {
   onAuthSuccess: (phone: string, name: string, email?: string) => void;
@@ -23,6 +24,9 @@ interface LoginPageProps {
 
 export const LoginPage: React.FC<LoginPageProps> = ({ onAuthSuccess }) => {
   const navigate = useNavigate();
+
+  // Turnstile token state
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
 
   // Mode: 'password' | 'magic'
   const [authMode, setAuthMode] = useState<'password' | 'magic'>('password');
@@ -392,6 +396,15 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onAuthSuccess }) => {
                         {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                       </button>
                     </div>
+                  </div>
+
+                  <div className="py-1">
+                    <TurnstileWidget
+                      action="login"
+                      size="flexible"
+                      onSuccess={(tok) => setTurnstileToken(tok)}
+                      onExpire={() => setTurnstileToken(null)}
+                    />
                   </div>
 
                   <button

@@ -55,19 +55,33 @@ export type OrderStatus = 'pending' | 'accepted' | 'packing' | 'out_for_delivery
 
 export interface Order {
   id: string;
+  userId?: string;
   customerName: string;
+  recipientName?: string;
   phone: string;
+  recipientPhone?: string;
   customerEmail?: string;
+  recipientEmail?: string;
   address: string;
+  addressLine1?: string;
+  addressLine2?: string;
+  city?: string;
+  state?: string;
   area: string;
   pincode: string;
+  addressLabel?: string;
   landmark?: string;
+  deliveryNotes?: string;
   items: CartItem[];
   services?: WiringServiceBooking[];
   itemTotal: number;
+  subtotal?: number;
   deliveryFee: number;
   handlingFee: number;
+  fees?: number;
   discount: number;
+  discountAmount?: number;
+  couponCode?: string | null;
   totalAmount: number;
   paymentMethod: 'cod' | 'upi' | 'card';
   paymentStatus: 'paid' | 'pending';
@@ -174,3 +188,34 @@ export interface ReceivedEmail {
 }
 
 export type { Offer, OfferProduct, ProductOfferEvaluation } from './services/offerService';
+
+export interface TurnstileRenderOptions {
+  sitekey: string;
+  action?: string;
+  cData?: string;
+  callback?: (token: string) => void;
+  'error-callback'?: (error: any) => void;
+  'expired-callback'?: () => void;
+  'timeout-callback'?: () => void;
+  theme?: 'light' | 'dark' | 'auto';
+  size?: 'normal' | 'compact' | 'flexible';
+  tabindex?: number;
+  'response-field'?: boolean;
+  'response-field-name'?: string;
+  retry?: 'auto' | 'never';
+  'retry-interval'?: number;
+}
+
+export interface TurnstileInstance {
+  render: (container: string | HTMLElement, options: TurnstileRenderOptions) => string;
+  reset: (widgetId?: string) => void;
+  remove: (widgetId?: string) => void;
+  getResponse: (widgetId?: string) => string | undefined;
+}
+
+declare global {
+  interface Window {
+    turnstile?: TurnstileInstance;
+  }
+}
+
