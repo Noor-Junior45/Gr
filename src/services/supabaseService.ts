@@ -883,7 +883,31 @@ export async function createFirestoreOrder(order: Order): Promise<Order> {
     console.warn('Backend /api/order pipeline notice (direct client sync active):', apiErr);
   }
 
-  // 2. Insert into Supabase `orders` and `order_items` tables
+  // 2. Prepare comprehensive item representations with color & variant details
+  const formattedItemsForDb = (Array.isArray(order.items) ? order.items : []).map((item) => {
+    const color = item.selectedColor || item.product?.selectedColor || undefined;
+    const baseName = item.product?.name || 'Electrical Item';
+    const displayName = color ? `${baseName} (${color} Color)` : baseName;
+    return {
+      quantity: item.quantity || 1,
+      selectedColor: color,
+      color: color,
+      product: {
+        ...(item.product || {}),
+        name: displayName,
+        selectedColor: color
+      }
+    };
+  });
+
+  const itemsSummaryText = formattedItemsForDb
+    .map((it) => {
+      const colStr = it.selectedColor ? ` [${it.selectedColor}]` : '';
+      return `${it.quantity}x ${it.product?.name || 'Item'}${colStr}`;
+    })
+    .join(', ');
+
+  // 3. Insert into Supabase `orders` and `order_items` tables
   const orderRowPayload: Record<string, any> = {
     user_id: userId,
     status: 'pending',
@@ -897,6 +921,7 @@ export async function createFirestoreOrder(order: Order): Promise<Order> {
     pincode: order.pincode,
     address_label: order.addressLabel || 'Home',
     delivery_notes: order.deliveryNotes || order.landmark || order.notes || null,
+    items: formattedItemsForDb,
     subtotal: order.subtotal ?? order.itemTotal,
     discount_amount: order.discountAmount ?? order.discount ?? 0,
     fees: order.fees ?? ((order.deliveryFee || 0) + (order.handlingFee || 0)),
@@ -935,7 +960,7 @@ export async function createFirestoreOrder(order: Order): Promise<Order> {
       area: order.area,
       landmark: order.landmark || null,
       pincode: order.pincode,
-      items: order.items,
+      items: formattedItemsForDb,
       item_total: order.itemTotal,
       delivery_fee: order.deliveryFee,
       handling_fee: order.handlingFee,
@@ -972,24 +997,28 @@ export async function createFirestoreOrder(order: Order): Promise<Order> {
 
   // Step 2: Insert one row into `order_items` for EACH item in cart
   if (Array.isArray(order.items) && order.items.length > 0) {
-    const orderItemsPayload = order.items.map((item) => ({
-      order_id: savedOrderId,
-      product_id: item.product?.id ? String(item.product.id) : null,
-      product_name: item.product?.name || 'Item',
-      product_image: item.product?.image || (Array.isArray(item.product?.images) && item.product.images[0]) || null,
-      brand: item.product?.brand || 'Giriraj Power',
-      unit: item.product?.unit || 'piece',
-      quantity: item.quantity || 1,
-      price_at_purchase: item.product?.price || 0
-    }));
+    const orderItemsPayload = order.items.map((item) => {
+      const color = item.selectedColor || item.product?.selectedColor || undefined;
+      const baseName = item.product?.name || 'Item';
+      const displayName = color ? `${baseName} (${color} Color)` : baseName;
+      return {
+        order_id: savedOrderId,
+        product_id: item.product?.id ? String(item.product.id) : null,
+        product_name: displayName,
+        product_image: item.product?.image || (Array.isArray(item.product?.images) && item.product.images[0]) || null,
+        brand: item.product?.brand || 'Giriraj Power',
+        unit: item.product?.unit || 'piece',
+        quantity: item.quantity || 1,
+        price_at_purchase: item.product?.price || 0
+      };
+    });
 
     const { error: itemsError } = await supabase
       .from('order_items')
       .insert(orderItemsPayload);
 
     if (itemsError) {
-      console.error('Fatal error inserting into order_items table:', itemsError);
-      throw new Error(`Failed to save order items to database: ${itemsError.message}`);
+      console.warn('Notice inserting into order_items table (items persisted in orders.items):', itemsError.message);
     }
   }
 

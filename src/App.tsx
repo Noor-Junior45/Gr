@@ -9,7 +9,6 @@ import { LoginPage } from './components/LoginPage';
 import { ProfileView } from './components/ProfileView';
 import { ProductDetailModal } from './components/ProductDetailModal';
 import { WiringServices } from './components/WiringServices';
-import { CategorySearchBar } from './components/CategorySearchBar';
 import { CartView } from './components/CartView';
 import { MapsGroundingAssistant } from './components/MapsGroundingAssistant';
 import { OrderHistoryView } from './components/OrderHistoryView';
@@ -367,6 +366,50 @@ export default function App() {
     setCartItems([]);
   };
 
+  const handleUpdateItemColor = (productId: string, oldColor: string | undefined, newColor: string) => {
+    setCartItems((prev) => {
+      const existingNewColorIndex = prev.findIndex(
+        (i) => i.product.id === productId && (i.selectedColor || i.product.selectedColor) === newColor
+      );
+
+      const targetItemIndex = prev.findIndex(
+        (i) => i.product.id === productId && (i.selectedColor || i.product.selectedColor) === oldColor
+      );
+
+      if (targetItemIndex === -1) return prev;
+
+      const targetItem = prev[targetItemIndex];
+
+      // If item with newColor already exists in cart, merge quantities
+      if (existingNewColorIndex !== -1 && existingNewColorIndex !== targetItemIndex) {
+        const mergedQty = Math.min(100, prev[existingNewColorIndex].quantity + targetItem.quantity);
+        syncCartItemToSupabase(productId, mergedQty, newColor).catch(() => {});
+        return prev
+          .filter((_, idx) => idx !== targetItemIndex)
+          .map((item, idx) =>
+            idx === (existingNewColorIndex > targetItemIndex ? existingNewColorIndex - 1 : existingNewColorIndex)
+              ? { ...item, quantity: mergedQty, selectedColor: newColor }
+              : item
+          );
+      }
+
+      // Otherwise just change the color of the target item
+      syncCartItemToSupabase(productId, targetItem.quantity, newColor).catch(() => {});
+      return prev.map((item, idx) =>
+        idx === targetItemIndex
+          ? {
+              ...item,
+              selectedColor: newColor,
+              product: {
+                ...item.product,
+                selectedColor: newColor
+              }
+            }
+          : item
+      );
+    });
+  };
+
   // Header Tab change handler with react-router navigation
   const handleTabChange = (tab: string) => {
     if (tab === 'home') {
@@ -428,15 +471,6 @@ export default function App() {
           activeCategory={activeCategory}
           onSelectCategory={handleCategorySelect}
           onOpenInstallApp={() => setIsInstallModalOpen(true)}
-        />
-      )}
-
-      {/* Dedicated Glassmorphism Pill Search Bar (For Services Page) */}
-      {location.pathname === '/services' && (
-        <CategorySearchBar
-          searchQuery={searchQuery}
-          onSearchChange={setSearchQuery}
-          placeholder="Search wiring services in Kolkata..."
         />
       )}
 
@@ -522,6 +556,7 @@ export default function App() {
               <CartView
                 items={cartItems}
                 onUpdateQuantity={handleUpdateCartQuantity}
+                onUpdateItemColor={handleUpdateItemColor}
                 onRemoveItem={handleRemoveCartItem}
                 onClearCart={handleClearCart}
                 currentArea={currentArea}

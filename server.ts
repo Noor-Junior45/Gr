@@ -1062,6 +1062,26 @@ async function startServer() {
       const validatedOrder = parseResult.data;
 
       // 3. Database Persistence (Supabase Orders Table)
+      const formattedServerItems = validatedOrder.items.map((it) => {
+        const color = it.selectedColor || it.product?.selectedColor || undefined;
+        const baseName = it.product?.name || "Electrical Item";
+        const displayName = color ? `${baseName} (${color} Color)` : baseName;
+        return {
+          quantity: it.quantity || 1,
+          selectedColor: color,
+          color: color,
+          product: {
+            ...(it.product || {}),
+            name: displayName,
+            selectedColor: color
+          }
+        };
+      });
+
+      const serverItemsSummary = formattedServerItems
+        .map((it) => `${it.quantity}x ${it.product?.name || 'Item'}`)
+        .join(', ');
+
       const sb = getServerSupabase();
       if (sb) {
         try {
@@ -1069,14 +1089,18 @@ async function startServer() {
             {
               id: validatedOrder.id,
               customer_name: validatedOrder.customerName,
+              recipient_name: validatedOrder.customerName,
               phone: validatedOrder.phone,
+              recipient_phone: validatedOrder.phone,
               customer_email: validatedOrder.customerEmail || null,
               address: validatedOrder.address,
+              address_line1: validatedOrder.address,
               area: validatedOrder.area,
               landmark: validatedOrder.landmark || null,
               pincode: validatedOrder.pincode,
-              items: validatedOrder.items,
+              items: formattedServerItems,
               item_total: validatedOrder.itemTotal,
+              subtotal: validatedOrder.itemTotal,
               delivery_fee: validatedOrder.deliveryFee,
               handling_fee: validatedOrder.handlingFee,
               discount: validatedOrder.discount,
@@ -1085,6 +1109,7 @@ async function startServer() {
               payment_status: validatedOrder.paymentStatus,
               status: validatedOrder.status,
               created_at: validatedOrder.createdAt || new Date().toISOString(),
+              placed_at: validatedOrder.createdAt || new Date().toISOString(),
               estimated_delivery_timestamp: validatedOrder.estimatedDeliveryTimestamp || Date.now() + 3600000,
               delivery_partner: validatedOrder.deliveryPartner || null,
               notes: validatedOrder.notes || null
@@ -1099,12 +1124,13 @@ async function startServer() {
       // 4. Automated Notifications (Resend Email + WhatsApp)
       const phoneClean = validatedOrder.phone.replace(/\D/g, "").slice(-10);
       const itemsListText = validatedOrder.items
-        .map(
-          (it, i) =>
-            `${i + 1}. ${it.product?.name || "Item"} (${it.product?.brand || "Giriraj"}) x ${it.quantity} = ₹${(
-              (it.product?.price || 0) * it.quantity
-            ).toLocaleString("en-IN")}`
-        )
+        .map((it, i) => {
+          const color = it.selectedColor || it.product?.selectedColor;
+          const colorBadge = color ? ` [${color} COLOR]` : '';
+          return `${i + 1}. ${it.product?.name || "Item"}${colorBadge} (${it.product?.brand || "Giriraj"}) x ${it.quantity} = ₹${(
+            (it.product?.price || 0) * it.quantity
+          ).toLocaleString("en-IN")}`;
+        })
         .join("\n");
 
       const whatsappText =

@@ -35,7 +35,7 @@ import {
 import { CartItem, KolkataArea, Order, SavedAddress, Product, UserProfile } from '../types';
 import { createFirestoreOrder, getStoredAddresses } from '../services/supabaseService';
 import { notifyOrderPlaced } from '../services/emailService';
-import { INDIAN_STANDARD_WIRE_COLORS, PIPE_COLOR_OPTIONS } from '../data/wireColors';
+import { INDIAN_STANDARD_WIRE_COLORS, PIPE_COLOR_OPTIONS, getProductColorOptions } from '../data/wireColors';
 import { trackBeginCheckout, trackPurchase } from '../utils/analytics';
 import {
   Offer,
@@ -57,6 +57,7 @@ import confetti from 'canvas-confetti';
 interface CartViewProps {
   items: CartItem[];
   onUpdateQuantity: (productId: string, delta: number, color?: string) => void;
+  onUpdateItemColor?: (productId: string, oldColor: string | undefined, newColor: string) => void;
   onRemoveItem: (productId: string, color?: string) => void;
   onClearCart: () => void;
   currentArea: KolkataArea;
@@ -74,6 +75,7 @@ interface CartViewProps {
 export const CartView: React.FC<CartViewProps> = ({
   items,
   onUpdateQuantity,
+  onUpdateItemColor,
   onRemoveItem,
   onClearCart,
   currentArea,
@@ -741,6 +743,12 @@ export const CartView: React.FC<CartViewProps> = ({
             const isLowStock = stockQty > 0 && stockQty <= 5;
             const deliveryEstimate = getDeliveryDateEstimate(product.deliveryMinutes);
 
+            // Compute available color options for this product
+            const availableColors = getProductColorOptions(product);
+            const hasColorOptions = availableColors.length > 0;
+            const currentColor = item.selectedColor || product.selectedColor || (hasColorOptions ? availableColors[0].name : undefined);
+            const currentColorObj = hasColorOptions ? availableColors.find((c) => c.name === currentColor) || availableColors[0] : null;
+
             return (
               <div
                 key={`${product.id}-${item.selectedColor || 'default'}`}
@@ -768,20 +776,21 @@ export const CartView: React.FC<CartViewProps> = ({
                     </p>
 
                     {/* Color indicator if any */}
-                    {item.selectedColor && (
+                    {currentColor && (
                       <div className="flex items-center gap-1.5 mt-1">
                         <span className="text-[11px] font-bold text-slate-500">Colour:</span>
                         <span
                           className="w-3 h-3 rounded-full border border-slate-300 shrink-0"
                           style={{
                             backgroundColor:
+                              currentColorObj?.hex ||
                               [...INDIAN_STANDARD_WIRE_COLORS, ...PIPE_COLOR_OPTIONS].find(
-                                (c) => c.name === item.selectedColor
+                                (c) => c.name === currentColor
                               )?.hex || '#000'
                           }}
                         />
                         <span className="text-[11px] font-black text-blue-900 bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
-                          {item.selectedColor}
+                          {currentColor}
                         </span>
                       </div>
                     )}
@@ -819,43 +828,89 @@ export const CartView: React.FC<CartViewProps> = ({
                   </div>
                 </div>
 
-                {/* Stepper + Bottom Action Row */}
-                <div className="pt-2 border-t border-slate-100/80 flex items-center justify-between flex-wrap gap-2">
-                  {/* Quantity Stepper */}
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-bold text-slate-500">Qty:</span>
-                    <div className="flex items-center border border-slate-200 rounded-xl bg-slate-50 overflow-hidden shadow-2xs">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          onUpdateQuantity(product.id, -1, item.selectedColor);
-                          syncCartItemToSupabase(product.id, item.quantity - 1, item.selectedColor);
-                        }}
-                        className="p-1.5 hover:bg-slate-200 text-slate-700 transition cursor-pointer active:bg-slate-300"
-                        title="Decrease quantity"
-                      >
-                        <Minus className="w-3.5 h-3.5" />
-                      </button>
-                      <span className="px-3 py-0.5 text-xs font-black text-slate-900 bg-white min-w-[28px] text-center">
-                        {item.quantity}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (item.quantity < stockQty) {
-                            onUpdateQuantity(product.id, 1, item.selectedColor);
-                            syncCartItemToSupabase(product.id, item.quantity + 1, item.selectedColor);
-                          } else {
-                            alert(`Maximum available stock is ${stockQty} units.`);
-                          }
-                        }}
-                        disabled={item.quantity >= stockQty}
-                        className="p-1.5 hover:bg-slate-200 text-slate-700 transition cursor-pointer active:bg-slate-300 disabled:opacity-40 disabled:cursor-not-allowed"
-                        title="Increase quantity"
-                      >
-                        <Plus className="w-3.5 h-3.5" />
-                      </button>
+                {/* Stepper + Color Dropdown + Bottom Action Row */}
+                <div className="pt-2 border-t border-slate-100/80 flex items-center justify-between flex-wrap gap-2.5">
+                  {/* Left Controls: Quantity Stepper + Color Dropdown */}
+                  <div className="flex items-center flex-wrap gap-2 sm:gap-3">
+                    {/* Quantity Stepper */}
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-xs font-bold text-slate-500">Qty:</span>
+                      <div className="flex items-center border border-slate-200 rounded-xl bg-slate-50 overflow-hidden shadow-2xs">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            onUpdateQuantity(product.id, -1, item.selectedColor);
+                            syncCartItemToSupabase(product.id, item.quantity - 1, item.selectedColor);
+                          }}
+                          className="p-1.5 hover:bg-slate-200 text-slate-700 transition cursor-pointer active:bg-slate-300"
+                          title="Decrease quantity"
+                        >
+                          <Minus className="w-3.5 h-3.5" />
+                        </button>
+                        <span className="px-3 py-0.5 text-xs font-black text-slate-900 bg-white min-w-[28px] text-center">
+                          {item.quantity}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (item.quantity < stockQty) {
+                              onUpdateQuantity(product.id, 1, item.selectedColor);
+                              syncCartItemToSupabase(product.id, item.quantity + 1, item.selectedColor);
+                            } else {
+                              alert(`Maximum available stock is ${stockQty} units.`);
+                            }
+                          }}
+                          disabled={item.quantity >= stockQty}
+                          className="p-1.5 hover:bg-slate-200 text-slate-700 transition cursor-pointer active:bg-slate-300 disabled:opacity-40 disabled:cursor-not-allowed"
+                          title="Increase quantity"
+                        >
+                          <Plus className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
                     </div>
+
+                    {/* Colour Selector Dropdown (Shown only when colour options are available) */}
+                    {hasColorOptions && (
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-xs font-bold text-slate-500">Colour:</span>
+                        <div className="relative inline-flex items-center">
+                          <select
+                            id={`cart-color-select-${product.id}`}
+                            value={currentColor || availableColors[0]?.name}
+                            onChange={(e) => {
+                              const newCol = e.target.value;
+                              if (newCol && newCol !== currentColor) {
+                                if (onUpdateItemColor) {
+                                  onUpdateItemColor(product.id, item.selectedColor, newCol);
+                                } else {
+                                  // Fallback: Remove old and add new
+                                  onRemoveItem(product.id, item.selectedColor);
+                                  syncCartItemToSupabase(product.id, item.quantity, newCol);
+                                }
+                              }
+                            }}
+                            className="appearance-none pl-7 pr-8 py-1 bg-white border border-slate-200 hover:border-blue-400 focus:border-blue-600 rounded-xl text-xs font-bold text-slate-800 shadow-2xs focus:outline-hidden cursor-pointer transition-colors"
+                          >
+                            {availableColors.map((col) => (
+                              <option key={col.name} value={col.name}>
+                                {col.name} {col.shortRole ? `(${col.shortRole})` : ''}
+                              </option>
+                            ))}
+                          </select>
+
+                          {/* Color Dot Visual Indicator */}
+                          <span
+                            className="w-3 h-3 rounded-full border border-slate-300 absolute left-2.5 pointer-events-none shadow-2xs"
+                            style={{
+                              backgroundColor: currentColorObj?.hex || '#94A3B8'
+                            }}
+                          />
+
+                          {/* Dropdown Chevron */}
+                          <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-2.5 pointer-events-none" />
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   {/* Actions: Remove, Save for Later */}
