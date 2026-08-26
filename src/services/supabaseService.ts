@@ -114,14 +114,12 @@ export function safeRemoveItem(key: string): void {
  */
 export async function signInWithEmailPassword(
   email: string,
-  password: string,
-  captchaToken?: string
+  password: string
 ): Promise<{ user: User | null; session: Session | null; error: Error | null }> {
   try {
     const { data, error } = await supabase.auth.signInWithPassword({
       email: email.trim().toLowerCase(),
-      password: password,
-      options: captchaToken ? { captchaToken } : undefined
+      password: password
     });
 
     if (error) {
@@ -151,8 +149,7 @@ export async function signInWithEmailPassword(
 export async function signUpWithEmailPassword(
   email: string,
   password: string,
-  fullName?: string,
-  captchaToken?: string
+  fullName?: string
 ): Promise<{ user: User | null; session: Session | null; error: Error | null; requiresEmailVerification?: boolean }> {
   try {
     const { data, error } = await supabase.auth.signUp({
@@ -161,8 +158,7 @@ export async function signUpWithEmailPassword(
       options: {
         data: {
           full_name: fullName?.trim() || 'Giriraj Customer'
-        },
-        ...(captchaToken ? { captchaToken } : {})
+        }
       }
     });
 
@@ -197,14 +193,12 @@ export async function signUpWithEmailPassword(
  * 3. Send Password Reset Email using Supabase
  */
 export async function resetPasswordForEmail(
-  email: string,
-  captchaToken?: string
+  email: string
 ): Promise<{ error: Error | null; success: boolean }> {
   try {
     const redirectTo = typeof window !== 'undefined' ? window.location.origin : undefined;
     const { error } = await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase(), {
-      redirectTo,
-      ...(captchaToken ? { captchaToken } : {})
+      redirectTo
     });
 
     if (error) {

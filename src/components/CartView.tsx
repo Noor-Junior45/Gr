@@ -33,7 +33,6 @@ import {
   X
 } from 'lucide-react';
 import { CartItem, KolkataArea, Order, SavedAddress, Product, UserProfile } from '../types';
-import { TurnstileWidget } from './TurnstileWidget';
 import { createFirestoreOrder, getStoredAddresses } from '../services/supabaseService';
 import { notifyOrderPlaced } from '../services/emailService';
 import { INDIAN_STANDARD_WIRE_COLORS, PIPE_COLOR_OPTIONS } from '../data/wireColors';
@@ -1395,17 +1394,6 @@ export const CartView: React.FC<CartViewProps> = ({
                     {paymentMethod === 'cod' ? 'Pay via Cash / QR at doorstep' : 'Online Payment Mode'}
                   </span>
                 </div>
-              </div>
-
-              {/* Cloudflare Turnstile Bot Protection */}
-              <div className="py-0.5">
-                <TurnstileWidget
-                  action="checkout"
-                  size="flexible"
-                  onSuccess={(_token) => {
-                    // Turnstile challenge passed
-                  }}
-                />
               </div>
 
               <button

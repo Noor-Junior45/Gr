@@ -16,7 +16,6 @@ import {
   saveUserProfile,
   signInWithGoogle
 } from '../services/supabaseService';
-import { TurnstileWidget } from './TurnstileWidget';
 
 interface LoginPageProps {
   onAuthSuccess: (phone: string, name: string, email?: string) => void;
@@ -24,9 +23,6 @@ interface LoginPageProps {
 
 export const LoginPage: React.FC<LoginPageProps> = ({ onAuthSuccess }) => {
   const navigate = useNavigate();
-
-  // Turnstile token state
-  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
 
   // Mode: 'password' | 'magic'
   const [authMode, setAuthMode] = useState<'password' | 'magic'>('password');
@@ -101,9 +97,6 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onAuthSuccess }) => {
       const { data, error: loginError } = await supabase.auth.signInWithPassword({
         email: cleanEmail,
         password: password,
-        options: turnstileToken && turnstileToken !== 'turnstile_dev_fallback_token' ? {
-          captchaToken: turnstileToken,
-        } : undefined,
       });
 
       if (loginError) {
@@ -156,7 +149,6 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onAuthSuccess }) => {
         password: password,
         options: {
           emailRedirectTo: window.location.origin,
-          ...(turnstileToken && turnstileToken !== 'turnstile_dev_fallback_token' ? { captchaToken: turnstileToken } : {}),
         },
       });
 
@@ -189,7 +181,6 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onAuthSuccess }) => {
     try {
       const { error: resetError } = await supabase.auth.resetPasswordForEmail(cleanEmail, {
         redirectTo: `${window.location.origin}/reset-password`,
-        ...(turnstileToken && turnstileToken !== 'turnstile_dev_fallback_token' ? { captchaToken: turnstileToken } : {}),
       });
 
       if (resetError) {
@@ -224,7 +215,6 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onAuthSuccess }) => {
         email: cleanEmail,
         options: {
           emailRedirectTo: window.location.origin,
-          ...(turnstileToken && turnstileToken !== 'turnstile_dev_fallback_token' ? { captchaToken: turnstileToken } : {}),
         },
       });
 
@@ -341,16 +331,6 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onAuthSuccess }) => {
               <Send className="w-3.5 h-3.5" />
               <span>Magic Link</span>
             </button>
-          </div>
-
-          {/* Cloudflare Turnstile Verification */}
-          <div className="py-1">
-            <TurnstileWidget
-              action="auth"
-              size="flexible"
-              onSuccess={(tok) => setTurnstileToken(tok)}
-              onExpire={() => setTurnstileToken(null)}
-            />
           </div>
 
           {/* Password Authentication Forms */}

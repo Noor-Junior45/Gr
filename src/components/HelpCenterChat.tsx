@@ -45,7 +45,7 @@ export const HelpCenterChat: React.FC<HelpCenterChatProps> = ({ userProfile }) =
     {
       id: 'welcome-1',
       sender: 'assistant',
-      text: `Hello ${userProfile?.fullName || 'there'}! 👋 I am your **Giriraj Power 24/7 AI Support Specialist**.\n\nI can help you with Kolkata 60-min delivery updates, technical wire/MCB sizing recommendations, GST invoices, electrician bookings, and store policies. How may I assist you today?`,
+      text: `Hello ${userProfile?.name || 'there'}! 👋 I am your **Giriraj Power 24/7 AI Support Specialist**.\n\nI can help you with Kolkata 60-min delivery updates, technical wire/MCB sizing recommendations, GST invoices, electrician bookings, and store policies. How may I assist you today?`,
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     }
   ]);
@@ -86,11 +86,12 @@ export const HelpCenterChat: React.FC<HelpCenterChatProps> = ({ userProfile }) =
             role: m.sender,
             content: m.text
           })),
-          customerName: userProfile?.fullName || 'Giriraj Customer',
+          customerName: userProfile?.name || 'Giriraj Customer',
           customerEmail: userProfile?.email || '',
-          customerArea: userProfile?.city || 'Kolkata'
+          customerArea: 'Kolkata'
         })
       });
+
 
       if (!response.ok) {
         throw new Error('Support service unavailable');

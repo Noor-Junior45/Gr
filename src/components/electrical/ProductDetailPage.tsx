@@ -364,8 +364,8 @@ export const ProductDetailPage: React.FC<ProductDetailPageProps> = ({
     <div className="min-h-screen bg-[#f1f3f6] text-slate-900 pb-32 sm:pb-36 font-sans relative">
       <SEOHead
         title={`${product.name} - Buy Online at Best Price in Kolkata | Giriraj Power`}
-        description={`Buy authentic ${product.brand} ${product.name} at ₹${product.price} in Kolkata. Fast 60-min delivery, genuine manufacturer warranty, and certified quality from Giriraj Power.`}
-        keywords={`${product.name}, ${product.brand} ${product.subcategory}, buy ${product.name} Kolkata, wholesale shop near me, ${product.tags?.join(', ')}`}
+        description={`Buy authentic ${product.brand} ${product.subcategory}, ₹${product.price} in Kolkata. Fast 60-min delivery, genuine manufacturer warranty, and certified quality from Giriraj Power.`}
+        keywords={`${product.name}, ${product.brand}, ${product.subcategory}, buy ${product.name} Kolkata, wholesale electrical shop near me`}
         image={currentImage}
         productData={{
           name: product.name,

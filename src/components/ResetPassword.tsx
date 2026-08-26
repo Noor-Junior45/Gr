@@ -3,7 +3,6 @@ import { useNavigate, Link } from 'react-router-dom';
 import { Lock, Eye, EyeOff, CheckCircle2, ArrowRight, ShieldCheck, Sparkles, AlertTriangle, RefreshCw, LogIn } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
 import { saveUserProfile } from '../services/supabaseService';
-import { TurnstileWidget } from './TurnstileWidget';
 
 interface ResetPasswordProps {
   onSuccess?: () => void;
@@ -267,16 +266,6 @@ export const ResetPassword: React.FC<ResetPasswordProps> = ({ onSuccess, onOpenA
                     {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
                 </div>
-              </div>
-
-              <div className="py-1">
-                <TurnstileWidget
-                  action="password_reset"
-                  size="flexible"
-                  onSuccess={(_token) => {
-                    // Turnstile challenge passed
-                  }}
-                />
               </div>
 
               {/* Submit Button */}

@@ -189,33 +189,3 @@ export interface ReceivedEmail {
 
 export type { Offer, OfferProduct, ProductOfferEvaluation } from './services/offerService';
 
-export interface TurnstileRenderOptions {
-  sitekey: string;
-  action?: string;
-  cData?: string;
-  callback?: (token: string) => void;
-  'error-callback'?: (error: any) => void;
-  'expired-callback'?: () => void;
-  'timeout-callback'?: () => void;
-  theme?: 'light' | 'dark' | 'auto';
-  size?: 'normal' | 'compact' | 'flexible';
-  tabindex?: number;
-  'response-field'?: boolean;
-  'response-field-name'?: string;
-  retry?: 'auto' | 'never';
-  'retry-interval'?: number;
-}
-
-export interface TurnstileInstance {
-  render: (container: string | HTMLElement, options: TurnstileRenderOptions) => string;
-  reset: (widgetId?: string) => void;
-  remove: (widgetId?: string) => void;
-  getResponse: (widgetId?: string) => string | undefined;
-}
-
-declare global {
-  interface Window {
-    turnstile?: TurnstileInstance;
-  }
-}
-
