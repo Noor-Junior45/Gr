@@ -1804,6 +1804,95 @@ Express delivery is available across Kolkata within ~60 minutes!`,
     }
   });
 
+  // Dedicated Gemini AI Help Center & Customer Support Desk Endpoint
+  app.post("/api/gemini/support-chat", aiAssistantLimiter, async (req, res) => {
+    res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate");
+    try {
+      const { messages = [], customerName = "Valued Customer", customerEmail = "", customerArea = "Kolkata" } = req.body;
+      const apiKey = process.env.GEMINI_API_KEY;
+
+      const userLatestMessage = messages.length > 0 ? messages[messages.length - 1]?.content : "";
+
+      if (!apiKey) {
+        // Fallback intelligent response if API key is not configured
+        const lower = (userLatestMessage || "").toLowerCase();
+        let fallbackText = "Hello! I am your 24/7 Giriraj Power AI Help Assistant. How can I assist you with your electrical order, 60-min delivery, wire sizes, or electrician booking today?";
+        let needsEscalation = false;
+
+        if (lower.includes("delivery") || lower.includes("track") || lower.includes("time") || lower.includes("speed")) {
+          fallbackText = "🚀 **60-Minute Express Delivery**: We deliver across Kasba, Salt Lake, New Town, Gariahat, Ballygunge, Park Street, and all Kolkata zones directly from our central Kasba warehouse. You will receive live rider updates on WhatsApp!";
+        } else if (lower.includes("wire") || lower.includes("gauge") || lower.includes("sq mm") || lower.includes("size") || lower.includes("ac") || lower.includes("geyser")) {
+          fallbackText = "⚡ **Wire Gauge Recommendations**:\n• **1.5 sq mm** (Polycab/Havells): Ideal for lighting & fan points (10A MCB).\n• **2.5 sq mm**: Required for ACs (up to 1.5 Ton), geysers & 16A power sockets.\n• **4.0 sq mm**: Recommended for 2 Ton ACs and main distribution boards.\nAll wires are 100% genuine ISI certified copper!";
+        } else if (lower.includes("invoice") || lower.includes("gst") || lower.includes("bill") || lower.includes("tax")) {
+          fallbackText = "📄 **GST Tax Invoices**: Every order is shipped with an official GST-compliant tax invoice. You can also view and download invoices directly from your Profile > Order History section.";
+        } else if (lower.includes("electrician") || lower.includes("technician") || lower.includes("book") || lower.includes("install")) {
+          fallbackText = "🔧 **Electrician Booking**: Our verified licensed technicians are available across Kolkata for wiring, switchboard setup, MCB repairs, and appliance fittings.";
+        } else if (lower.includes("return") || lower.includes("replace") || lower.includes("cancel") || lower.includes("refund")) {
+          fallbackText = "🔄 **Return & Replacement Policy**: We offer a hassle-free 7-day replacement for unused sealed electrical goods and un-cut wire coils with the original GST bill.";
+        } else if (lower.includes("human") || lower.includes("call") || lower.includes("phone") || lower.includes("speak") || lower.includes("agent") || lower.includes("whatsapp") || lower.includes("contact")) {
+          fallbackText = "I can connect you directly with our specialized support lines or dispatch team. You can reach our team via official email, or tap below to open your phone dialer or WhatsApp directly.";
+          needsEscalation = true;
+        }
+
+        return res.json({
+          text: fallbackText,
+          needsEscalation
+        });
+      }
+
+      const ai = new GoogleGenAI({
+        apiKey,
+        httpOptions: {
+          headers: {
+            'User-Agent': 'aistudio-build'
+          }
+        }
+      });
+
+      const systemPrompt = `You are the friendly, expert 24/7 AI Customer Support Specialist for Giriraj Electricals & Power, located at Kasba, Kolkata 700039.
+Customer Name: ${customerName || "Customer"}
+Customer Email: ${customerEmail || "Not specified"}
+Customer Area: ${customerArea || "Kolkata"}
+
+Knowledge Base & Service Details:
+1. 60-Minute Express Delivery: Shipped directly across Kolkata (Kasba, Nator Park, Salt Lake, New Town, Gariahat, Ballygunge, Park Street, Ruby, Jadavpur, etc.) from Kasba central warehouse.
+2. Brands in Stock: Polycab, Havells, Anchor by Panasonic, Finolex, Schneider, Legrand, Philips, UltraTech Cement, Tata Tiscon 550D TMT. 100% genuine with ISI marks & GST invoices.
+3. Wire sizing guidance: 1.5 sq mm for lighting/fans, 2.5 sq mm for ACs/geysers/kitchen sockets, 4.0 sq mm for mains & heavy loads, 6.0 sq mm for full-home mains.
+4. Electrician Booking: Verified electricians available for on-site wiring, MCB troubleshooting, and lighting installations.
+5. Invoicing: GST invoices generated with GSTIN on all orders for input tax credit.
+6. Returns: 7-day return/exchange on factory-sealed items and intact wire coils.
+7. Escalation Policy:
+   - If the customer has an urgent live order issue, dispatch dispute, bulk contractor quote negotiation, or explicitly requests to speak to a human or call the support line, provide a clear, helpful resolution and politely state that they can connect with our specialized contractor/support desk or email us at team@girirajpower.in.
+   - Format responses cleanly with bold bullet points or short paragraphs for great mobile readability. Avoid verbose fluff.`;
+
+      // Build conversation history
+      const formattedContents = [
+        `${systemPrompt}\n\nUser Question: ${userLatestMessage}`
+      ];
+
+      const response = await ai.models.generateContent({
+        model: "gemini-3.7-flash",
+        contents: formattedContents,
+      });
+
+      const responseText = response.text || "I am here to help you with your Giriraj Power orders, delivery, wire technical questions, and store support.";
+      
+      const lowerResp = responseText.toLowerCase();
+      const needsEscalation = lowerResp.includes("dialer") || lowerResp.includes("contractor desk") || lowerResp.includes("human") || lowerResp.includes("escalate") || lowerResp.includes("team@girirajpower.in");
+
+      res.json({
+        text: responseText,
+        needsEscalation
+      });
+    } catch (err: unknown) {
+      console.error("Support Chat API error:", err);
+      res.json({
+        text: "I am ready to help! You can ask about our 60-minute Kolkata express delivery, wire sizing specifications (Polycab/Havells), GST invoices, or electrician booking. For direct inquiries, tap the Official Email button or open our support dialer.",
+        needsEscalation: false
+      });
+    }
+  });
+
   // Dedicated Gemini AI Material & Cost Estimation Calculator Endpoint
   app.post("/api/gemini/estimate-materials", aiAssistantLimiter, async (req, res) => {
     res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate");

@@ -730,8 +730,8 @@ export const CartView: React.FC<CartViewProps> = ({
           </button>
         </div>
 
-        {/* 4. CART ITEM LIST */}
-        <div className="space-y-3 mb-5">
+        {/* 4. CART ITEM LIST - Consolidated Single Box */}
+        <div className="bg-white rounded-2xl border border-slate-200/80 shadow-2xs divide-y divide-slate-100 mb-5 overflow-hidden">
           {displayedItems.map((item) => {
             const product = item.product;
             const mrp = Number(product.originalPrice || product.price || 0);
@@ -745,12 +745,12 @@ export const CartView: React.FC<CartViewProps> = ({
             return (
               <div
                 key={`${product.id}-${item.selectedColor || 'default'}`}
-                className="bg-white rounded-2xl p-3.5 sm:p-4 border border-slate-200/80 shadow-2xs flex flex-col gap-3 transition-shadow hover:shadow-sm"
+                className="p-3.5 sm:p-4 flex flex-col gap-2.5 transition-colors hover:bg-slate-50/50"
               >
                 {/* Main Product Info Row */}
                 <div className="flex items-start gap-3 sm:gap-4">
-                  {/* Thumbnail Image (90px) */}
-                  <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-xl bg-slate-50 border border-slate-100 p-1.5 shrink-0 flex items-center justify-center overflow-hidden">
+                  {/* Thumbnail Image */}
+                  <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-xl bg-slate-50 border border-slate-100 p-1 shrink-0 flex items-center justify-center overflow-hidden">
                     <img
                       src={product.image || 'https://images.unsplash.com/photo-1558223616-e5d79faebdd6?q=80&w=400&auto=format&fit=crop'}
                       alt={product.name}
@@ -788,7 +788,7 @@ export const CartView: React.FC<CartViewProps> = ({
                     )}
 
                     {/* Price Row with Green Discount Badge */}
-                    <div className="flex items-baseline gap-2 mt-2 flex-wrap">
+                    <div className="flex items-baseline gap-2 mt-1.5 flex-wrap">
                       {discountPct > 0 && (
                         <span className="inline-flex items-center gap-0.5 text-xs font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded">
                           ↓{discountPct}% off
@@ -821,7 +821,7 @@ export const CartView: React.FC<CartViewProps> = ({
                 </div>
 
                 {/* Stepper + Bottom Action Row */}
-                <div className="pt-2 border-t border-slate-100 flex items-center justify-between flex-wrap gap-2">
+                <div className="pt-2 border-t border-slate-100/80 flex items-center justify-between flex-wrap gap-2">
                   {/* Quantity Stepper */}
                   <div className="flex items-center gap-2">
                     <span className="text-xs font-bold text-slate-500">Qty:</span>
@@ -859,7 +859,7 @@ export const CartView: React.FC<CartViewProps> = ({
                     </div>
                   </div>
 
-                  {/* Actions: Remove, Save for Later, Buy This Now */}
+                  {/* Actions: Remove, Save for Later */}
                   <div className="flex items-center gap-1.5 sm:gap-2">
                     <button
                       type="button"
