@@ -1,6 +1,6 @@
 import { supabase } from '../lib/supabaseClient';
 import { User, Session, AuthChangeEvent } from '@supabase/supabase-js';
-import { Order, OrderStatus, WiringServiceBooking, SavedAddress, UserProfile, Product, isUserAdmin } from '../types';
+import { Order, OrderStatus, WiringServiceBooking, SavedAddress, UserProfile, Product } from '../types';
 import { INITIAL_PRODUCTS } from '../data/products';
 import { soundService } from './sound';
 
@@ -458,9 +458,6 @@ export function getSavedUserProfile(userScopeOverride?: string): UserProfile | n
     if (!prof.phone && !prof.email && (!prof.name || prof.name === 'Customer')) {
       return null;
     }
-    const adminStatus = isUserAdmin(prof.email);
-    prof.isAdmin = adminStatus;
-    prof.role = adminStatus ? 'admin' : 'customer';
     return prof;
   } catch {
     return null;
@@ -501,7 +498,6 @@ export function saveUserProfile(
     };
 
     const effectiveEmail = data.email !== undefined ? data.email : existing.email;
-    const adminStatus = isUserAdmin(effectiveEmail);
 
     const updated: UserProfile = {
       ...existing,
@@ -515,9 +511,7 @@ export function saveUserProfile(
       cashbackBalance: data.cashbackBalance !== undefined ? data.cashbackBalance : existing.cashbackBalance,
       walletBalance:
         (data.refundBalance !== undefined ? data.refundBalance : existing.refundBalance || 0) +
-        (data.cashbackBalance !== undefined ? data.cashbackBalance : existing.cashbackBalance || 0),
-      isAdmin: adminStatus,
-      role: adminStatus ? 'admin' : 'customer'
+        (data.cashbackBalance !== undefined ? data.cashbackBalance : existing.cashbackBalance || 0)
     };
 
     safeSetItem(`giriraj_profile_${scope}`, JSON.stringify(updated));
@@ -550,9 +544,7 @@ export function clearUserProfile(): void {
 
 type OrderListener = (orders: Order[]) => void;
 const orderListeners: Set<OrderListener> = new Set();
-const adminOrderListeners: Set<OrderListener> = new Set();
 let ordersChannel: ReturnType<typeof supabase.channel> | null = null;
-let adminOrdersChannel: ReturnType<typeof supabase.channel> | null = null;
 
 function isRealOrder(order: Order): boolean {
   if (!order || !order.id) return false;
@@ -662,50 +654,12 @@ export function clearAllStoredOrders(): void {
   }
 }
 
-/**
- * Deletes / clears all order history from Supabase table and local caches for all users
- */
-export async function clearAllOrdersFromSupabase(): Promise<{ success: boolean; error?: string }> {
-  try {
-    // Clear local caches
-    clearAllStoredOrders();
-
-    // Delete all records from Supabase `orders` table
-    const { error } = await supabase
-      .from('orders')
-      .delete()
-      .gte('id', '');
-
-    if (error) {
-      console.warn('Supabase orders delete note:', error.message);
-      return { success: false, error: error.message };
-    }
-
-    notifyOrderListeners([]);
-    return { success: true };
-  } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : String(err);
-    console.error('Error clearing orders from Supabase:', msg);
-    return { success: false, error: msg };
-  }
-}
-
 function notifyOrderListeners(orders: Order[]) {
   orderListeners.forEach((listener) => {
     try {
       listener(orders);
     } catch (e) {
       console.error('Error notifying order listener', e);
-    }
-  });
-}
-
-function notifyAdminOrderListeners(orders: Order[]) {
-  adminOrderListeners.forEach((listener) => {
-    try {
-      listener(orders);
-    } catch (e) {
-      console.error('Error notifying admin order listener', e);
     }
   });
 }
@@ -746,7 +700,7 @@ export async function fetchUserOrders(): Promise<Order[]> {
 
     query = query.or(orClauses.join(','));
 
-    const { data, error } = await query.order('created_at', { ascending: false }).limit(50);
+    const { data, error } = await query.order('updated_at', { ascending: false }).limit(50);
     const localOrders = getStoredOrders(scope || undefined);
 
     if (!error && Array.isArray(data)) {
@@ -768,7 +722,7 @@ export async function fetchUserOrders(): Promise<Order[]> {
         paymentMethod: row.payment_method || 'cod',
         paymentStatus: row.payment_status || 'pending',
         status: row.status || 'pending',
-        createdAt: row.created_at || new Date().toISOString(),
+        createdAt: row.placed_at || row.updated_at || new Date().toISOString(),
         estimatedDeliveryTimestamp: Number(row.estimated_delivery_timestamp || Date.now() + 3600000),
         deliveryPartner: row.delivery_partner || undefined,
         notes: row.notes || undefined
@@ -808,80 +762,6 @@ export async function fetchUserOrders(): Promise<Order[]> {
     return fallback;
   }
   return [];
-}
-
-/**
- * Fetch all orders strictly for Store Admin management
- */
-export async function fetchAllAdminOrders(): Promise<Order[]> {
-  try {
-    const { data, error } = await supabase
-      .from('orders')
-      .select('*')
-      .order('created_at', { ascending: false })
-      .limit(100);
-
-    if (!error && data) {
-      const allOrders: Order[] = data.map((row) => ({
-        id: row.id,
-        customerName: row.customer_name || 'Customer',
-        phone: row.phone || '',
-        customerEmail: row.customer_email || undefined,
-        address: row.address || row.delivery_address || '',
-        area: row.area || 'Salt Lake Sector V',
-        landmark: row.landmark || undefined,
-        pincode: row.pincode || '700091',
-        items: row.items || [],
-        itemTotal: Number(row.item_total || 0),
-        deliveryFee: Number(row.delivery_fee || 0),
-        handlingFee: Number(row.handling_fee || 0),
-        discount: Number(row.discount || 0),
-        totalAmount: Number(row.total_amount || 0),
-        paymentMethod: row.payment_method || 'cod',
-        paymentStatus: row.payment_status || 'pending',
-        status: row.status || 'pending',
-        createdAt: row.created_at || new Date().toISOString(),
-        estimatedDeliveryTimestamp: Number(row.estimated_delivery_timestamp || Date.now() + 3600000),
-        deliveryPartner: row.delivery_partner || undefined,
-        notes: row.notes || undefined
-      })).filter(isRealOrder);
-
-      notifyAdminOrderListeners(allOrders);
-      return allOrders;
-    }
-  } catch (err) {
-    console.warn('Supabase admin orders fetch error:', err);
-  }
-  return [];
-}
-
-/**
- * Subscribe to store-wide orders strictly for Store Admin Portal
- */
-export function subscribeToAdminOrders(listener: OrderListener): () => void {
-  adminOrderListeners.add(listener);
-  fetchAllAdminOrders().then((orders) => listener(orders));
-
-  if (!adminOrdersChannel) {
-    adminOrdersChannel = supabase
-      .channel('admin_orders_realtime_feed')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'orders' },
-        () => {
-          fetchAllAdminOrders();
-        }
-      )
-      .subscribe();
-  }
-
-  return () => {
-    adminOrderListeners.delete(listener);
-    if (adminOrderListeners.size === 0 && adminOrdersChannel) {
-      supabase.removeChannel(adminOrdersChannel);
-      adminOrdersChannel = null;
-    }
-  };
 }
 
 /**
@@ -967,6 +847,30 @@ export async function createFirestoreOrder(order: Order): Promise<Order> {
   // Sound chime alert
   soundService.playNewOrderChime();
 
+  // 1. Submit through the Idempotent & Validated Server Pipeline
+  try {
+    const idempotencyKey = `idemp_${order.id}_${order.totalAmount}`;
+    const apiRes = await fetch('/api/order', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Idempotency-Key': idempotencyKey
+      },
+      body: JSON.stringify({
+        ...order,
+        idempotencyKey
+      })
+    });
+    if (apiRes.ok) {
+      const data = await apiRes.json();
+      if (data?.order) {
+        // Backend pipeline validated and confirmed order
+      }
+    }
+  } catch (apiErr) {
+    console.warn('Backend /api/order pipeline notice (direct client sync active):', apiErr);
+  }
+
   try {
     const rowPayload = {
       id: order.id,
@@ -987,7 +891,10 @@ export async function createFirestoreOrder(order: Order): Promise<Order> {
       payment_method: order.paymentMethod,
       payment_status: order.paymentStatus,
       status: order.status,
-      created_at: order.createdAt || new Date().toISOString(),
+      updated_at: order.createdAt || new Date().toISOString(),
+      placed_at: order.createdAt || new Date().toISOString(),
+      packed_at: null,
+      delivered_at: null,
       estimated_delivery_timestamp: order.estimatedDeliveryTimestamp,
       delivery_partner: order.deliveryPartner || null,
       notes: order.notes || null
@@ -996,36 +903,50 @@ export async function createFirestoreOrder(order: Order): Promise<Order> {
     const { error } = await supabase.from('orders').insert(rowPayload);
     if (error) {
       console.warn('Supabase order insert note:', error.message);
+    } else {
+      // Insert items into order_items table
+      if (Array.isArray(order.items) && order.items.length > 0) {
+        const orderItemsPayload = order.items.map((item) => ({
+          order_id: order.id,
+          product_id: item.product?.id ? String(item.product.id) : null,
+          product_name: item.product?.name || 'Item',
+          quantity: item.quantity || 1,
+          price_at_purchase: item.product?.price || 0,
+          product_image: item.product?.image || null,
+          brand: item.product?.brand || null,
+          unit: item.product?.unit || null
+        }));
+
+        try {
+          const { error: itemsError } = await supabase.from('order_items').insert(orderItemsPayload);
+          if (itemsError) {
+            console.warn('Supabase order_items insert note:', itemsError.message);
+          }
+        } catch (itemInsertErr) {
+          console.warn('Exception inserting order items into order_items table:', itemInsertErr);
+        }
+      }
     }
 
-    // Refresh admin orders feed if admin portal is listening
-    fetchAllAdminOrders().catch(() => {});
-
-    // Update product stock counts in backend database when items sell
+    // Secure stock decrement via PostgreSQL function (prevents race conditions)
     if (Array.isArray(order.items) && order.items.length > 0) {
       for (const item of order.items) {
         if (!item?.product?.id) continue;
         try {
-          const { data: prodData } = await supabase
-            .from('products')
-            .select('id, stock_quantity, stock_count')
-            .eq('id', String(item.product.id))
-            .single();
+          const { error: stockError } = await supabase.rpc(
+            'decrement_stock',
+            {
+              p_product_id: String(item.product.id),
+              p_quantity: item.quantity || 1,
+              p_order_id: order.id
+            }
+          );
 
-          if (prodData) {
-            const currentStock = Number(prodData.stock_quantity ?? prodData.stock_count ?? 50);
-            const newStock = Math.max(0, currentStock - (item.quantity || 1));
-            await supabase
-              .from('products')
-              .update({
-                stock_quantity: newStock,
-                stock_count: newStock,
-                in_stock: newStock > 0
-              })
-              .eq('id', String(item.product.id));
+          if (stockError) {
+            console.warn(`Stock decrement failed for ${item.product.id}:`, stockError.message);
           }
         } catch (stockErr) {
-          console.warn(`Stock decrement note for product ${item.product.id}:`, stockErr);
+          console.warn(`Stock decrement exception for ${item.product.id}:`, stockErr);
         }
       }
     }
@@ -1055,7 +976,7 @@ export async function createFirestoreOrder(order: Order): Promise<Order> {
 /**
  * Updates order status in Supabase
  */
-export async function updateOrderStatusInFirestore(orderId: string, newStatus: OrderStatus): Promise<void> {
+export async function updateOrderStatusInFirestore(orderId: string, newStatus: OrderStatus): Promise<boolean> {
   let updatedDeliveryPartner = undefined;
 
   if (newStatus === 'out_for_delivery') {
@@ -1092,11 +1013,14 @@ export async function updateOrderStatusInFirestore(orderId: string, newStatus: O
       updatePayload.delivery_partner = updatedDeliveryPartner;
     }
     await supabase.from('orders').update(updatePayload).eq('id', orderId);
-    fetchAllAdminOrders().catch(() => {});
+    return true;
   } catch (error) {
     console.warn('Supabase update order error:', error);
+    return false;
   }
 }
+
+export const updateOrderStatusInSupabase = updateOrderStatusInFirestore;
 
 /**
  * Service Booking in Supabase

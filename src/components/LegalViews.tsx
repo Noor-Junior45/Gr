@@ -7,15 +7,12 @@ import {
   Mail,
   Phone,
   MapPin,
-  Globe,
   RotateCcw,
   Truck,
   HelpCircle,
   Building2,
-  CheckCircle2,
   Clock,
-  Sparkles,
-  MessageSquare
+  Sparkles
 } from 'lucide-react';
 
 export type LegalPageType = 'privacy' | 'terms' | 'refund' | 'shipping' | 'about' | 'faqs';

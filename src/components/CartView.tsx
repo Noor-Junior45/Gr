@@ -3,7 +3,6 @@ import {
   Zap,
   Trash2,
   Bookmark,
-  BookmarkCheck,
   Plus,
   Minus,
   MapPin,
@@ -12,7 +11,6 @@ import {
   ShieldCheck,
   Tag,
   CheckCircle2,
-  Clock,
   ArrowLeft,
   Truck,
   CreditCard,
@@ -23,18 +21,15 @@ import {
   ChevronUp,
   AlertCircle,
   Sparkles,
-  Layers,
   LogIn,
-  Lock,
   Compass,
-  Check,
   X
 } from 'lucide-react';
 import { CartItem, KolkataArea, Order, SavedAddress, Product, UserProfile } from '../types';
 import { createFirestoreOrder } from '../services/supabaseService';
-import { sendOrderConfirmationEmail, notifyOrderPlaced } from '../services/emailService';
+import { notifyOrderPlaced } from '../services/emailService';
 import { INDIAN_STANDARD_WIRE_COLORS, PIPE_COLOR_OPTIONS } from '../data/wireColors';
-import { trackBeginCheckout, trackPurchase, trackRemoveFromCart } from '../utils/analytics';
+import { trackBeginCheckout, trackPurchase } from '../utils/analytics';
 import {
   Offer,
   validateAndCalculateCoupon,

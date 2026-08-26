@@ -156,8 +156,11 @@ export const Footer: React.FC<FooterProps> = ({ onOpenInstallApp }) => {
         </div>
 
         {/* Bottom Bar: Copyright */}
-        <div className="pt-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-slate-500 text-[11px]">
+        <div className="pt-6 border-t border-slate-800/80 flex flex-col sm:flex-row items-center justify-between gap-3 text-slate-500 text-[11px]">
           <p>© {new Date().getFullYear()} Giriraj Power &amp; Hardware. All rights reserved.</p>
+          <p className="text-[10px] text-slate-400">
+            BuildNow &amp; HomeRun Certified Depot • Serving Kolkata &amp; West Bengal
+          </p>
         </div>
 
       </div>

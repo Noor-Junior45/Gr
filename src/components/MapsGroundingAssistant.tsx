@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Sparkles, MapPin, Send, ExternalLink, Bot, User, AlertCircle, RefreshCw, X } from 'lucide-react';
+import { Sparkles, MapPin, Send, ExternalLink, User, RefreshCw, X } from 'lucide-react';
 import { KolkataArea } from '../types';
 
 interface Message {

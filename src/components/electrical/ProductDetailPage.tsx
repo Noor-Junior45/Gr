@@ -4,8 +4,6 @@ import {
   Star,
   Zap,
   ShoppingCart,
-  ShieldCheck,
-  Truck,
   RotateCcw,
   Tag,
   ChevronRight,
@@ -16,14 +14,9 @@ import {
   MapPin,
   CheckCircle2,
   AlertCircle,
-  Plus,
-  Minus,
   MessageSquare,
-  ThumbsUp,
-  Camera,
   X,
   Share2,
-  Send,
   Check,
   HelpCircle,
   Palette,
@@ -42,14 +35,12 @@ import { Product, UserProfile } from '../../types';
 import { supabase } from '../../lib/supabaseClient';
 import { ProductCardImage } from '../ProductCardImage';
 import {
-  INDIAN_STANDARD_WIRE_COLORS,
-  PIPE_COLOR_OPTIONS,
   isWireProduct,
   isPipeProduct,
   getProductColorOptions,
   getDefaultProductColor
 } from '../../data/wireColors';
-import { checkKolkataDeliveryService, isKolkataServiceable } from '../../data/kolkataAreas';
+import { checkKolkataDeliveryService } from '../../data/kolkataAreas';
 import { trackProductView } from '../../utils/analytics';
 import { SEOHead } from '../SEOHead';
 

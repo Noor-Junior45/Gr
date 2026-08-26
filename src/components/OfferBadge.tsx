@@ -1,5 +1,5 @@
 import React from 'react';
-import { Tag, Sparkles, Zap } from 'lucide-react';
+import { Tag } from 'lucide-react';
 import { Offer } from '../services/offerService';
 
 interface OfferBadgeProps {

@@ -6,10 +6,7 @@ import {
   Lock,
   Eye,
   EyeOff,
-  Sparkles,
-  Smartphone,
   CheckCircle2,
-  RefreshCw,
   Send,
   UserPlus,
   KeyRound
@@ -17,9 +14,7 @@ import {
 import { supabase } from '../lib/supabaseClient';
 import {
   saveUserProfile,
-  signInWithGoogle,
-  sendPhoneOtp,
-  verifyPhoneOtp
+  signInWithGoogle
 } from '../services/supabaseService';
 
 interface LoginPageProps {
@@ -29,17 +24,11 @@ interface LoginPageProps {
 export const LoginPage: React.FC<LoginPageProps> = ({ onAuthSuccess }) => {
   const navigate = useNavigate();
 
-  // Mode: 'phone' | 'password' | 'magic'
-  const [authMode, setAuthMode] = useState<'phone' | 'password' | 'magic'>('phone');
+  // Mode: 'password' | 'magic'
+  const [authMode, setAuthMode] = useState<'password' | 'magic'>('password');
 
   // Password sub-view: 'login' | 'signup' | 'forgot'
   const [passwordView, setPasswordView] = useState<'login' | 'signup' | 'forgot'>('login');
-
-  // Phone OTP Flow
-  const [phone, setPhone] = useState('');
-  const [isOtpSent, setIsOtpSent] = useState(false);
-  const [otp, setOtp] = useState(['', '', '', '', '', '']);
-  const [otpTimer, setOtpTimer] = useState(30);
 
   // Email state
   const [email, setEmail] = useState('');
@@ -65,17 +54,6 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onAuthSuccess }) => {
     return () => clearInterval(interval);
   }, [magicLinkCooldown]);
 
-  // Phone OTP resend countdown
-  useEffect(() => {
-    let interval: NodeJS.Timeout;
-    if (isOtpSent && otpTimer > 0) {
-      interval = setInterval(() => {
-        setOtpTimer((prev) => prev - 1);
-      }, 1000);
-    }
-    return () => clearInterval(interval);
-  }, [isOtpSent, otpTimer]);
-
   const resetMessages = () => {
     setError(null);
     setInfoMessage(null);
@@ -98,107 +76,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onAuthSuccess }) => {
     }
   };
 
-  // --- 2. PHONE OTP FLOW ---
-  const handleSendPhoneOtp = async (e?: React.FormEvent) => {
-    if (e) e.preventDefault();
-    resetMessages();
-
-    const cleaned = phone.replace(/\D/g, '');
-    if (cleaned.length !== 10) {
-      setError('Please enter a valid 10-digit mobile number.');
-      return;
-    }
-
-    setIsLoading(true);
-    try {
-      const res = await sendPhoneOtp(cleaned);
-      if (res.success) {
-        setIsOtpSent(true);
-        setOtp(['', '', '', '', '', '']);
-        setOtpTimer(30);
-        setInfoMessage(`Code sent to +91 ${cleaned}`);
-      } else {
-        setError(res.error || 'Failed to send OTP.');
-      }
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Failed to send OTP.';
-      setError(msg);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleOtpChange = (index: number, val: string) => {
-    const cleanVal = val.replace(/\D/g, '').slice(-1);
-    const updated = [...otp];
-    updated[index] = cleanVal;
-    setOtp(updated);
-    setError(null);
-
-    if (cleanVal && index < 5) {
-      const nextInput = document.getElementById(`login-otp-${index + 1}`);
-      nextInput?.focus();
-    }
-  };
-
-  const handleKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Backspace' && !otp[index] && index > 0) {
-      const prevInput = document.getElementById(`login-otp-${index - 1}`);
-      prevInput?.focus();
-    }
-  };
-
-  const handleOtpPaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
-    e.preventDefault();
-    const pastedData = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6);
-    if (!pastedData) return;
-    const newOtp = ['', '', '', '', '', ''];
-    for (let i = 0; i < pastedData.length; i++) {
-      newOtp[i] = pastedData[i];
-    }
-    setOtp(newOtp);
-    setError(null);
-    const focusIndex = Math.min(pastedData.length, 5);
-    const targetInput = document.getElementById(`login-otp-${focusIndex}`);
-    targetInput?.focus();
-  };
-
-  const handleVerifyPhoneOtp = async (e: React.FormEvent) => {
-    e.preventDefault();
-    resetMessages();
-    const entered = otp.join('').trim();
-    if (entered.length !== 6) {
-      setError('Please enter the 6-digit OTP code.');
-      return;
-    }
-
-    setIsLoading(true);
-    const cleaned = phone.replace(/\D/g, '');
-    const formattedPhone = `+91 ${cleaned}`;
-
-    try {
-      const verifyRes = await verifyPhoneOtp(cleaned, entered);
-      if (verifyRes.user) {
-        const defaultName = verifyRes.user.user_metadata?.full_name || 'Giriraj Customer';
-        saveUserProfile({
-          phone: formattedPhone,
-          name: defaultName,
-          email: verifyRes.user.email
-        });
-        onAuthSuccess(formattedPhone, defaultName, verifyRes.user.email);
-        navigate('/');
-      } else {
-        setError(verifyRes.error || 'Incorrect OTP code.');
-      }
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Incorrect OTP code.';
-      setError(msg);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // --- 3. PASSWORD LOGIN ---
+  // --- 2. PASSWORD LOGIN ---
   const handlePasswordLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     resetMessages();
@@ -242,7 +120,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onAuthSuccess }) => {
     }
   };
 
-  // --- 4. PASSWORD SIGN UP ---
+  // --- 3. PASSWORD SIGN UP ---
   const handlePasswordSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
     resetMessages();
@@ -260,7 +138,6 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onAuthSuccess }) => {
 
     if (password !== confirmPassword) {
       setError('Passwords do not match.');
-      return;
     }
 
     setIsLoading(true);
@@ -287,7 +164,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onAuthSuccess }) => {
     }
   };
 
-  // --- 5. FORGOT PASSWORD ---
+  // --- 4. FORGOT PASSWORD ---
   const handleForgotPassword = async (e: React.FormEvent) => {
     e.preventDefault();
     resetMessages();
@@ -317,7 +194,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onAuthSuccess }) => {
     }
   };
 
-  // --- 6. MAGIC LINK ---
+  // --- 5. MAGIC LINK ---
   const handleSendMagicLink = async (e: React.FormEvent) => {
     e.preventDefault();
     resetMessages();
@@ -399,7 +276,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onAuthSuccess }) => {
           </div>
         )}
 
-        {/* Stack-Wise Authentication Options (No separator text) */}
+        {/* Stack-Wise Authentication Options */}
         <div className="space-y-3">
           
           {/* 1. Google Sign-In Button */}
@@ -418,24 +295,8 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onAuthSuccess }) => {
             <span>Continue with Google</span>
           </button>
 
-          {/* Minimal Mode Selector Tabs */}
+          {/* Mode Selector Tabs (Password vs Magic Link) */}
           <div className="flex items-center p-1 bg-slate-100 rounded-xl">
-            <button
-              type="button"
-              onClick={() => {
-                setAuthMode('phone');
-                resetMessages();
-              }}
-              className={`flex-1 py-1.5 px-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1 cursor-pointer ${
-                authMode === 'phone'
-                  ? 'bg-white text-slate-900 shadow-xs'
-                  : 'text-slate-500 hover:text-slate-900'
-              }`}
-            >
-              <Smartphone className="w-3.5 h-3.5" />
-              <span>Mobile OTP</span>
-            </button>
-
             <button
               type="button"
               onClick={() => {
@@ -443,7 +304,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onAuthSuccess }) => {
                 setPasswordView('login');
                 resetMessages();
               }}
-              className={`flex-1 py-1.5 px-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1 cursor-pointer ${
+              className={`flex-1 py-1.5 px-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
                 authMode === 'password'
                   ? 'bg-white text-slate-900 shadow-xs'
                   : 'text-slate-500 hover:text-slate-900'
@@ -459,7 +320,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onAuthSuccess }) => {
                 setAuthMode('magic');
                 resetMessages();
               }}
-              className={`flex-1 py-1.5 px-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1 cursor-pointer ${
+              className={`flex-1 py-1.5 px-2 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
                 authMode === 'magic'
                   ? 'bg-white text-slate-900 shadow-xs'
                   : 'text-slate-500 hover:text-slate-900'
@@ -470,113 +331,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onAuthSuccess }) => {
             </button>
           </div>
 
-          {/* 2. Phone OTP Form */}
-          {authMode === 'phone' && (
-            <div className="space-y-3 pt-1">
-              {!isOtpSent ? (
-                <form onSubmit={handleSendPhoneOtp} className="space-y-3">
-                  <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1">
-                      Mobile Number
-                    </label>
-                    <div className="flex rounded-xl border border-slate-300 overflow-hidden focus-within:ring-2 focus-within:ring-amber-400 focus-within:border-amber-400 bg-white">
-                      <span className="px-3 py-2.5 bg-slate-50 border-r border-slate-200 text-slate-800 text-xs font-bold flex items-center shrink-0">
-                        🇮🇳 +91
-                      </span>
-                      <input
-                        type="tel"
-                        maxLength={10}
-                        placeholder="Enter 10-digit mobile number"
-                        value={phone}
-                        onChange={(e) => setPhone(e.target.value.replace(/\D/g, ''))}
-                        className="w-full px-3 py-2.5 text-xs sm:text-sm font-semibold focus:outline-none text-slate-900 placeholder:text-slate-400"
-                        required
-                        autoFocus
-                      />
-                    </div>
-                  </div>
-
-                  <button
-                    type="submit"
-                    disabled={isLoading}
-                    className="w-full py-2.5 px-4 rounded-xl bg-amber-400 hover:bg-yellow-400 text-slate-950 font-black text-xs sm:text-sm transition-all flex items-center justify-center gap-2 cursor-pointer shadow-xs active:scale-[0.99] disabled:opacity-50"
-                  >
-                    {isLoading ? 'Sending OTP...' : 'Send OTP'}
-                  </button>
-                </form>
-              ) : (
-                <form onSubmit={handleVerifyPhoneOtp} className="space-y-3">
-                  <div>
-                    <div className="flex items-center justify-between mb-1.5">
-                      <label className="block text-xs font-bold text-slate-700">
-                        6-Digit OTP Code
-                      </label>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setIsOtpSent(false);
-                          resetMessages();
-                        }}
-                        className="text-xs font-bold text-amber-700 hover:text-amber-800 cursor-pointer"
-                      >
-                        Change Number
-                      </button>
-                    </div>
-
-                    <div className="flex justify-between gap-1.5">
-                      {otp.map((digit, idx) => (
-                        <input
-                          key={idx}
-                          id={`login-otp-${idx}`}
-                          type="text"
-                          inputMode="numeric"
-                          autoComplete="one-time-code"
-                          maxLength={1}
-                          value={digit}
-                          onKeyDown={(e) => handleKeyDown(idx, e)}
-                          onPaste={handleOtpPaste}
-                          onChange={(e) => handleOtpChange(idx, e.target.value)}
-                          className="w-10 h-11 text-center text-lg font-black border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-amber-400 text-slate-900 bg-white"
-                        />
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="flex items-center justify-end text-xs font-semibold text-slate-500">
-                    {otpTimer > 0 ? (
-                      <span>Resend in {otpTimer}s</span>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => handleSendPhoneOtp()}
-                        className="text-emerald-700 font-bold hover:underline flex items-center gap-1 cursor-pointer"
-                      >
-                        <RefreshCw className="w-3 h-3" />
-                        <span>Resend OTP</span>
-                      </button>
-                    )}
-                  </div>
-
-                  <button
-                    type="submit"
-                    disabled={isLoading}
-                    className="w-full py-2.5 px-4 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-black text-xs sm:text-sm transition-all flex items-center justify-center gap-2 cursor-pointer shadow-xs active:scale-[0.99] disabled:opacity-50"
-                  >
-                    {isLoading ? (
-                      'Verifying...'
-                    ) : (
-                      <>
-                        <Sparkles className="w-4 h-4 text-amber-400" />
-                        <span>Verify &amp; Continue</span>
-                      </>
-                    )}
-                  </button>
-                </form>
-              )}
-            </div>
-          )}
-
-          {/* 3. Password Authentication Forms */}
+          {/* Password Authentication Forms */}
           {authMode === 'password' && (
             <div className="space-y-3 pt-1">
               {passwordView === 'login' && (
@@ -822,7 +577,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onAuthSuccess }) => {
             </div>
           )}
 
-          {/* 4. Magic Link Form */}
+          {/* Magic Link Form */}
           {authMode === 'magic' && (
             <form onSubmit={handleSendMagicLink} className="space-y-3 pt-1">
               <div>

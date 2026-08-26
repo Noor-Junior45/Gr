@@ -134,17 +134,6 @@ export interface WalletTransaction {
   status: 'credited' | 'debited' | 'pending';
 }
 
-export const ADMIN_EMAILS: string[] = [
-  'gauravgiri123344@gmail.com',
-  'mdhassan1738@gmail.com'
-];
-
-export function isUserAdmin(email?: string | null): boolean {
-  if (!email) return false;
-  const clean = email.trim().toLowerCase();
-  return ADMIN_EMAILS.some((adm) => adm.toLowerCase() === clean);
-}
-
 export interface UserProfile {
   id?: string;
   name: string;
@@ -153,8 +142,6 @@ export interface UserProfile {
   emailVerified?: boolean;
   photoURL?: string;
   dob?: string;
-  role?: 'admin' | 'customer';
-  isAdmin?: boolean;
   walletBalance?: number;
   refundBalance?: number;
   cashbackBalance?: number;

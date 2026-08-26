@@ -6,11 +6,8 @@ import {
   X,
   Share,
   PlusSquare,
-  Sparkles,
   Zap,
-  ShieldCheck,
-  ArrowRight,
-  Laptop
+  ShieldCheck
 } from 'lucide-react';
 
 interface BeforeInstallPromptEvent extends Event {

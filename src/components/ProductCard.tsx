@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Plus, Minus, Zap, Star, ShieldCheck, Eye, Heart, Check, ShoppingCart } from 'lucide-react';
+import { Plus, Minus, Star, Eye, Heart, Check, ShoppingCart } from 'lucide-react';
 import { Product } from '../types';
 import { isProductFavorite, toggleProductFavorite } from '../services/favorites';
 import { INDIAN_STANDARD_WIRE_COLORS, isWireProduct } from '../data/wireColors';

@@ -21,24 +21,23 @@ import {
   Plus,
   Trash2,
   Check,
-  Building2,
-  Sparkles,
   MessageSquare,
   RefreshCw,
   Gift,
-  ArrowUpRight,
-  ArrowDownLeft,
-  Info,
   Clock,
-  Wrench,
   KeyRound,
   Smartphone,
   Loader2,
   FileText,
   Lock,
-  Heart
+  Heart,
+  Package,
+  AlertCircle,
+  Truck,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react';
-import { Order, SavedAddress, UserProfile, CartItem, WalletTransaction, Product, isUserAdmin, ADMIN_EMAILS } from '../types';
+import { Order, SavedAddress, UserProfile, CartItem, WalletTransaction, Product, OrderStatus } from '../types';
 import { LegalView } from './LegalViews';
 import {
   saveUserProfile,
@@ -49,9 +48,8 @@ import {
   deleteUpiFromFirestore,
   fetchProductsFromSupabase
 } from '../services/supabaseService';
-import { WIRING_SERVICES } from '../data/services';
-import { INITIAL_PRODUCTS } from '../data/products';
 import { getFavoriteProductIds, toggleProductFavorite, clearAllFavorites } from '../services/favorites';
+import { getOrderWhatsAppUrl } from '../services/emailService';
 
 interface ProfileViewProps {
   userProfile: UserProfile | null;
@@ -139,7 +137,8 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
   const [avatarError, setAvatarError] = useState(false);
 
   // Past Orders Filter & Expand state
-  const [orderCategoryFilter, setOrderCategoryFilter] = useState<'all' | 'materials' | 'services'>('all');
+  const [orderCategoryFilter, setOrderCategoryFilter] = useState<'all' | 'active' | 'delivered' | 'materials' | 'services'>('all');
+  const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null);
   const [visibleOrdersCount, setVisibleOrdersCount] = useState(4);
   const [ratingsState, setRatingsState] = useState<{ [orderId: string]: { userRating?: number; deliveryRating?: number } }>({});
 
@@ -303,7 +302,18 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
     return timeB - timeA;
   });
 
+  const activeOrders = sortedOrders.filter((ord) => ord.status !== 'delivered' && ord.status !== 'cancelled');
+  const deliveredOrders = sortedOrders.filter((ord) => ord.status === 'delivered');
+  const materialsCount = sortedOrders.filter((ord) => ord.items && ord.items.length > 0).length;
+  const servicesCount = sortedOrders.filter((ord) => ord.services && ord.services.length > 0).length;
+
   const filteredOrders = sortedOrders.filter((ord) => {
+    if (orderCategoryFilter === 'active') {
+      return ord.status !== 'delivered' && ord.status !== 'cancelled';
+    }
+    if (orderCategoryFilter === 'delivered') {
+      return ord.status === 'delivered';
+    }
     if (orderCategoryFilter === 'services') {
       return ord.services && ord.services.length > 0;
     }
@@ -312,6 +322,75 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
     }
     return true;
   });
+
+  const getOrderStatusConfig = (status?: OrderStatus) => {
+    const s = status || 'pending';
+    switch (s) {
+      case 'pending':
+        return {
+          label: 'Order Placed',
+          stepIndex: 0,
+          badgeColor: 'text-amber-800 bg-amber-50 border-amber-200',
+          dotColor: 'bg-amber-500',
+          icon: Clock,
+          description: 'Order placed & processing at Kasba Central Hub'
+        };
+      case 'accepted':
+        return {
+          label: 'Order Confirmed',
+          stepIndex: 1,
+          badgeColor: 'text-blue-800 bg-blue-50 border-blue-200',
+          dotColor: 'bg-blue-500',
+          icon: CheckCircle2,
+          description: 'Verified & scheduled for express dispatch'
+        };
+      case 'packing':
+        return {
+          label: 'Packing Items',
+          stepIndex: 1,
+          badgeColor: 'text-indigo-800 bg-indigo-50 border-indigo-200',
+          dotColor: 'bg-indigo-500',
+          icon: Package,
+          description: 'Cable & electrical quality check in progress'
+        };
+      case 'out_for_delivery':
+        return {
+          label: 'Out for Delivery',
+          stepIndex: 2,
+          badgeColor: 'text-purple-800 bg-purple-50 border-purple-200',
+          dotColor: 'bg-purple-500',
+          icon: Zap,
+          description: 'Express Runner is on the way (60-min express)'
+        };
+      case 'delivered':
+        return {
+          label: 'Delivered',
+          stepIndex: 3,
+          badgeColor: 'text-emerald-800 bg-emerald-50 border-emerald-200',
+          dotColor: 'bg-emerald-500',
+          icon: CheckCircle2,
+          description: 'Delivered at your doorstep'
+        };
+      case 'cancelled':
+        return {
+          label: 'Cancelled',
+          stepIndex: -1,
+          badgeColor: 'text-rose-800 bg-rose-50 border-rose-200',
+          dotColor: 'bg-rose-500',
+          icon: AlertCircle,
+          description: 'This order was cancelled'
+        };
+      default:
+        return {
+          label: 'Processing',
+          stepIndex: 0,
+          badgeColor: 'text-amber-800 bg-amber-50 border-amber-200',
+          dotColor: 'bg-amber-500',
+          icon: Clock,
+          description: 'Processing order'
+        };
+    }
+  };
 
   // Calculate real savings from completed orders
   const totalSavings = orders.reduce((acc, ord) => acc + (ord.discount || 40), 120);
@@ -360,7 +439,8 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
   if (subPage === 'orders') {
     return (
       <div className="min-h-screen bg-slate-50 text-slate-900 pb-20">
-        <div className="bg-white border-b border-slate-200 px-4 py-3.5 flex items-center justify-between shadow-2xs">
+        {/* Sticky Header with Back Button and Dynamic Counter */}
+        <div className="bg-white border-b border-slate-200 px-4 py-3.5 flex items-center justify-between shadow-2xs sticky top-0 z-20">
           <div className="flex items-center gap-3">
             <button
               onClick={() => setSubPage('main')}
@@ -371,17 +451,97 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
             </button>
             <div>
               <h1 className="text-lg font-black text-slate-900">Orders History</h1>
-              <p className="text-[11px] text-slate-500 font-semibold">{filteredOrders.length} Completed</p>
+              <p className="text-[11px] text-slate-500 font-semibold">
+                {activeOrders.length > 0
+                  ? `${activeOrders.length} In-Transit • ${deliveredOrders.length} Delivered`
+                  : `${sortedOrders.length} Total Orders`}
+              </p>
             </div>
           </div>
         </div>
 
         <div className="max-w-2xl mx-auto p-4 sm:p-6 space-y-4">
+          {/* Order Filter Tabs */}
+          {sortedOrders.length > 0 && (
+            <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
+              <button
+                type="button"
+                onClick={() => setOrderCategoryFilter('all')}
+                className={`px-3.5 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-all cursor-pointer ${
+                  orderCategoryFilter === 'all'
+                    ? 'bg-slate-900 text-white shadow-xs'
+                    : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
+                }`}
+              >
+                All ({sortedOrders.length})
+              </button>
+
+              {activeOrders.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setOrderCategoryFilter('active')}
+                  className={`px-3.5 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-all flex items-center gap-1.5 cursor-pointer ${
+                    orderCategoryFilter === 'active'
+                      ? 'bg-amber-500 text-slate-950 shadow-xs font-black'
+                      : 'bg-amber-50 text-amber-900 border border-amber-200 hover:bg-amber-100'
+                  }`}
+                >
+                  <span className="w-2 h-2 rounded-full bg-amber-500 animate-ping" />
+                  <span>Active &amp; In-Transit ({activeOrders.length})</span>
+                </button>
+              )}
+
+              {deliveredOrders.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setOrderCategoryFilter('delivered')}
+                  className={`px-3.5 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-all cursor-pointer ${
+                    orderCategoryFilter === 'delivered'
+                      ? 'bg-emerald-600 text-white shadow-xs'
+                      : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
+                  }`}
+                >
+                  Delivered ({deliveredOrders.length})
+                </button>
+              )}
+
+              {materialsCount > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setOrderCategoryFilter('materials')}
+                  className={`px-3.5 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-all cursor-pointer ${
+                    orderCategoryFilter === 'materials'
+                      ? 'bg-slate-900 text-white shadow-xs'
+                      : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
+                  }`}
+                >
+                  Materials ({materialsCount})
+                </button>
+              )}
+
+              {servicesCount > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setOrderCategoryFilter('services')}
+                  className={`px-3.5 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-all cursor-pointer ${
+                    orderCategoryFilter === 'services'
+                      ? 'bg-slate-900 text-white shadow-xs'
+                      : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
+                  }`}
+                >
+                  Services ({servicesCount})
+                </button>
+              )}
+            </div>
+          )}
+
           {/* Order Cards List */}
           {filteredOrders.length === 0 ? (
             <div className="bg-white rounded-2xl p-8 text-center border border-slate-200 shadow-2xs">
               <ShoppingBag className="w-10 h-10 text-slate-300 mx-auto mb-2" />
-              <p className="text-xs font-extrabold text-slate-800">No Orders Found</p>
+              <p className="text-xs font-extrabold text-slate-800">
+                {orderCategoryFilter === 'active' ? 'No active orders in-transit' : 'No Orders Found'}
+              </p>
               <p className="text-[11px] text-slate-500 mt-0.5 mb-4">
                 Shop wires, switches, tools, or book wiring technicians in 60 minutes.
               </p>
@@ -397,21 +557,38 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
               {filteredOrders.map((order) => {
                 const orderRatings = ratingsState[order.id] || {};
                 const formattedDate = new Date(order.createdAt).toLocaleDateString('en-IN', {
-                  month: 'long',
+                  month: 'short',
                   day: 'numeric',
                   hour: '2-digit',
                   minute: '2-digit'
                 });
+                const statusCfg = getOrderStatusConfig(order.status);
+                const StatusIcon = statusCfg.icon;
+                const isDelivered = order.status === 'delivered';
+                const isCancelled = order.status === 'cancelled';
+                const isActiveOrder = !isDelivered && !isCancelled;
+                const isExpanded = expandedOrderId === order.id;
 
                 return (
                   <div
                     key={order.id}
-                    className="bg-white rounded-2xl p-4 sm:p-5 border border-slate-200/90 shadow-2xs space-y-3.5 transition-all hover:shadow-xs"
+                    className={`bg-white rounded-2xl p-4 sm:p-5 border shadow-2xs space-y-3.5 transition-all hover:shadow-xs ${
+                      isActiveOrder ? 'border-amber-300/80 bg-gradient-to-b from-amber-50/20 to-white' : 'border-slate-200/90'
+                    }`}
                   >
+                    {/* Header Row: Hub & Real-time Status Badge */}
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex items-center gap-3">
-                        <div className="w-12 h-12 rounded-xl bg-amber-100 flex items-center justify-center font-black text-amber-900 text-sm shrink-0">
-                          ⚡
+                        <div
+                          className={`w-11 h-11 rounded-xl flex items-center justify-center font-black text-sm shrink-0 border ${
+                            isActiveOrder
+                              ? 'bg-amber-100 border-amber-200 text-amber-950 shadow-inner'
+                              : isDelivered
+                              ? 'bg-emerald-50 border-emerald-200 text-emerald-900'
+                              : 'bg-slate-100 border-slate-200 text-slate-800'
+                          }`}
+                        >
+                          {isActiveOrder ? '⚡' : isDelivered ? '✓' : '📦'}
                         </div>
                         <div>
                           <h3 className="text-sm font-black text-slate-900">
@@ -423,30 +600,133 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-1 text-xs font-black text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full shrink-0">
-                        <span>Delivered</span>
-                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                      {/* Truthful Dynamic Order Status Badge */}
+                      <div
+                        className={`flex items-center gap-1.5 text-xs font-black px-3 py-1 rounded-full border shrink-0 ${statusCfg.badgeColor}`}
+                      >
+                        <span className={`w-2 h-2 rounded-full ${statusCfg.dotColor} ${isActiveOrder ? 'animate-ping' : ''}`} />
+                        <span>{statusCfg.label}</span>
+                        <StatusIcon className="w-3.5 h-3.5 ml-0.5" />
                       </div>
                     </div>
 
+                    {/* LIVE TRACKING STEPPER FOR ACTIVE ORDERS */}
+                    {isActiveOrder && (
+                      <div className="bg-amber-50/60 rounded-xl p-3.5 border border-amber-200/80 space-y-3">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <Zap className="w-4 h-4 text-amber-600 fill-amber-600" />
+                            <span className="text-xs font-black text-slate-900">
+                              ⚡ 60-Min Express Dispatch Tracker
+                            </span>
+                          </div>
+                          <span className="text-[11px] font-bold text-amber-900 bg-amber-200/70 px-2 py-0.5 rounded-md">
+                            Live Status
+                          </span>
+                        </div>
+
+                        {/* 4-Step Visual Progress Bar */}
+                        <div className="grid grid-cols-4 gap-1 relative pt-1">
+                          {[
+                            { label: 'Placed', step: 0 },
+                            { label: 'Confirmed', step: 1 },
+                            { label: 'On Way ⚡', step: 2 },
+                            { label: 'Delivered', step: 3 }
+                          ].map((st, i) => {
+                            const isCurrent = statusCfg.stepIndex === st.step;
+                            const isPassed = statusCfg.stepIndex >= st.step;
+                            return (
+                              <div key={i} className="flex flex-col items-center text-center">
+                                <div
+                                  className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-black transition-all mb-1 ${
+                                    isCurrent
+                                      ? 'bg-amber-500 text-slate-950 ring-4 ring-amber-200 shadow-xs'
+                                      : isPassed
+                                      ? 'bg-emerald-600 text-white'
+                                      : 'bg-slate-200 text-slate-400'
+                                  }`}
+                                >
+                                  {isPassed ? '✓' : i + 1}
+                                </div>
+                                <span
+                                  className={`text-[10px] font-bold leading-tight ${
+                                    isCurrent
+                                      ? 'text-amber-950 font-black'
+                                      : isPassed
+                                      ? 'text-slate-800'
+                                      : 'text-slate-400'
+                                  }`}
+                                >
+                                  {st.label}
+                                </span>
+                              </div>
+                            );
+                          })}
+                        </div>
+
+                        {/* Status Description & Dispatch Partner */}
+                        <div className="pt-2 border-t border-amber-200/60 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+                          <p className="text-[11px] text-amber-950 font-medium flex items-center gap-1.5">
+                            <Truck className="w-3.5 h-3.5 text-amber-700 shrink-0" />
+                            <span>{statusCfg.description}</span>
+                          </p>
+
+                          <div className="flex items-center gap-2">
+                            <a
+                              href={getOrderWhatsAppUrl(order, '918777400280')}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[11px] font-bold flex items-center gap-1 transition-colors"
+                            >
+                              <MessageSquare className="w-3 h-3" />
+                              <span>Track on WhatsApp</span>
+                            </a>
+                            <a
+                              href="tel:+918777400280"
+                              className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-lg text-[11px] font-bold flex items-center gap-1 transition-colors"
+                            >
+                              <Phone className="w-3 h-3 text-slate-600" />
+                              <span>Call Hub</span>
+                            </a>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Ordered Items List */}
                     <div className="bg-slate-50/80 rounded-xl p-3 space-y-1.5">
                       {order.items && order.items.length > 0 ? (
                         order.items.map((item, idx) => (
-                          <p key={idx} className="text-xs text-slate-800 font-semibold">
-                            <span className="font-black text-slate-900 mr-1.5">{item.quantity}X</span>
-                            <span>
-                              {item.product.name} ({item.product.brand})
+                          <div key={idx} className="text-xs text-slate-800 font-semibold flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-2 truncate">
+                              <span className="font-black text-slate-900 shrink-0 px-1.5 py-0.5 bg-slate-200/70 rounded text-[10px]">
+                                {item.quantity}X
+                              </span>
+                              <span className="truncate">
+                                {item.product.name} ({item.product.brand})
+                                {item.selectedColor ? ` [${item.selectedColor}]` : ''}
+                              </span>
+                            </div>
+                            <span className="font-bold text-slate-700 shrink-0">
+                              ₹{((item.product.price || 0) * item.quantity).toLocaleString('en-IN')}
                             </span>
-                          </p>
+                          </div>
                         ))
                       ) : order.services && order.services.length > 0 ? (
                         order.services.map((srv, idx) => (
-                          <p key={idx} className="text-xs text-slate-800 font-semibold">
-                            <span className="font-black text-slate-900 mr-1.5">1X</span>
-                            <span>
-                              {srv.serviceTitle} ({srv.projectType})
+                          <div key={idx} className="text-xs text-slate-800 font-semibold flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-2 truncate">
+                              <span className="font-black text-slate-900 shrink-0 px-1.5 py-0.5 bg-slate-200/70 rounded text-[10px]">
+                                1X
+                              </span>
+                              <span className="truncate">
+                                {srv.serviceTitle} ({srv.projectType})
+                              </span>
+                            </div>
+                            <span className="font-bold text-slate-700 shrink-0">
+                              ₹{(srv.estimatedPrice || order.totalAmount).toLocaleString('en-IN')}
                             </span>
-                          </p>
+                          </div>
                         ))
                       ) : (
                         <p className="text-xs text-slate-700 font-semibold">
@@ -455,69 +735,110 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                       )}
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1 border-t border-slate-100 text-xs font-bold text-slate-700">
-                      <div className="flex items-center justify-between sm:justify-start gap-2 bg-slate-50 px-3 py-2 rounded-xl">
-                        <span className="text-[11px] text-slate-600">Product Quality:</span>
-                        <div className="flex items-center gap-1">
-                          {[1, 2, 3, 4, 5].map((star) => (
-                            <button
-                              key={star}
-                              type="button"
-                              onClick={() => handleRateOrder(order.id, 'user', star)}
-                              className="cursor-pointer"
-                            >
-                              <Star
-                                className={`w-3.5 h-3.5 ${
-                                  (orderRatings.userRating || 5) >= star
-                                    ? 'text-amber-400 fill-amber-400'
-                                    : 'text-slate-300'
-                                }`}
-                              />
-                            </button>
-                          ))}
+                    {/* RATINGS SECTION - Only active for Delivered orders */}
+                    {isDelivered && (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1 border-t border-slate-100 text-xs font-bold text-slate-700">
+                        <div className="flex items-center justify-between sm:justify-start gap-2 bg-slate-50 px-3 py-2 rounded-xl">
+                          <span className="text-[11px] text-slate-600">Product Quality:</span>
+                          <div className="flex items-center gap-1">
+                            {[1, 2, 3, 4, 5].map((star) => (
+                              <button
+                                key={star}
+                                type="button"
+                                onClick={() => handleRateOrder(order.id, 'user', star)}
+                                className="cursor-pointer"
+                              >
+                                <Star
+                                  className={`w-3.5 h-3.5 ${
+                                    (orderRatings.userRating || 5) >= star
+                                      ? 'text-amber-400 fill-amber-400'
+                                      : 'text-slate-300'
+                                  }`}
+                                />
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+
+                        <div className="flex items-center justify-between sm:justify-start gap-2 bg-slate-50 px-3 py-2 rounded-xl">
+                          <span className="text-[11px] text-slate-600">Rider Delivery:</span>
+                          <div className="flex items-center gap-1">
+                            {[1, 2, 3, 4, 5].map((star) => (
+                              <button
+                                key={star}
+                                type="button"
+                                onClick={() => handleRateOrder(order.id, 'delivery', star)}
+                                className="cursor-pointer"
+                              >
+                                <Star
+                                  className={`w-3.5 h-3.5 ${
+                                    (orderRatings.deliveryRating || 5) >= star
+                                      ? 'text-amber-400 fill-amber-400'
+                                      : 'text-slate-300'
+                                  }`}
+                                />
+                              </button>
+                            ))}
+                          </div>
                         </div>
                       </div>
+                    )}
 
-                      <div className="flex items-center justify-between sm:justify-start gap-2 bg-slate-50 px-3 py-2 rounded-xl">
-                        <span className="text-[11px] text-slate-600">Rider Delivery:</span>
-                        <div className="flex items-center gap-1">
-                          {[1, 2, 3, 4, 5].map((star) => (
-                            <button
-                              key={star}
-                              type="button"
-                              onClick={() => handleRateOrder(order.id, 'delivery', star)}
-                              className="cursor-pointer"
-                            >
-                              <Star
-                                className={`w-3.5 h-3.5 ${
-                                  (orderRatings.deliveryRating || 5) >= star
-                                    ? 'text-amber-400 fill-amber-400'
-                                    : 'text-slate-300'
-                                }`}
-                              />
-                            </button>
-                          ))}
+                    {/* EXPANDED ADDRESS & PAYMENT DETAILS */}
+                    {isExpanded && (
+                      <div className="pt-2 pb-1 space-y-2.5 border-t border-slate-100 text-xs animate-in fade-in duration-150">
+                        <div className="bg-slate-50 p-3 rounded-xl space-y-1.5 border border-slate-100">
+                          <div className="font-bold text-slate-900 flex items-center gap-1.5">
+                            <MapPin className="w-3.5 h-3.5 text-slate-500" />
+                            <span>Delivery Destination</span>
+                          </div>
+                          <div className="text-slate-600 pl-5 space-y-0.5 text-[11px]">
+                            <p className="font-semibold text-slate-800">{order.customerName} ({order.phone})</p>
+                            <p>{order.address}</p>
+                            {order.landmark && <p className="text-slate-500">Landmark: {order.landmark}</p>}
+                            <p className="font-medium text-slate-700">{order.area}, Kolkata – {order.pincode}</p>
+                            <p className="text-slate-500 pt-1">
+                              Payment: <span className="font-bold text-slate-800 uppercase">{order.paymentMethod}</span> ({order.paymentStatus})
+                            </p>
+                          </div>
                         </div>
                       </div>
-                    </div>
+                    )}
 
-                    <div className="pt-2 flex items-center justify-between gap-2">
+                    {/* Footer: Date, Bill Total, Details Button & Reorder */}
+                    <div className="pt-2 flex items-center justify-between gap-2 border-t border-slate-100">
                       <div>
                         <p className="text-[11px] text-slate-500 font-medium">Ordered on {formattedDate}</p>
                         <p className="text-xs font-black text-slate-900">
                           Bill Total: ₹{order.totalAmount.toLocaleString('en-IN')}
+                          {order.paymentMethod === 'cod' ? (
+                            <span className="text-[10px] font-bold text-amber-700 ml-1.5">(COD)</span>
+                          ) : (
+                            <span className="text-[10px] font-bold text-emerald-700 ml-1.5">(PAID)</span>
+                          )}
                         </p>
                       </div>
 
-                      {order.items && order.items.length > 0 && (
+                      <div className="flex items-center gap-2">
                         <button
-                          onClick={() => onReorder(order.items)}
-                          className="px-4 py-2 bg-[#FFF0ED] hover:bg-[#FFE2DC] text-[#E23744] font-black rounded-xl text-xs flex items-center gap-1.5 transition-colors cursor-pointer border border-[#FFD2C9]"
+                          type="button"
+                          onClick={() => setExpandedOrderId(isExpanded ? null : order.id)}
+                          className="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-colors cursor-pointer flex items-center gap-1"
                         >
-                          <span>REORDER</span>
-                          <ChevronRight className="w-3.5 h-3.5" />
+                          <span>{isExpanded ? 'Hide' : 'Details'}</span>
+                          {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
                         </button>
-                      )}
+
+                        {order.items && order.items.length > 0 && (
+                          <button
+                            onClick={() => onReorder(order.items)}
+                            className="px-3.5 py-1.5 bg-[#FFF0ED] hover:bg-[#FFE2DC] text-[#E23744] font-black rounded-xl text-xs flex items-center gap-1 transition-colors cursor-pointer border border-[#FFD2C9]"
+                          >
+                            <span>REORDER</span>
+                            <ChevronRight className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
                     </div>
                   </div>
                 );

@@ -1,10 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { X, Zap, Star, ShieldCheck, Check, Plus, Minus, Truck, Heart, RotateCcw, HelpCircle, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, CheckCircle2, Palette, Share2, MapPin, AlertCircle } from 'lucide-react';
+import { X, Star, Check, Plus, Minus, Heart, RotateCcw, HelpCircle, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, CheckCircle2, Palette, Share2, MapPin, AlertCircle } from 'lucide-react';
 import { Product } from '../types';
 import { isProductFavorite, toggleProductFavorite } from '../services/favorites';
 import {
-  INDIAN_STANDARD_WIRE_COLORS,
-  PIPE_COLOR_OPTIONS,
   isWireProduct,
   isPipeProduct,
   getProductColorOptions,

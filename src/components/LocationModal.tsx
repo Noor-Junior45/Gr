@@ -18,8 +18,7 @@ import {
   ZoomOut,
   Navigation,
   Loader2,
-  Plus,
-  Bookmark
+  Plus
 } from 'lucide-react';
 import L from 'leaflet';
 import { KOLKATA_AREAS } from '../data/kolkataAreas';

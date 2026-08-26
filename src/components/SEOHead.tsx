@@ -56,7 +56,7 @@ export const SEOHead: React.FC<SEOHeadProps> = ({
 
     // 2. Dynamic Meta Description
     const defaultDesc =
-      'Giriraj Power: Kolkata’s trusted supplier for electrical goods, modular switches, Polycab & Havells wires, electronics, cement, TMT bars, and certified house & real estate wiring contractors with 60-minute express delivery.';
+      'Giriraj Power & BuildNow HomeRun Depot: Kolkata’s trusted supplier for electrical goods, modular switches, Polycab & Havells wires, electronics, UltraTech cement, Tata Tiscon TMT bars, and certified house & real estate wiring contractors with 60-minute express delivery.';
     const metaDesc = document.querySelector('meta[name="description"]');
     if (metaDesc) {
       metaDesc.setAttribute('content', description || defaultDesc);
@@ -64,7 +64,7 @@ export const SEOHead: React.FC<SEOHeadProps> = ({
 
     // 3. Dynamic Meta Keywords
     const defaultKeywords =
-      'electrical shop near me, buy electrical goods online Kolkata, electronics hardware store, house wiring contractor, electrical wiring services, modular switches, Polycab wire, Havells cables, Finolex wire, Schneider MCB, distribution board, LED lighting, construction materials Kolkata, cement delivery, UltraTech cement, ACC cement, TMT steel bars, Tata Tiscon rebars, waterproofing chemicals, real estate electrification, licensed electrician Kolkata, Kasba electrical shop, wholesale electrical market Kolkata';
+      'buildnow, build now, homerun, home run, buildnow construction, homerun electrical, buildnow kolkata, electrical shop near me, buy electrical goods online Kolkata, electronics hardware store, house wiring contractor, electrical wiring services, modular switches, Polycab wire, Havells cables, Finolex wire, Schneider MCB, distribution board, LED lighting, construction materials Kolkata, cement delivery, UltraTech cement, ACC cement, TMT steel bars, Tata Tiscon rebars, waterproofing chemicals, real estate electrification, licensed electrician Kolkata, Kasba electrical shop, wholesale electrical market Kolkata, B2B building materials procurement, direct depot Kolkata';
     const metaKey = document.querySelector('meta[name="keywords"]');
     if (metaKey) {
       metaKey.setAttribute('content', keywords || defaultKeywords);

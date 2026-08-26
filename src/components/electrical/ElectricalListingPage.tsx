@@ -15,7 +15,7 @@ import { ElectricalProduct, FilterState, SortOption } from '../../types/electric
 import { fetchElectricalProducts } from '../../services/electricalService';
 import { Product } from '../../types';
 import { supabase } from '../../lib/supabaseClient';
-import { INDIAN_STANDARD_WIRE_COLORS, isWireProduct, isPipeProduct, getProductColorOptions } from '../../data/wireColors';
+import { isWireProduct, isPipeProduct, getProductColorOptions } from '../../data/wireColors';
 import { ProductCardImage } from '../ProductCardImage';
 import { OfferBadge } from '../OfferBadge';
 import { getApplicableOfferForProduct } from '../../services/offerService';

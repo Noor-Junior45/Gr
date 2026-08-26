@@ -1,13 +1,16 @@
 /// <reference types="vite/client" />
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl: string =
-  (import.meta.env?.VITE_SUPABASE_URL as string) ||
-  'https://iffdkhzctkbglmvaayeh.supabase.co';
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-const supabaseAnonKey: string =
-  (import.meta.env?.VITE_SUPABASE_ANON_KEY as string) ||
-  'sb_publishable_C7DzW73hItwOaxr9R4Z2dw_HtjCqHaS';
+if (!supabaseUrl) {
+  throw new Error('Missing environment variable: VITE_SUPABASE_URL');
+}
+
+if (!supabaseAnonKey) {
+  throw new Error('Missing environment variable: VITE_SUPABASE_ANON_KEY');
+}
 
 /**
  * Shared Supabase Client singleton with persistent session handling

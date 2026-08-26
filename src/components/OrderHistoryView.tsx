@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Package, Clock, MapPin, ChevronDown, ChevronUp, ShoppingBag, Phone, CheckCircle2, MessageSquare } from 'lucide-react';
+import { Package, MapPin, ChevronDown, ChevronUp, ShoppingBag, Phone, MessageSquare } from 'lucide-react';
 import { Order } from '../types';
 import { getOrderWhatsAppUrl } from '../services/emailService';
 

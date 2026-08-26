@@ -1,25 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { Routes, Route, useNavigate, useLocation } from 'react-router-dom';
-import {
-  Zap,
-  ShoppingBag,
-  Home,
-  Wrench,
-  Grid,
-  User,
-  ShieldCheck,
-  Star,
-  Clock,
-  MapPin,
-  Sparkles,
-  PhoneCall,
-  CheckCircle2,
-  ChevronRight,
-  TrendingUp,
-  AlertTriangle,
-  ArrowRight,
-  Building2
-} from 'lucide-react';
 import { Product, CartItem, KolkataArea, SavedAddress, Order, WiringServiceBooking, UserProfile } from './types';
 import { INITIAL_PRODUCTS } from './data/products';
 import { KOLKATA_AREAS } from './data/kolkataAreas';
@@ -27,7 +7,6 @@ import { Header } from './components/Header';
 import { LocationModal } from './components/LocationModal';
 import { LoginPage } from './components/LoginPage';
 import { ProfileView } from './components/ProfileView';
-import { ProductCard } from './components/ProductCard';
 import { ProductDetailModal } from './components/ProductDetailModal';
 import { WiringServices } from './components/WiringServices';
 import { CategorySearchBar } from './components/CategorySearchBar';
@@ -53,14 +32,11 @@ import {
 } from './services/cartService';
 import {
   getSavedUserProfile,
-  saveUserProfile,
-  signOutUser,
   subscribeToOrders,
   subscribeToAddresses,
   ACTIVE_SAVED_ADDRESS_KEY,
   onAuthStateChange,
   getInitialAuthSession,
-  syncAllProductsToSupabase,
   fetchProductsFromSupabase,
   safeGetItem,
   getUserScopeKeyFromUser,
