@@ -41,10 +41,18 @@ import {
   getUserScopeKeyFromUser,
   setActiveUserScope
 } from './services/supabaseService';
+import { useVersionCheck } from './hooks/useVersionCheck';
+import { VersionUpdateBanner } from './components/VersionUpdateBanner';
 
 export default function App() {
   const navigate = useNavigate();
   const location = useLocation();
+
+  // Version Check & Soft-Refresh Engine
+  const versionState = useVersionCheck({
+    intervalMs: 45000,
+    autoRefreshDelaySec: 5,
+  });
 
   // State Management
   const [isAuthLoading, setIsAuthLoading] = useState(true);
@@ -784,6 +792,9 @@ export default function App() {
         onClose={() => setIsAiAssistantOpen(false)}
         currentArea={currentArea}
       />
+
+      {/* Real-time Version Mismatch Detection & Soft-Refresh Banner */}
+      <VersionUpdateBanner versionState={versionState} />
 
     </div>
   );

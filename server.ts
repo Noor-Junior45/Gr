@@ -1,5 +1,6 @@
 import express from "express";
 import path from "path";
+import fs from "fs";
 import { createServer as createViteServer } from "vite";
 import { GoogleGenAI } from "@google/genai";
 import dotenv from "dotenv";
@@ -992,6 +993,69 @@ async function startServer() {
   });
 
   // =========================================================================
+  // VERSION CHECK & DEPLOYMENT SYNCHRONIZATION ENDPOINTS
+  // =========================================================================
+  const SERVER_BOOT_TIME = new Date().toISOString();
+  function getActiveVersionInfo() {
+    try {
+      const candidates = [
+        path.join(process.cwd(), "public", "version.json"),
+        path.join(process.cwd(), "dist", "version.json"),
+        path.join(__dirname, "public", "version.json"),
+        path.join(__dirname, "version.json"),
+      ];
+      for (const p of candidates) {
+        if (fs.existsSync(p)) {
+          const raw = fs.readFileSync(p, "utf-8");
+          const parsed = JSON.parse(raw);
+          if (parsed && parsed.buildId) {
+            return {
+              success: true,
+              version: parsed.version || process.env.npm_package_version || "2.4.0",
+              buildId: parsed.buildId,
+              builtAt: parsed.builtAt || SERVER_BOOT_TIME,
+              serverStartedAt: SERVER_BOOT_TIME,
+              environment: process.env.NODE_ENV || "development",
+              timestamp: Date.now()
+            };
+          }
+        }
+      }
+    } catch (err) {
+      console.warn("[Server Version Check Notice]:", err);
+    }
+
+    const fallbackBuildId = process.env.BUILD_ID || process.env.VITE_APP_BUILD_ID || `v2.4.0-${SERVER_BOOT_TIME}`;
+    return {
+      success: true,
+      version: process.env.npm_package_version || "2.4.0",
+      buildId: fallbackBuildId,
+      builtAt: SERVER_BOOT_TIME,
+      serverStartedAt: SERVER_BOOT_TIME,
+      environment: process.env.NODE_ENV || "development",
+      timestamp: Date.now()
+    };
+  }
+
+  app.get("/api/version", (req, res) => {
+    res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0");
+    res.setHeader("Pragma", "no-cache");
+    res.setHeader("Expires", "0");
+    res.setHeader("Surrogate-Control", "no-store");
+    const versionInfo = getActiveVersionInfo();
+    res.json(versionInfo);
+  });
+
+  app.get("/version.json", (req, res) => {
+    res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0");
+    res.setHeader("Pragma", "no-cache");
+    res.setHeader("Expires", "0");
+    res.setHeader("Surrogate-Control", "no-store");
+    const versionInfo = getActiveVersionInfo();
+    res.json(versionInfo);
+  });
+
+  // =========================================================================
   // CACHED PRODUCT CATALOG ENDPOINTS (IN-MEMORY + ETAG)
   // =========================================================================
   app.get("/api/products", async (req, res) => {
@@ -1202,6 +1266,172 @@ async function startServer() {
       return res.status(500).json({
         success: false,
         message: err.message || "An unexpected error occurred while placing your order."
+      });
+    }
+  });
+
+  // Delete specific order from Supabase and Server Caches
+  app.delete("/api/orders/:id", async (req, res) => {
+    res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate");
+    try {
+      const orderId = req.params.id;
+      if (!orderId) {
+        return res.status(400).json({ success: false, message: "Order ID is required." });
+      }
+
+      const sb = getServerSupabase();
+      if (sb) {
+        try {
+          // Delete child order items first
+          await sb.from("order_items").delete().eq("order_id", orderId);
+        } catch (itemErr) {
+          console.warn("[Server Delete order_items notice]:", itemErr);
+        }
+
+        try {
+          // Delete the order itself
+          const { error } = await sb.from("orders").delete().eq("id", orderId);
+          if (error) {
+            console.warn("[Server Delete order DB error]:", error.message);
+          }
+        } catch (ordErr) {
+          console.warn("[Server Delete orders notice]:", ordErr);
+        }
+      }
+
+      // Evict from server idempotency cache if present
+      for (const [k, v] of idempotencyStore.entries()) {
+        if (v?.orderId === orderId) {
+          idempotencyStore.delete(k);
+        }
+      }
+
+      return res.status(200).json({
+        success: true,
+        orderId,
+        message: `Order #${orderId} deleted successfully.`
+      });
+    } catch (err: any) {
+      console.error("Error deleting order on server:", err);
+      return res.status(500).json({
+        success: false,
+        message: err.message || "Failed to delete order."
+      });
+    }
+  });
+
+  // Clear all user orders from Supabase database
+  app.delete("/api/orders", async (req, res) => {
+    res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate");
+    try {
+      const { userId, email, phone } = req.query as { userId?: string; email?: string; phone?: string };
+      const sb = getServerSupabase();
+
+      if (sb && (userId || email || phone)) {
+        try {
+          if (userId) {
+            const { data: userOrders } = await sb.from("orders").select("id").eq("user_id", userId);
+            if (userOrders && userOrders.length > 0) {
+              const ids = userOrders.map((o: any) => o.id);
+              await sb.from("order_items").delete().in("order_id", ids);
+            }
+            await sb.from("orders").delete().eq("user_id", userId);
+          }
+          if (email && email.includes("@")) {
+            const cleanEmail = email.trim().toLowerCase();
+            const { data: emailOrders } = await sb
+              .from("orders")
+              .select("id")
+              .or(`customer_email.ilike.${cleanEmail},recipient_email.ilike.${cleanEmail}`);
+            if (emailOrders && emailOrders.length > 0) {
+              const ids = emailOrders.map((o: any) => o.id);
+              await sb.from("order_items").delete().in("order_id", ids);
+            }
+            await sb.from("orders").delete().or(`customer_email.ilike.${cleanEmail},recipient_email.ilike.${cleanEmail}`);
+          }
+          if (phone) {
+            const cleanPhone = phone.replace(/\D/g, "").slice(-10);
+            if (cleanPhone) {
+              const { data: phoneOrders } = await sb
+                .from("orders")
+                .select("id")
+                .or(`phone.eq.${cleanPhone},phone.eq.+91${cleanPhone},recipient_phone.eq.${cleanPhone},recipient_phone.eq.+91${cleanPhone}`);
+              if (phoneOrders && phoneOrders.length > 0) {
+                const ids = phoneOrders.map((o: any) => o.id);
+                await sb.from("order_items").delete().in("order_id", ids);
+              }
+              await sb
+                .from("orders")
+                .delete()
+                .or(`phone.eq.${cleanPhone},phone.eq.+91${cleanPhone},recipient_phone.eq.${cleanPhone},recipient_phone.eq.+91${cleanPhone}`);
+            }
+          }
+        } catch (dbErr) {
+          console.warn("[Server Clear Orders DB Notice]:", dbErr);
+        }
+      }
+
+      return res.status(200).json({
+        success: true,
+        message: "All order history records cleared successfully."
+      });
+    } catch (err: any) {
+      console.error("Error clearing user orders:", err);
+      return res.status(500).json({
+        success: false,
+        message: err.message || "Failed to clear orders."
+      });
+    }
+  });
+
+  // POST alias for clear orders in case environment restricts DELETE with query params
+  app.post("/api/orders/clear", async (req, res) => {
+    res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate");
+    try {
+      const { userId, email, phone, orderIds } = req.body || {};
+      const sb = getServerSupabase();
+
+      if (sb) {
+        try {
+          if (Array.isArray(orderIds) && orderIds.length > 0) {
+            await sb.from("order_items").delete().in("order_id", orderIds);
+            await sb.from("orders").delete().in("id", orderIds);
+          }
+          if (userId) {
+            const { data: userOrders } = await sb.from("orders").select("id").eq("user_id", userId);
+            if (userOrders && userOrders.length > 0) {
+              const ids = userOrders.map((o: any) => o.id);
+              await sb.from("order_items").delete().in("order_id", ids);
+            }
+            await sb.from("orders").delete().eq("user_id", userId);
+          }
+          if (email && email.includes("@")) {
+            const cleanEmail = email.trim().toLowerCase();
+            await sb.from("orders").delete().or(`customer_email.ilike.${cleanEmail},recipient_email.ilike.${cleanEmail}`);
+          }
+          if (phone) {
+            const cleanPhone = phone.replace(/\D/g, "").slice(-10);
+            if (cleanPhone) {
+              await sb
+                .from("orders")
+                .delete()
+                .or(`phone.eq.${cleanPhone},phone.eq.+91${cleanPhone},recipient_phone.eq.${cleanPhone},recipient_phone.eq.+91${cleanPhone}`);
+            }
+          }
+        } catch (dbErr) {
+          console.warn("[Server POST /api/orders/clear DB Notice]:", dbErr);
+        }
+      }
+
+      return res.status(200).json({
+        success: true,
+        message: "All order history records cleared successfully."
+      });
+    } catch (err: any) {
+      console.error("Error in POST /api/orders/clear:", err);
+      return res.status(500).json({
+        success: false,
+        message: err.message || "Failed to clear orders."
       });
     }
   });

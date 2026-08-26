@@ -62,7 +62,8 @@ export function purgeLegacyUnscopedStorage(): void {
       'giriraj_orders_v2',
       'giriraj_customer_orders',
       'giriraj_orders_cache',
-      'giriraj_saved_items_v1'
+      'giriraj_saved_items_v1',
+      'giriraj_master_orders'
     ];
     legacyKeys.forEach((k) => localStorage.removeItem(k));
   } catch (e) {
@@ -553,90 +554,101 @@ function isRealOrder(order: Order): boolean {
   return true;
 }
 
+export function doesOrderBelongToUser(
+  order: any,
+  user?: { id?: string | null; email?: string | null; phone?: string | null; user_metadata?: any } | null
+): boolean {
+  if (!order || !isRealOrder(order)) return false;
+  if (!user || !user.id) return false;
+
+  // 1. Check exact user_id match
+  if (order.user_id && String(order.user_id) === String(user.id)) {
+    return true;
+  }
+  if (order.userId && String(order.userId) === String(user.id)) {
+    return true;
+  }
+
+  // 2. Check exact email match (case-insensitive)
+  const uEmail = (user.email || user.user_metadata?.email || '').trim().toLowerCase();
+  const oEmail = (order.customerEmail || order.customer_email || order.recipient_email || order.recipientEmail || '').trim().toLowerCase();
+  if (uEmail && oEmail && uEmail.includes('@') && uEmail === oEmail) {
+    return true;
+  }
+
+  // 3. Check exact 10-digit phone match
+  const rawUPhone = user.phone || user.user_metadata?.phone || '';
+  const uPhone = rawUPhone.replace(/\D/g, '').slice(-10);
+  const rawOPhone = order.phone || order.recipient_phone || order.recipientPhone || order.customerPhone || '';
+  const oPhone = rawOPhone.replace(/\D/g, '').slice(-10);
+  if (uPhone && oPhone && uPhone.length === 10 && uPhone === oPhone) {
+    return true;
+  }
+
+  return false;
+}
+
+export function getDeletedOrderIds(): Set<string> {
+  try {
+    const raw = safeGetItem('giriraj_deleted_order_ids');
+    if (!raw) return new Set();
+    const arr = JSON.parse(raw);
+    return new Set(Array.isArray(arr) ? arr.map(String) : []);
+  } catch {
+    return new Set();
+  }
+}
+
+export function markOrderAsDeleted(orderId: string): void {
+  try {
+    const set = getDeletedOrderIds();
+    set.add(String(orderId));
+    safeSetItem('giriraj_deleted_order_ids', JSON.stringify(Array.from(set)));
+  } catch (e) {
+    console.warn('Error saving deleted order id:', e);
+  }
+}
+
+export function unmarkOrderAsDeleted(orderId: string): void {
+  try {
+    const set = getDeletedOrderIds();
+    if (set.has(String(orderId))) {
+      set.delete(String(orderId));
+      safeSetItem('giriraj_deleted_order_ids', JSON.stringify(Array.from(set)));
+    }
+  } catch (e) {
+    console.warn('Error unmarking deleted order id:', e);
+  }
+}
+
+export function markAllOrdersAsDeleted(orderIds: string[]): void {
+  try {
+    const set = getDeletedOrderIds();
+    orderIds.forEach((id) => set.add(String(id)));
+    safeSetItem('giriraj_deleted_order_ids', JSON.stringify(Array.from(set)));
+  } catch (e) {
+    console.warn('Error saving deleted order ids list:', e);
+  }
+}
+
 export function getStoredOrders(userScopeOverride?: string): Order[] {
   try {
     const scope = userScopeOverride || activeUserScope;
-    const collectedOrders: Order[] = [];
-    const seenIds = new Set<string>();
-
-    const addOrders = (orders: Order[]) => {
-      if (!Array.isArray(orders)) return;
-      for (const order of orders) {
-        if (order && order.id && isRealOrder(order) && !seenIds.has(order.id)) {
-          seenIds.add(order.id);
-          collectedOrders.push(order);
-        }
-      }
-    };
-
-    // 1. Direct scoped storage
-    if (scope) {
-      const raw = safeGetItem(`giriraj_orders_${scope}`);
-      if (raw) {
-        try {
-          const parsed = JSON.parse(raw);
-          addOrders(parsed);
-        } catch {
-          // ignore
-        }
-      }
+    // Strict isolation: Never return any orders if there is no active user scope
+    if (!scope) {
+      return [];
     }
 
-    // 2. Multi-key scanning for user across device storage
-    if (typeof window !== 'undefined' && window.localStorage) {
-      try {
-        const totalKeys = localStorage.length;
-        for (let i = 0; i < totalKeys; i++) {
-          const key = localStorage.key(i);
-          if (key && key.startsWith('giriraj_orders_')) {
-            // If scope is specified, check matching scope or match identifiers
-            if (!scope || key === `giriraj_orders_${scope}` || (scope && key.includes(scope.replace(/^(uid_|email_|phone_)/, '')))) {
-              const raw = localStorage.getItem(key);
-              if (raw) {
-                try {
-                  const parsed = JSON.parse(raw);
-                  addOrders(parsed);
-                } catch {
-                  // ignore
-                }
-              }
-            }
-          }
-        }
-      } catch {
-        // ignore
-      }
-    }
+    const raw = safeGetItem(`giriraj_orders_${scope}`);
+    if (!raw) return [];
 
-    // 3. Master persistent device orders (records associated with this user)
-    const masterRaw = safeGetItem('giriraj_master_orders');
-    if (masterRaw) {
-      try {
-        const masterList: any[] = JSON.parse(masterRaw);
-        if (Array.isArray(masterList)) {
-          const filtered = masterList.filter((entry) => {
-            if (!scope) return true;
-            if (entry.userScope === scope) return true;
-            if (entry.user_id && scope.includes(entry.user_id)) return true;
-            if (entry.customerEmail && scope.toLowerCase().includes(entry.customerEmail.toLowerCase().replace(/[^a-z0-9]/g, '_'))) return true;
-            if (entry.phone && scope.includes(entry.phone.replace(/\D/g, ''))) return true;
-            return false;
-          });
-          addOrders(filtered);
-        }
-      } catch {
-        // ignore
-      }
-    }
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
 
-    // Sort newest first
-    collectedOrders.sort((a, b) => {
-      const timeA = new Date(a.createdAt || 0).getTime();
-      const timeB = new Date(b.createdAt || 0).getTime();
-      return timeB - timeA;
-    });
-
-    return collectedOrders;
+    const deletedIds = getDeletedOrderIds();
+    return parsed
+      .filter(isRealOrder)
+      .filter((o) => !deletedIds.has(String(o.id)));
   } catch (e) {
     console.error('Failed reading orders from storage', e);
     return [];
@@ -669,7 +681,7 @@ export async function fetchUserOrders(): Promise<Order[]> {
   try {
     const { data: userData } = await supabase.auth.getUser();
     
-    // If not logged in, but activeUserScope exists, fetch stored orders
+    // If not logged in, strictly return empty orders array to prevent any cross-account data leak
     if (!userData?.user?.id) {
       if (!activeUserScope) {
         notifyOrderListeners([]);
@@ -686,74 +698,99 @@ export async function fetchUserOrders(): Promise<Order[]> {
       activeUserScope = scope;
     }
 
-    const email = user.email ? user.email.trim().toLowerCase() : '';
-    const phone = user.phone ? user.phone.replace(/\D/g, '') : '';
+    const userEmail = (user.email || user.user_metadata?.email || '').trim().toLowerCase();
+    const rawPhone = user.phone || user.user_metadata?.phone || '';
+    const cleanPhone = rawPhone.replace(/\D/g, '').slice(-10);
+
+    const orClauses: string[] = [`user_id.eq.${user.id}`];
+    if (userEmail && userEmail.includes('@')) {
+      orClauses.push(`customer_email.ilike.${userEmail}`);
+      orClauses.push(`recipient_email.ilike.${userEmail}`);
+    }
+    if (cleanPhone && cleanPhone.length === 10) {
+      orClauses.push(`phone.eq.${cleanPhone}`);
+      orClauses.push(`phone.eq.+91${cleanPhone}`);
+      orClauses.push(`recipient_phone.eq.${cleanPhone}`);
+      orClauses.push(`recipient_phone.eq.+91${cleanPhone}`);
+    }
 
     let query = supabase.from('orders').select('*');
-    const orClauses: string[] = [`user_id.eq.${user.id}`];
-    if (email && email.includes('@')) {
-      orClauses.push(`customer_email.ilike.${email}`);
+    if (orClauses.length === 1) {
+      query = query.eq('user_id', user.id);
+    } else {
+      query = query.or(orClauses.join(','));
     }
-    if (phone && phone.length >= 10) {
-      orClauses.push(`phone.ilike.%${phone.slice(-10)}%`);
-    }
-
-    query = query.or(orClauses.join(','));
 
     const { data, error } = await query.order('updated_at', { ascending: false }).limit(50);
     const localOrders = getStoredOrders(scope || undefined);
 
     if (!error && Array.isArray(data)) {
-      const dbOrders: Order[] = data.map((row) => ({
-        id: String(row.id),
-        customerName: row.recipient_name || row.customer_name || 'Customer',
-        recipientName: row.recipient_name || row.customer_name || 'Customer',
-        phone: row.recipient_phone || row.phone || '',
-        recipientPhone: row.recipient_phone || row.phone || '',
-        customerEmail: row.recipient_email || row.customer_email || undefined,
-        recipientEmail: row.recipient_email || row.customer_email || undefined,
-        address: [row.address_line1, row.address_line2, row.city, row.pincode].filter(Boolean).join(', ') || row.address || row.delivery_address || '',
-        addressLine1: row.address_line1,
-        addressLine2: row.address_line2,
-        city: row.city || 'Kolkata',
-        state: row.state || 'West Bengal',
-        area: row.address_line2 || row.area || 'Salt Lake Sector V',
-        landmark: row.delivery_notes || row.landmark || undefined,
-        deliveryNotes: row.delivery_notes || row.landmark || undefined,
-        pincode: row.pincode || '700091',
-        items: row.items || [],
-        itemTotal: Number(row.subtotal ?? row.item_total ?? 0),
-        subtotal: Number(row.subtotal ?? row.item_total ?? 0),
-        deliveryFee: Number(row.delivery_fee || 0),
-        handlingFee: Number(row.handling_fee || 0),
-        fees: Number(row.fees ?? ((row.delivery_fee || 0) + (row.handling_fee || 0))),
-        discount: Number(row.discount_amount ?? row.discount ?? 0),
-        discountAmount: Number(row.discount_amount ?? row.discount ?? 0),
-        couponCode: row.coupon_code || null,
-        totalAmount: Number(row.total_amount || 0),
-        paymentMethod: (row.payment_method || 'cod').toLowerCase() as any,
-        paymentStatus: (row.payment_status || 'pending').toLowerCase() as any,
-        status: row.status || 'pending',
-        createdAt: row.placed_at || row.updated_at || row.created_at || new Date().toISOString(),
-        estimatedDeliveryTimestamp: Number(row.estimated_delivery_timestamp || Date.now() + 3600000),
-        deliveryPartner: row.delivery_partner || undefined,
-        notes: row.delivery_notes || row.notes || undefined
-      })).filter(isRealOrder);
+      // Filter strictly by user ownership so that no other user's order can ever pass
+      const dbOrders: Order[] = data
+        .filter((row) => doesOrderBelongToUser(row, user))
+        .map((row) => ({
+          id: String(row.id),
+          customerName: row.recipient_name || row.customer_name || 'Customer',
+          recipientName: row.recipient_name || row.customer_name || 'Customer',
+          phone: row.recipient_phone || row.phone || '',
+          recipientPhone: row.recipient_phone || row.phone || '',
+          customerEmail: row.recipient_email || row.customer_email || undefined,
+          recipientEmail: row.recipient_email || row.customer_email || undefined,
+          address: [row.address_line1, row.address_line2, row.city, row.pincode].filter(Boolean).join(', ') || row.address || row.delivery_address || '',
+          addressLine1: row.address_line1,
+          addressLine2: row.address_line2,
+          city: row.city || 'Kolkata',
+          state: row.state || 'West Bengal',
+          area: row.address_line2 || row.area || 'Salt Lake Sector V',
+          landmark: row.delivery_notes || row.landmark || undefined,
+          deliveryNotes: row.delivery_notes || row.landmark || undefined,
+          pincode: row.pincode || '700091',
+          items: row.items || [],
+          itemTotal: Number(row.subtotal ?? row.item_total ?? 0),
+          subtotal: Number(row.subtotal ?? row.item_total ?? 0),
+          deliveryFee: Number(row.delivery_fee || 0),
+          handlingFee: Number(row.handling_fee || 0),
+          fees: Number(row.fees ?? ((row.delivery_fee || 0) + (row.handling_fee || 0))),
+          discount: Number(row.discount_amount ?? row.discount ?? 0),
+          discountAmount: Number(row.discount_amount ?? row.discount ?? 0),
+          couponCode: row.coupon_code || null,
+          totalAmount: Number(row.total_amount || 0),
+          paymentMethod: (row.payment_method || 'cod').toLowerCase() as any,
+          paymentStatus: (row.payment_status || 'pending').toLowerCase() as any,
+          status: row.status || 'pending',
+          createdAt: row.placed_at || row.updated_at || row.created_at || new Date().toISOString(),
+          placed_at: row.placed_at || row.created_at || undefined,
+          packed_at: row.packed_at || undefined,
+          out_for_delivery_at: row.out_for_delivery_at || row.dispatched_at || undefined,
+          delivered_at: row.delivered_at || undefined,
+          placedAt: row.placed_at || row.created_at || undefined,
+          packedAt: row.packed_at || undefined,
+          outForDeliveryAt: row.out_for_delivery_at || row.dispatched_at || undefined,
+          deliveredAt: row.delivered_at || undefined,
+          estimatedDeliveryTimestamp: Number(row.estimated_delivery_timestamp || Date.now() + 3600000),
+          deliveryPartner: row.delivery_partner || undefined,
+          notes: row.delivery_notes || row.notes || undefined
+        })).filter(isRealOrder);
 
-      // Merge DB orders and local orders to ensure no orders are missing
+      // Merge DB orders and local orders strictly for this user
       const mergedMap = new Map<string, Order>();
       dbOrders.forEach((o) => mergedMap.set(o.id, o));
-      localOrders.forEach((o) => {
-        if (!mergedMap.has(o.id)) {
-          mergedMap.set(o.id, o);
-        }
-      });
+      localOrders
+        .filter((o) => doesOrderBelongToUser(o, user))
+        .forEach((o) => {
+          if (!mergedMap.has(o.id)) {
+            mergedMap.set(o.id, o);
+          }
+        });
 
-      const finalOrders = Array.from(mergedMap.values()).sort((a, b) => {
-        const timeA = new Date(a.createdAt || 0).getTime();
-        const timeB = new Date(b.createdAt || 0).getTime();
-        return timeB - timeA;
-      });
+      const deletedIds = getDeletedOrderIds();
+      const finalOrders = Array.from(mergedMap.values())
+        .filter((o) => !deletedIds.has(String(o.id)))
+        .sort((a, b) => {
+          const timeA = new Date(a.createdAt || 0).getTime();
+          const timeB = new Date(b.createdAt || 0).getTime();
+          return timeB - timeA;
+        });
 
       if (scope) {
         safeSetItem(`giriraj_orders_${scope}`, JSON.stringify(finalOrders));
@@ -761,19 +798,20 @@ export async function fetchUserOrders(): Promise<Order[]> {
       notifyOrderListeners(finalOrders);
       return finalOrders;
     } else {
-      // If DB returned error or empty, preserve local stored orders
-      if (localOrders.length > 0) {
-        notifyOrderListeners(localOrders);
-        return localOrders;
-      }
+      const deletedIds = getDeletedOrderIds();
+      const validLocal = localOrders
+        .filter((o) => doesOrderBelongToUser(o, user))
+        .filter((o) => !deletedIds.has(String(o.id)));
+      notifyOrderListeners(validLocal);
+      return validLocal;
     }
   } catch (err) {
     console.warn('Supabase orders fetch notice:', err);
-    const fallback = getStoredOrders();
+    const scope = activeUserScope;
+    const fallback = scope ? getStoredOrders(scope) : [];
     notifyOrderListeners(fallback);
     return fallback;
   }
-  return [];
 }
 
 /**
@@ -782,7 +820,8 @@ export async function fetchUserOrders(): Promise<Order[]> {
 export function subscribeToOrders(listener: OrderListener): () => void {
   orderListeners.add(listener);
   // Send user-scoped cached state first for immediate UI display
-  listener(getStoredOrders());
+  const initial = activeUserScope ? getStoredOrders(activeUserScope) : [];
+  listener(initial);
 
   // Fetch initial orders for the active user
   fetchUserOrders();
@@ -821,6 +860,11 @@ export async function createFirestoreOrder(order: Order): Promise<Order> {
     (order.customerEmail ? getUserScopeKeyFromUser({ email: order.customerEmail }) : null) ||
     (order.phone ? getUserScopeKeyFromUser({ phone: order.phone }) : null);
 
+  // If this order ID was previously in deleted list, remove it from blacklist
+  if (order.id) {
+    unmarkOrderAsDeleted(order.id);
+  }
+
   if (scope) {
     activeUserScope = scope;
     const currentOrders = getStoredOrders(scope);
@@ -829,31 +873,10 @@ export async function createFirestoreOrder(order: Order): Promise<Order> {
     notifyOrderListeners(updatedOrders);
   }
 
-  // Also persist by specific keys if available
+  // Also persist by specific scoped key if authenticated
   if (authData?.user?.id) {
     const uOrders = getStoredOrders(`uid_${authData.user.id}`);
     safeSetItem(`giriraj_orders_uid_${authData.user.id}`, JSON.stringify([order, ...uOrders.filter((o) => o.id !== order.id)]));
-  }
-  if (order.customerEmail) {
-    const cleanEmail = order.customerEmail.trim().toLowerCase().replace(/[^a-z0-9]/g, '_');
-    const eOrders = getStoredOrders(`email_${cleanEmail}`);
-    safeSetItem(`giriraj_orders_email_${cleanEmail}`, JSON.stringify([order, ...eOrders.filter((o) => o.id !== order.id)]));
-  }
-  if (order.phone) {
-    const cleanPhone = order.phone.replace(/\D/g, '');
-    const pOrders = getStoredOrders(`phone_${cleanPhone}`);
-    safeSetItem(`giriraj_orders_phone_${cleanPhone}`, JSON.stringify([order, ...pOrders.filter((o) => o.id !== order.id)]));
-  }
-
-  // Master persistent list
-  try {
-    const masterRaw = safeGetItem('giriraj_master_orders');
-    const masterList: any[] = masterRaw ? JSON.parse(masterRaw) : [];
-    const masterOrder = { ...order, userScope: scope, user_id: userId };
-    const updatedMaster = [masterOrder, ...masterList.filter((o) => o.id !== order.id)];
-    safeSetItem('giriraj_master_orders', JSON.stringify(updatedMaster.slice(0, 100)));
-  } catch {
-    // ignore
   }
 
   // Sound chime alert
@@ -1112,100 +1135,120 @@ export async function updateOrderStatusInFirestore(orderId: string, newStatus: O
 export const updateOrderStatusInSupabase = updateOrderStatusInFirestore;
 
 /**
- * Delete a specific order from Supabase (orders + order_items) and local caches
+ * Delete a specific order from Supabase (orders + order_items), Server API, and local caches
  */
 export async function deleteFirestoreOrder(orderId: string): Promise<boolean> {
   if (!orderId) return false;
 
-  // 1. Remove from local storage keys immediately for responsive UI
+  // 1. Mark ID in persistent deletion blacklist so it can never reappear
+  markOrderAsDeleted(orderId);
+
+  // 2. Remove from active user's local storage key immediately for responsive UI
   try {
-    if (typeof window !== 'undefined' && window.localStorage) {
-      // Clean active user scope
-      if (activeUserScope) {
-        const currentOrders = getStoredOrders(activeUserScope);
-        const filtered = currentOrders.filter((o) => String(o.id) !== String(orderId));
-        safeSetItem(`giriraj_orders_${activeUserScope}`, JSON.stringify(filtered));
-        notifyOrderListeners(filtered);
-      }
-
-      // Clean all localStorage matching order keys
-      const totalKeys = localStorage.length;
-      for (let i = 0; i < totalKeys; i++) {
-        const key = localStorage.key(i);
-        if (key && key.startsWith('giriraj_orders_')) {
-          const raw = localStorage.getItem(key);
-          if (raw) {
-            try {
-              const list = JSON.parse(raw);
-              if (Array.isArray(list)) {
-                const remaining = list.filter((o) => String(o?.id) !== String(orderId));
-                safeSetItem(key, JSON.stringify(remaining));
-              }
-            } catch {
-              // ignore
-            }
-          }
-        }
-      }
-
-      // Clean master orders cache
-      const masterRaw = safeGetItem('giriraj_master_orders');
-      if (masterRaw) {
-        try {
-          const masterList = JSON.parse(masterRaw);
-          if (Array.isArray(masterList)) {
-            const updatedMaster = masterList.filter((entry) => String(entry.id) !== String(orderId));
-            safeSetItem('giriraj_master_orders', JSON.stringify(updatedMaster));
-          }
-        } catch {
-          // ignore
-        }
-      }
+    if (activeUserScope) {
+      const currentOrders = getStoredOrders(activeUserScope);
+      const filtered = currentOrders.filter((o) => String(o.id) !== String(orderId));
+      safeSetItem(`giriraj_orders_${activeUserScope}`, JSON.stringify(filtered));
+      notifyOrderListeners(filtered);
     }
   } catch (storageErr) {
     console.warn('Local storage order deletion notice:', storageErr);
   }
 
-  // 2. Delete from Supabase Database (`order_items` then `orders`)
+  // 3. Call Server Backend API to delete with elevated DB permissions
   try {
-    // Delete associated order items first
+    fetch(`/api/orders/${encodeURIComponent(orderId)}`, {
+      method: 'DELETE',
+      headers: { 'Cache-Control': 'no-cache' }
+    }).catch((apiErr) => console.warn('Server order delete API notice:', apiErr));
+  } catch (err) {
+    console.warn('Server delete call notice:', err);
+  }
+
+  // 4. Delete from Supabase Database client (`order_items` then `orders`)
+  try {
     try {
       await supabase.from('order_items').delete().eq('order_id', orderId);
     } catch (itemDelErr) {
       console.warn('Supabase order_items delete note:', itemDelErr);
     }
 
-    // Delete the order record
     const { error } = await supabase.from('orders').delete().eq('id', orderId);
     if (error) {
       console.warn('Supabase order delete error:', error.message);
     }
-
-    // Re-fetch remaining orders to ensure sync
-    const remaining = await fetchUserOrders();
-    notifyOrderListeners(remaining);
-    return true;
   } catch (error) {
     console.warn('Error deleting order from database:', error);
-    return true;
   }
+
+  // 5. Re-fetch remaining orders to ensure local and DB sync
+  try {
+    const remaining = await fetchUserOrders();
+    notifyOrderListeners(remaining);
+  } catch {
+    const fallback = activeUserScope ? getStoredOrders(activeUserScope) : [];
+    notifyOrderListeners(fallback);
+  }
+  return true;
 }
 
 export const deleteOrder = deleteFirestoreOrder;
 export const deleteOrderFromFirestore = deleteFirestoreOrder;
 
 /**
- * Clear all order history for the current user across Supabase and local storage
+ * Clear all order history for the current user across Supabase, Server API, and local storage
  */
 export async function clearAllUserOrders(): Promise<boolean> {
   try {
     const { data: authData } = await supabase.auth.getUser();
-    const userId = authData?.user?.id;
+    const user = authData?.user;
+    const userId = user?.id;
 
-    // 1. Delete all user orders from Supabase if logged in
+    // 1. Mark all existing orders as deleted in persistent blacklist
+    const currentOrders = activeUserScope ? getStoredOrders(activeUserScope) : [];
+    const orderIdsToClear = currentOrders.map((o) => String(o.id));
+    if (orderIdsToClear.length > 0) {
+      markAllOrdersAsDeleted(orderIdsToClear);
+    }
+
+    // 2. Clear current user's local storage order records immediately
+    if (activeUserScope) {
+      safeRemoveItem(`giriraj_orders_${activeUserScope}`);
+    }
+
+    // 3. Immediately notify listeners with empty array for instant UI feedback
+    notifyOrderListeners([]);
+
+    // 4. Call Server Backend API to clear orders with elevated DB privileges
+    try {
+      const queryParams = new URLSearchParams();
+      if (userId) queryParams.set('userId', userId);
+      if (user?.email) queryParams.set('email', user.email);
+      if (user?.phone) queryParams.set('phone', user.phone);
+
+      fetch(`/api/orders?${queryParams.toString()}`, {
+        method: 'DELETE',
+        headers: { 'Cache-Control': 'no-cache' }
+      }).catch(() => {
+        // Fallback POST
+        fetch('/api/orders/clear', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            userId,
+            email: user?.email,
+            phone: user?.phone,
+            orderIds: orderIdsToClear
+          })
+        }).catch(console.warn);
+      });
+    } catch (apiErr) {
+      console.warn('Server clear orders API notice:', apiErr);
+    }
+
+    // 5. Delete all user orders from Supabase Client if logged in
     if (userId) {
       try {
-        // Fetch order IDs first to delete child order_items
         const { data: userOrderRows } = await supabase
           .from('orders')
           .select('id')
@@ -1222,26 +1265,6 @@ export async function clearAllUserOrders(): Promise<boolean> {
       }
     }
 
-    // 2. Clear all local storage order records
-    if (typeof window !== 'undefined' && window.localStorage) {
-      const keysToRemove: string[] = [];
-      for (let i = 0; i < localStorage.length; i++) {
-        const key = localStorage.key(i);
-        if (key && (key.startsWith('giriraj_orders_') || key === 'giriraj_master_orders')) {
-          keysToRemove.push(key);
-        }
-      }
-      keysToRemove.forEach((k) => {
-        try {
-          localStorage.removeItem(k);
-        } catch {
-          // ignore
-        }
-      });
-    }
-
-    // 3. Notify listeners with empty array
-    notifyOrderListeners([]);
     return true;
   } catch (error) {
     console.warn('Error clearing all user orders:', error);

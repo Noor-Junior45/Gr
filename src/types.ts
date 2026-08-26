@@ -87,6 +87,14 @@ export interface Order {
   paymentStatus: 'paid' | 'pending';
   status: OrderStatus;
   createdAt: string;
+  placed_at?: string;
+  packed_at?: string;
+  out_for_delivery_at?: string;
+  delivered_at?: string;
+  placedAt?: string;
+  packedAt?: string;
+  outForDeliveryAt?: string;
+  deliveredAt?: string;
   estimatedDeliveryTimestamp: number;
   deliveryPartner?: {
     name: string;

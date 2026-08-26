@@ -598,7 +598,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
               </button>
             </div>
           ) : (
-            <div className="space-y-4">
+            <div className="bg-white rounded-2xl border border-slate-200/90 shadow-xs divide-y divide-slate-100 overflow-hidden">
               {filteredOrders.map((order) => {
                 const orderRatings = ratingsState[order.id] || {};
                 const formattedDate = new Date(order.createdAt).toLocaleDateString('en-IN', {
@@ -617,15 +617,27 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                 return (
                   <div
                     key={order.id}
-                    className={`bg-white rounded-2xl p-4 sm:p-5 border shadow-2xs space-y-3.5 transition-all hover:shadow-xs ${
-                      isActiveOrder ? 'border-amber-300/80 bg-gradient-to-b from-amber-50/20 to-white' : 'border-slate-200/90'
+                    className={`transition-colors ${
+                      isExpanded ? 'bg-slate-50/40' : 'hover:bg-slate-50/70'
                     }`}
                   >
-                    {/* Header Row: Hub & Real-time Status Badge */}
-                    <div className="flex items-start justify-between gap-3">
+                    {/* Header Row: Clickable Accordion Dropdown Trigger */}
+                    <div
+                      onClick={() => setExpandedOrderId(isExpanded ? null : order.id)}
+                      className="p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 cursor-pointer select-none"
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          setExpandedOrderId(isExpanded ? null : order.id);
+                        }
+                      }}
+                      aria-expanded={isExpanded}
+                    >
                       <div className="flex items-center gap-3">
                         <div
-                          className={`w-11 h-11 rounded-xl flex items-center justify-center font-black text-sm shrink-0 border ${
+                          className={`w-10 h-10 rounded-xl flex items-center justify-center font-black text-sm shrink-0 border ${
                             isActiveOrder
                               ? 'bg-amber-100 border-amber-200 text-amber-950 shadow-inner'
                               : isDelivered
@@ -636,204 +648,240 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                           {isActiveOrder ? '⚡' : isDelivered ? '✓' : '📦'}
                         </div>
                         <div>
-                          <h3 className="text-sm font-black text-slate-900">
-                            Giriraj Power Kasba Hub
-                          </h3>
-                          <p className="text-xs text-slate-500 font-medium">
-                            {order.area} • Order #{order.id.slice(-6).toUpperCase()}
+                          <div className="flex items-center gap-2">
+                            <h3 className="text-sm font-black text-slate-900">
+                              Order #{order.id.slice(-6).toUpperCase()}
+                            </h3>
+                            <span className="text-[11px] text-slate-400 font-medium">
+                              • {formattedDate}
+                            </span>
+                          </div>
+                          <p className="text-xs text-slate-500 font-medium mt-0.5">
+                            {order.area} • {order.items?.length || 1} item{(order.items?.length || 1) > 1 ? 's' : ''}
                           </p>
                         </div>
                       </div>
 
-                      {/* Truthful Dynamic Order Status Badge */}
-                      <div
-                        className={`flex items-center gap-1.5 text-xs font-black px-3 py-1 rounded-full border shrink-0 ${statusCfg.badgeColor}`}
-                      >
-                        <span className={`w-2 h-2 rounded-full ${statusCfg.dotColor} ${isActiveOrder ? 'animate-ping' : ''}`} />
-                        <span>{statusCfg.label}</span>
-                        <StatusIcon className="w-3.5 h-3.5 ml-0.5" />
+                      {/* Right side: Amount + Status badge + chevron */}
+                      <div className="flex items-center justify-between sm:justify-end gap-3 pl-13 sm:pl-0">
+                        <div className="text-left sm:text-right">
+                          <div className="text-sm font-black text-slate-900">
+                            ₹{order.totalAmount.toLocaleString('en-IN')}
+                          </div>
+                          <div className="text-[10px] text-slate-500 font-semibold">
+                            {order.paymentMethod === 'cod' ? 'Cash on Delivery' : 'Paid Online'}
+                          </div>
+                        </div>
+
+                        <div
+                          className={`flex items-center gap-1.5 text-xs font-black px-2.5 py-1 rounded-full border shrink-0 ${statusCfg.badgeColor}`}
+                        >
+                          <span className={`w-2 h-2 rounded-full ${statusCfg.dotColor} ${isActiveOrder ? 'animate-ping' : ''}`} />
+                          <span>{statusCfg.label}</span>
+                          <StatusIcon className="w-3.5 h-3.5 ml-0.5" />
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setOrderToDelete(order);
+                          }}
+                          className="w-8 h-8 rounded-lg hover:bg-red-50 text-slate-400 hover:text-red-600 flex items-center justify-center transition-colors cursor-pointer border border-transparent hover:border-red-200"
+                          title="Delete this order"
+                          aria-label={`Delete order #${order.id}`}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+
+                        <div
+                          className={`w-7 h-7 rounded-lg bg-slate-100 flex items-center justify-center text-slate-600 transition-transform duration-200 ${
+                            isExpanded ? 'rotate-180 bg-slate-200 text-slate-900' : ''
+                          }`}
+                        >
+                          <ChevronDown className="w-4 h-4" />
+                        </div>
                       </div>
                     </div>
 
-                    {/* LIVE TRACKING STEPPER FOR ACTIVE ORDERS */}
-                    {isActiveOrder && (
-                      <div className="bg-amber-50/60 rounded-xl p-3.5 border border-amber-200/80 space-y-3">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <Zap className="w-4 h-4 text-amber-600 fill-amber-600" />
-                            <span className="text-xs font-black text-slate-900">
-                              ⚡ 60-Min Express Dispatch Tracker
-                            </span>
-                          </div>
-                          <span className="text-[11px] font-bold text-amber-900 bg-amber-200/70 px-2 py-0.5 rounded-md">
-                            Live Status
-                          </span>
-                        </div>
-
-                        {/* 4-Step Visual Progress Bar */}
-                        <div className="grid grid-cols-4 gap-1 relative pt-1">
-                          {[
-                            { label: 'Placed', step: 0 },
-                            { label: 'Confirmed', step: 1 },
-                            { label: 'On Way ⚡', step: 2 },
-                            { label: 'Delivered', step: 3 }
-                          ].map((st, i) => {
-                            const isCurrent = statusCfg.stepIndex === st.step;
-                            const isPassed = statusCfg.stepIndex >= st.step;
-                            return (
-                              <div key={i} className="flex flex-col items-center text-center">
-                                <div
-                                  className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-black transition-all mb-1 ${
-                                    isCurrent
-                                      ? 'bg-amber-500 text-slate-950 ring-4 ring-amber-200 shadow-xs'
-                                      : isPassed
-                                      ? 'bg-emerald-600 text-white'
-                                      : 'bg-slate-200 text-slate-400'
-                                  }`}
-                                >
-                                  {isPassed ? '✓' : i + 1}
-                                </div>
-                                <span
-                                  className={`text-[10px] font-bold leading-tight ${
-                                    isCurrent
-                                      ? 'text-amber-950 font-black'
-                                      : isPassed
-                                      ? 'text-slate-800'
-                                      : 'text-slate-400'
-                                  }`}
-                                >
-                                  {st.label}
+                    {/* Dropdown Content Area */}
+                    {isExpanded && (
+                      <div className="px-4 sm:px-5 pb-5 pt-1 space-y-3.5 border-t border-slate-100 bg-slate-50/50 animate-in fade-in duration-200">
+                        {/* Live Tracking Stepper for Active Orders */}
+                        {isActiveOrder && (
+                          <div className="bg-amber-50/60 rounded-xl p-3.5 border border-amber-200/80 space-y-3">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2">
+                                <Zap className="w-4 h-4 text-amber-600 fill-amber-600" />
+                                <span className="text-xs font-black text-slate-900">
+                                  ⚡ 60-Min Express Dispatch Tracker
                                 </span>
                               </div>
-                            );
-                          })}
-                        </div>
-
-                        {/* Status Description & Dispatch Partner */}
-                        <div className="pt-2 border-t border-amber-200/60 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
-                          <p className="text-[11px] text-amber-950 font-medium flex items-center gap-1.5">
-                            <Truck className="w-3.5 h-3.5 text-amber-700 shrink-0" />
-                            <span>{statusCfg.description}</span>
-                          </p>
-
-                          <div className="flex items-center gap-2">
-                            <a
-                              href={getOrderWhatsAppUrl(order, '918777400280')}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[11px] font-bold flex items-center gap-1 transition-colors"
-                            >
-                              <MessageSquare className="w-3 h-3" />
-                              <span>Track on WhatsApp</span>
-                            </a>
-                            <a
-                              href="tel:+918777400280"
-                              className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-lg text-[11px] font-bold flex items-center gap-1 transition-colors"
-                            >
-                              <Phone className="w-3 h-3 text-slate-600" />
-                              <span>Call Hub</span>
-                            </a>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Ordered Items List */}
-                    <div className="bg-slate-50/80 rounded-xl p-3 space-y-1.5">
-                      {order.items && order.items.length > 0 ? (
-                        order.items.map((item, idx) => (
-                          <div key={idx} className="text-xs text-slate-800 font-semibold flex items-center justify-between gap-2">
-                            <div className="flex items-center gap-2 truncate">
-                              <span className="font-black text-slate-900 shrink-0 px-1.5 py-0.5 bg-slate-200/70 rounded text-[10px]">
-                                {item.quantity}X
-                              </span>
-                              <span className="truncate">
-                                {item.product.name} ({item.product.brand})
-                                {item.selectedColor ? ` [${item.selectedColor}]` : ''}
+                              <span className="text-[11px] font-bold text-amber-900 bg-amber-200/70 px-2 py-0.5 rounded-md">
+                                Live Status
                               </span>
                             </div>
-                            <span className="font-bold text-slate-700 shrink-0">
-                              ₹{((item.product.price || 0) * item.quantity).toLocaleString('en-IN')}
-                            </span>
-                          </div>
-                        ))
-                      ) : order.services && order.services.length > 0 ? (
-                        order.services.map((srv, idx) => (
-                          <div key={idx} className="text-xs text-slate-800 font-semibold flex items-center justify-between gap-2">
-                            <div className="flex items-center gap-2 truncate">
-                              <span className="font-black text-slate-900 shrink-0 px-1.5 py-0.5 bg-slate-200/70 rounded text-[10px]">
-                                1X
-                              </span>
-                              <span className="truncate">
-                                {srv.serviceTitle} ({srv.projectType})
-                              </span>
+
+                            <div className="grid grid-cols-4 gap-1 relative pt-1">
+                              {[
+                                { label: 'Placed', step: 0 },
+                                { label: 'Confirmed', step: 1 },
+                                { label: 'On Way ⚡', step: 2 },
+                                { label: 'Delivered', step: 3 }
+                              ].map((st, i) => {
+                                const isCurrent = statusCfg.stepIndex === st.step;
+                                const isPassed = statusCfg.stepIndex >= st.step;
+                                return (
+                                  <div key={i} className="flex flex-col items-center text-center">
+                                    <div
+                                      className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-black transition-all mb-1 ${
+                                        isCurrent
+                                          ? 'bg-amber-500 text-slate-950 ring-4 ring-amber-200 shadow-xs'
+                                          : isPassed
+                                          ? 'bg-emerald-600 text-white'
+                                          : 'bg-slate-200 text-slate-400'
+                                      }`}
+                                    >
+                                      {isPassed ? '✓' : i + 1}
+                                    </div>
+                                    <span
+                                      className={`text-[10px] font-bold leading-tight ${
+                                        isCurrent
+                                          ? 'text-amber-950 font-black'
+                                          : isPassed
+                                          ? 'text-slate-800'
+                                          : 'text-slate-400'
+                                      }`}
+                                    >
+                                      {st.label}
+                                    </span>
+                                  </div>
+                                );
+                              })}
                             </div>
-                            <span className="font-bold text-slate-700 shrink-0">
-                              ₹{(srv.estimatedPrice || order.totalAmount).toLocaleString('en-IN')}
-                            </span>
-                          </div>
-                        ))
-                      ) : (
-                        <p className="text-xs text-slate-700 font-semibold">
-                          Electrical &amp; Construction Supplies Order
-                        </p>
-                      )}
-                    </div>
 
-                    {/* RATINGS SECTION - Only active for Delivered orders */}
-                    {isDelivered && (
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1 border-t border-slate-100 text-xs font-bold text-slate-700">
-                        <div className="flex items-center justify-between sm:justify-start gap-2 bg-slate-50 px-3 py-2 rounded-xl">
-                          <span className="text-[11px] text-slate-600">Product Quality:</span>
-                          <div className="flex items-center gap-1">
-                            {[1, 2, 3, 4, 5].map((star) => (
-                              <button
-                                key={star}
-                                type="button"
-                                onClick={() => handleRateOrder(order.id, 'user', star)}
-                                className="cursor-pointer"
-                              >
-                                <Star
-                                  className={`w-3.5 h-3.5 ${
-                                    (orderRatings.userRating || 5) >= star
-                                      ? 'text-amber-400 fill-amber-400'
-                                      : 'text-slate-300'
-                                  }`}
-                                />
-                              </button>
-                            ))}
+                            <div className="pt-2 border-t border-amber-200/60 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+                              <p className="text-[11px] text-amber-950 font-medium flex items-center gap-1.5">
+                                <Truck className="w-3.5 h-3.5 text-amber-700 shrink-0" />
+                                <span>{statusCfg.description}</span>
+                              </p>
+
+                              <div className="flex items-center gap-2">
+                                <a
+                                  href={getOrderWhatsAppUrl(order, '918777400280')}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[11px] font-bold flex items-center gap-1 transition-colors"
+                                >
+                                  <MessageSquare className="w-3 h-3" />
+                                  <span>Track on WhatsApp</span>
+                                </a>
+                                <a
+                                  href="tel:+918777400280"
+                                  className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-lg text-[11px] font-bold flex items-center gap-1 transition-colors"
+                                >
+                                  <Phone className="w-3 h-3 text-slate-600" />
+                                  <span>Call Hub</span>
+                                </a>
+                              </div>
+                            </div>
                           </div>
+                        )}
+
+                        {/* Ordered Items List */}
+                        <div className="bg-white rounded-xl p-3 border border-slate-200/80 space-y-1.5">
+                          {order.items && order.items.length > 0 ? (
+                            order.items.map((item, idx) => (
+                              <div key={idx} className="text-xs text-slate-800 font-semibold flex items-center justify-between gap-2">
+                                <div className="flex items-center gap-2 truncate">
+                                  <span className="font-black text-slate-900 shrink-0 px-1.5 py-0.5 bg-slate-100 rounded text-[10px]">
+                                    {item.quantity}X
+                                  </span>
+                                  <span className="truncate">
+                                    {item.product.name} ({item.product.brand})
+                                    {item.selectedColor ? ` [${item.selectedColor}]` : ''}
+                                  </span>
+                                </div>
+                                <span className="font-bold text-slate-700 shrink-0">
+                                  ₹{((item.product.price || 0) * item.quantity).toLocaleString('en-IN')}
+                                </span>
+                              </div>
+                            ))
+                          ) : order.services && order.services.length > 0 ? (
+                            order.services.map((srv, idx) => (
+                              <div key={idx} className="text-xs text-slate-800 font-semibold flex items-center justify-between gap-2">
+                                <div className="flex items-center gap-2 truncate">
+                                  <span className="font-black text-slate-900 shrink-0 px-1.5 py-0.5 bg-slate-100 rounded text-[10px]">
+                                    1X
+                                  </span>
+                                  <span className="truncate">
+                                    {srv.serviceTitle} ({srv.projectType})
+                                  </span>
+                                </div>
+                                <span className="font-bold text-slate-700 shrink-0">
+                                  ₹{(srv.estimatedPrice || order.totalAmount).toLocaleString('en-IN')}
+                                </span>
+                              </div>
+                            ))
+                          ) : (
+                            <p className="text-xs text-slate-700 font-semibold">
+                              Electrical &amp; Construction Supplies Order
+                            </p>
+                          )}
                         </div>
 
-                        <div className="flex items-center justify-between sm:justify-start gap-2 bg-slate-50 px-3 py-2 rounded-xl">
-                          <span className="text-[11px] text-slate-600">Rider Delivery:</span>
-                          <div className="flex items-center gap-1">
-                            {[1, 2, 3, 4, 5].map((star) => (
-                              <button
-                                key={star}
-                                type="button"
-                                onClick={() => handleRateOrder(order.id, 'delivery', star)}
-                                className="cursor-pointer"
-                              >
-                                <Star
-                                  className={`w-3.5 h-3.5 ${
-                                    (orderRatings.deliveryRating || 5) >= star
-                                      ? 'text-amber-400 fill-amber-400'
-                                      : 'text-slate-300'
-                                  }`}
-                                />
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-                      </div>
-                    )}
+                        {/* Rating for Delivered Orders */}
+                        {isDelivered && (
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1 border-t border-slate-100 text-xs font-bold text-slate-700">
+                            <div className="flex items-center justify-between sm:justify-start gap-2 bg-white px-3 py-2 rounded-xl border border-slate-100">
+                              <span className="text-[11px] text-slate-600">Product Quality:</span>
+                              <div className="flex items-center gap-1">
+                                {[1, 2, 3, 4, 5].map((star) => (
+                                  <button
+                                    key={star}
+                                    type="button"
+                                    onClick={() => handleRateOrder(order.id, 'user', star)}
+                                    className="cursor-pointer"
+                                  >
+                                    <Star
+                                      className={`w-3.5 h-3.5 ${
+                                        (orderRatings.userRating || 5) >= star
+                                          ? 'text-amber-400 fill-amber-400'
+                                          : 'text-slate-300'
+                                      }`}
+                                    />
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
 
-                    {/* EXPANDED ADDRESS & PAYMENT DETAILS */}
-                    {isExpanded && (
-                      <div className="pt-2 pb-1 space-y-2.5 border-t border-slate-100 text-xs animate-in fade-in duration-150">
-                        <div className="bg-slate-50 p-3 rounded-xl space-y-1.5 border border-slate-100">
-                          <div className="font-bold text-slate-900 flex items-center gap-1.5">
+                            <div className="flex items-center justify-between sm:justify-start gap-2 bg-white px-3 py-2 rounded-xl border border-slate-100">
+                              <span className="text-[11px] text-slate-600">Rider Delivery:</span>
+                              <div className="flex items-center gap-1">
+                                {[1, 2, 3, 4, 5].map((star) => (
+                                  <button
+                                    key={star}
+                                    type="button"
+                                    onClick={() => handleRateOrder(order.id, 'delivery', star)}
+                                    className="cursor-pointer"
+                                  >
+                                    <Star
+                                      className={`w-3.5 h-3.5 ${
+                                        (orderRatings.deliveryRating || 5) >= star
+                                          ? 'text-amber-400 fill-amber-400'
+                                          : 'text-slate-300'
+                                      }`}
+                                    />
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Delivery Destination */}
+                        <div className="bg-white p-3 rounded-xl space-y-1.5 border border-slate-200/80">
+                          <div className="font-bold text-slate-900 flex items-center gap-1.5 text-xs">
                             <MapPin className="w-3.5 h-3.5 text-slate-500" />
                             <span>Delivery Destination</span>
                           </div>
@@ -842,58 +890,32 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                             <p>{order.address}</p>
                             {order.landmark && <p className="text-slate-500">Landmark: {order.landmark}</p>}
                             <p className="font-medium text-slate-700">{order.area}, Kolkata – {order.pincode}</p>
-                            <p className="text-slate-500 pt-1">
-                              Payment: <span className="font-bold text-slate-800 uppercase">{order.paymentMethod}</span> ({order.paymentStatus})
-                            </p>
                           </div>
+                        </div>
+
+                        {/* Dropdown Action Buttons */}
+                        <div className="pt-2 flex items-center justify-between gap-2 border-t border-slate-200/80">
+                          <button
+                            type="button"
+                            onClick={() => setOrderToDelete(order)}
+                            className="px-2.5 py-1.5 text-red-600 hover:bg-red-50 rounded-xl text-xs font-bold transition-colors cursor-pointer flex items-center gap-1"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                            <span>Delete</span>
+                          </button>
+
+                          {order.items && order.items.length > 0 && (
+                            <button
+                              onClick={() => onReorder(order.items)}
+                              className="px-3.5 py-1.5 bg-[#FFF0ED] hover:bg-[#FFE2DC] text-[#E23744] font-black rounded-xl text-xs flex items-center gap-1 transition-colors cursor-pointer border border-[#FFD2C9]"
+                            >
+                              <span>REORDER</span>
+                              <ChevronRight className="w-3.5 h-3.5" />
+                            </button>
+                          )}
                         </div>
                       </div>
                     )}
-
-                    {/* Footer: Date, Bill Total, Details Button & Reorder */}
-                    <div className="pt-2 flex items-center justify-between gap-2 border-t border-slate-100">
-                      <div>
-                        <p className="text-[11px] text-slate-500 font-medium">Ordered on {formattedDate}</p>
-                        <p className="text-xs font-black text-slate-900">
-                          Bill Total: ₹{order.totalAmount.toLocaleString('en-IN')}
-                          {order.paymentMethod === 'cod' ? (
-                            <span className="text-[10px] font-bold text-amber-700 ml-1.5">(COD)</span>
-                          ) : (
-                            <span className="text-[10px] font-bold text-emerald-700 ml-1.5">(PAID)</span>
-                          )}
-                        </p>
-                      </div>
-
-                      <div className="flex items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={() => setOrderToDelete(order)}
-                          className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-colors cursor-pointer"
-                          title="Delete this order"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() => setExpandedOrderId(isExpanded ? null : order.id)}
-                          className="px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-colors cursor-pointer flex items-center gap-1"
-                        >
-                          <span>{isExpanded ? 'Hide' : 'Details'}</span>
-                          {isExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-                        </button>
-
-                        {order.items && order.items.length > 0 && (
-                          <button
-                            onClick={() => onReorder(order.items)}
-                            className="px-3.5 py-1.5 bg-[#FFF0ED] hover:bg-[#FFE2DC] text-[#E23744] font-black rounded-xl text-xs flex items-center gap-1 transition-colors cursor-pointer border border-[#FFD2C9]"
-                          >
-                            <span>REORDER</span>
-                            <ChevronRight className="w-3.5 h-3.5" />
-                          </button>
-                        )}
-                      </div>
-                    </div>
                   </div>
                 );
               })}
@@ -2241,9 +2263,15 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
           </button>
         </div>
 
-        {/* App Version Tag */}
-        <div className="text-center pt-6 pb-2">
-          <p className="text-[11px] font-bold text-slate-400">Giriraj Power App Version 4.114.3</p>
+        {/* App Version Tag & Build Status */}
+        <div className="text-center pt-6 pb-2 space-y-1">
+          <p className="text-[11px] font-bold text-slate-500">
+            Giriraj Power App Version 2.4.0
+          </p>
+          <div className="flex items-center justify-center gap-2 text-[10px] text-slate-400">
+            <span className="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+            <span>Live Server Deployment Sync Active</span>
+          </div>
         </div>
       </div>
 
