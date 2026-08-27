@@ -42,16 +42,24 @@ import {
   setActiveUserScope
 } from './services/supabaseService';
 import { useVersionCheck } from './hooks/useVersionCheck';
-import { VersionUpdateBanner } from './components/VersionUpdateBanner';
 
 export default function App() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Version Check & Soft-Refresh Engine
-  const versionState = useVersionCheck({
-    intervalMs: 45000,
-    autoRefreshDelaySec: 5,
+  // Silent Background Version & Cache Synchronization Engine
+  useVersionCheck({
+    intervalMs: 60000,
+    onSilentUpdate: () => {
+      // Silently refresh products in state from server without page blinking
+      fetchProductsFromSupabase()
+        .then((fresh) => {
+          if (Array.isArray(fresh) && fresh.length > 0) {
+            setProducts(fresh);
+          }
+        })
+        .catch(() => {});
+    }
   });
 
   // State Management
@@ -792,9 +800,6 @@ export default function App() {
         onClose={() => setIsAiAssistantOpen(false)}
         currentArea={currentArea}
       />
-
-      {/* Real-time Version Mismatch Detection & Soft-Refresh Banner */}
-      <VersionUpdateBanner versionState={versionState} />
 
     </div>
   );

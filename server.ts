@@ -998,11 +998,11 @@ async function startServer() {
   const SERVER_BOOT_TIME = new Date().toISOString();
   function getActiveVersionInfo() {
     try {
+      const cwd = process.cwd();
       const candidates = [
-        path.join(process.cwd(), "public", "version.json"),
-        path.join(process.cwd(), "dist", "version.json"),
-        path.join(__dirname, "public", "version.json"),
-        path.join(__dirname, "version.json"),
+        path.join(cwd, "public", "version.json"),
+        path.join(cwd, "dist", "version.json"),
+        path.join(cwd, "version.json"),
       ];
       for (const p of candidates) {
         if (fs.existsSync(p)) {

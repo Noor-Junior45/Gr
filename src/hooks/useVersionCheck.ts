@@ -2,14 +2,12 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { CLIENT_BUILD_ID, APP_VERSION, ServerVersionInfo } from '../version';
 
 export interface UseVersionCheckOptions {
-  /** Check interval in milliseconds (default: 45000 / 45s) */
+  /** Check interval in milliseconds (default: 60000 / 1 min) */
   intervalMs?: number;
   /** Whether automatic background polling is enabled */
   enabled?: boolean;
-  /** Auto refresh countdown in seconds (default: 5, 0 = immediate) */
-  autoRefreshDelaySec?: number;
-  /** Callback fired when a mismatch is detected */
-  onMismatch?: (serverInfo: ServerVersionInfo) => void;
+  /** Optional callback to trigger silent data revalidation (e.g. products re-fetch) */
+  onSilentUpdate?: (serverInfo: ServerVersionInfo) => void;
 }
 
 export interface VersionCheckState {
@@ -17,81 +15,77 @@ export interface VersionCheckState {
   clientVersion: string;
   serverBuildId: string | null;
   serverVersion: string | null;
-  isUpdateAvailable: boolean;
   isChecking: boolean;
   lastCheckedAt: Date | null;
-  countdown: number | null;
-  isRefreshing: boolean;
-  error: string | null;
+  hasNewBuildInBackground: boolean;
   checkForUpdates: () => Promise<boolean>;
-  triggerSoftRefresh: () => void;
-  dismissUpdate: () => void;
+  clearBackgroundCaches: () => Promise<void>;
 }
 
-const STORAGE_LAST_REFRESHED_BUILD = 'giriraj_last_soft_refresh_build';
-const STORAGE_LAST_REFRESHED_TIME = 'giriraj_last_soft_refresh_time';
+const STORAGE_LAST_PURGED_BUILD = 'giriraj_last_background_purged_build';
 
 /**
- * Performs a clean soft-refresh of the application, clearing transient browser caches
+ * Silently clears stale client-side caches in the background
+ * without reloading, blinking, or closing the application.
  */
-export async function performSoftRefresh(targetBuildId?: string): Promise<void> {
+export async function clearBackgroundCaches(targetBuildId?: string): Promise<void> {
   try {
     if (targetBuildId) {
-      sessionStorage.setItem(STORAGE_LAST_REFRESHED_BUILD, targetBuildId);
-      sessionStorage.setItem(STORAGE_LAST_REFRESHED_TIME, Date.now().toString());
+      sessionStorage.setItem(STORAGE_LAST_PURGED_BUILD, targetBuildId);
     }
 
-    // Clear dynamic CacheStorage if supported by browser
+    // 1. Evict stale entries in CacheStorage API silently
     if (typeof window !== 'undefined' && 'caches' in window) {
       try {
         const cacheKeys = await window.caches.keys();
         await Promise.all(cacheKeys.map((key) => window.caches.delete(key)));
       } catch (e) {
-        console.warn('[VersionCheck] Cache clear notice:', e);
+        console.debug('[BackgroundCache] CacheStorage clear notice:', e);
       }
     }
-  } catch (err) {
-    console.warn('[VersionCheck] Soft refresh storage notice:', err);
-  }
 
-  // Reload the current URL bypassing stale local browser cache
-  window.location.reload();
+    // 2. Silently warm & bust API caches in background for fresh data loading
+    try {
+      const buster = Date.now();
+      fetch(`/api/products?_b=${buster}`, {
+        method: 'GET',
+        cache: 'reload',
+        headers: { 'Cache-Control': 'no-cache' }
+      }).catch(() => {});
+    } catch {
+      // ignore background prefetch errors
+    }
+  } catch (err) {
+    console.debug('[BackgroundCache] Notice during background cache cleanup:', err);
+  }
 }
 
 export function useVersionCheck(options: UseVersionCheckOptions = {}): VersionCheckState {
   const {
-    intervalMs = 45000,
+    intervalMs = 60000,
     enabled = true,
-    autoRefreshDelaySec = 5,
-    onMismatch
+    onSilentUpdate
   } = options;
 
   const [serverBuildId, setServerBuildId] = useState<string | null>(null);
   const [serverVersion, setServerVersion] = useState<string | null>(null);
-  const [isUpdateAvailable, setIsUpdateAvailable] = useState(false);
   const [isChecking, setIsChecking] = useState(false);
   const [lastCheckedAt, setLastCheckedAt] = useState<Date | null>(null);
-  const [countdown, setCountdown] = useState<number | null>(null);
-  const [isRefreshing, setIsRefreshing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [hasNewBuildInBackground, setHasNewBuildInBackground] = useState(false);
 
-  const countdownIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const isDismissedRef = useRef<boolean>(false);
   const lastCheckTimestampRef = useRef<number>(0);
 
   const checkForUpdates = useCallback(async (): Promise<boolean> => {
-    // Throttling: prevent multiple rapid checks within 3 seconds
+    // Throttling: prevent rapid redundant checks within 5 seconds
     const now = Date.now();
-    if (now - lastCheckTimestampRef.current < 3000) {
-      return isUpdateAvailable;
+    if (now - lastCheckTimestampRef.current < 5000) {
+      return false;
     }
     lastCheckTimestampRef.current = now;
 
     try {
       setIsChecking(true);
-      setError(null);
 
-      // Add cache buster query parameter to guarantee fresh server check
       const response = await fetch(`/api/version?t=${now}`, {
         method: 'GET',
         cache: 'no-store',
@@ -102,7 +96,7 @@ export function useVersionCheck(options: UseVersionCheckOptions = {}): VersionCh
       });
 
       if (!response.ok) {
-        throw new Error(`Server returned status ${response.status}`);
+        return false;
       }
 
       const data: ServerVersionInfo = await response.json();
@@ -112,95 +106,58 @@ export function useVersionCheck(options: UseVersionCheckOptions = {}): VersionCh
         setServerBuildId(data.buildId);
         setServerVersion(data.version || null);
 
-        // Compare client and server build IDs
         const hasMismatch = Boolean(
           CLIENT_BUILD_ID &&
           data.buildId &&
-          CLIENT_BUILD_ID !== data.buildId &&
-          !isDismissedRef.current
+          CLIENT_BUILD_ID !== data.buildId
         );
 
         if (hasMismatch) {
-          // Loop Protection: verify we didn't just refresh for this exact build ID in last 12 seconds
-          const lastRefreshedBuild = sessionStorage.getItem(STORAGE_LAST_REFRESHED_BUILD);
-          const lastRefreshedTime = parseInt(sessionStorage.getItem(STORAGE_LAST_REFRESHED_TIME) || '0', 10);
-          const isRecentLoop = lastRefreshedBuild === data.buildId && (now - lastRefreshedTime < 12000);
+          setHasNewBuildInBackground(true);
 
-          if (isRecentLoop) {
-            console.log('[VersionCheck] Loop safeguard: Already refreshed recently for build', data.buildId);
-            return false;
+          // Check if we already purged caches for this exact build
+          const lastPurgedBuild = sessionStorage.getItem(STORAGE_LAST_PURGED_BUILD);
+          if (lastPurgedBuild !== data.buildId) {
+            // Silently purge cache in the background without blinking or refreshing
+            await clearBackgroundCaches(data.buildId);
+            onSilentUpdate?.(data);
           }
-
-          setIsUpdateAvailable(true);
-          onMismatch?.(data);
-
-          // Initiate automatic soft refresh countdown
-          if (autoRefreshDelaySec > 0 && countdown === null) {
-            setCountdown(autoRefreshDelaySec);
-          } else if (autoRefreshDelaySec === 0) {
-            setIsRefreshing(true);
-            performSoftRefresh(data.buildId);
-          }
-
           return true;
         } else {
-          setIsUpdateAvailable(false);
+          setHasNewBuildInBackground(false);
           return false;
         }
       }
       return false;
-    } catch (err: any) {
-      console.warn('[VersionCheck] Version inspection notice:', err?.message || err);
-      setError(err?.message || 'Version check failed');
+    } catch {
       return false;
     } finally {
       setIsChecking(false);
     }
-  }, [autoRefreshDelaySec, countdown, isUpdateAvailable, onMismatch]);
+  }, [onSilentUpdate]);
 
-  // Handle countdown timer decrementing
-  useEffect(() => {
-    if (countdown === null) return;
-
-    if (countdown <= 0) {
-      setIsRefreshing(true);
-      performSoftRefresh(serverBuildId || undefined);
-      return;
-    }
-
-    countdownIntervalRef.current = setInterval(() => {
-      setCountdown((prev) => (prev !== null ? prev - 1 : null));
-    }, 1000);
-
-    return () => {
-      if (countdownIntervalRef.current) {
-        clearInterval(countdownIntervalRef.current);
-      }
-    };
-  }, [countdown, serverBuildId]);
-
-  // Periodic polling & Event Listeners
+  // Background Periodic polling & Lifecycle Events
   useEffect(() => {
     if (!enabled) return;
 
-    // Initial check after 3 seconds for quick startup
+    // Initial check 5 seconds after page load
     const initialTimer = setTimeout(() => {
       checkForUpdates();
-    }, 3000);
+    }, 5000);
 
-    // Periodic check interval
+    // Periodic silent background check
     const intervalTimer = setInterval(() => {
       checkForUpdates();
     }, intervalMs);
 
-    // Immediate check when tab becomes visible or focused
+    // Silent check when tab becomes active again
     const handleVisibilityOrFocus = () => {
       if (document.visibilityState === 'visible') {
         checkForUpdates();
       }
     };
 
-    // Check when network connection is restored
+    // Silent check when device comes back online
     const handleOnline = () => {
       checkForUpdates();
     };
@@ -218,37 +175,20 @@ export function useVersionCheck(options: UseVersionCheckOptions = {}): VersionCh
     };
   }, [enabled, intervalMs, checkForUpdates]);
 
-  const triggerSoftRefresh = useCallback(() => {
-    setIsRefreshing(true);
-    performSoftRefresh(serverBuildId || undefined);
+  const handleManualCachePurge = useCallback(async () => {
+    await clearBackgroundCaches(serverBuildId || undefined);
   }, [serverBuildId]);
-
-  const dismissUpdate = useCallback(() => {
-    isDismissedRef.current = true;
-    setIsUpdateAvailable(false);
-    setCountdown(null);
-    if (countdownIntervalRef.current) {
-      clearInterval(countdownIntervalRef.current);
-    }
-    // Re-enable detection after 5 minutes
-    setTimeout(() => {
-      isDismissedRef.current = false;
-    }, 5 * 60 * 1000);
-  }, []);
 
   return {
     clientBuildId: CLIENT_BUILD_ID,
     clientVersion: APP_VERSION,
     serverBuildId,
     serverVersion,
-    isUpdateAvailable,
     isChecking,
     lastCheckedAt,
-    countdown,
-    isRefreshing,
-    error,
+    hasNewBuildInBackground,
     checkForUpdates,
-    triggerSoftRefresh,
-    dismissUpdate
+    clearBackgroundCaches: handleManualCachePurge
   };
 }
+
